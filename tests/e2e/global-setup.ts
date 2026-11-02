@@ -7,7 +7,7 @@ export const STATE = '.e2e/stack.json';
 export default async function globalSetup() {
   const stack = await startStack({ quiet: !process.env.STACK_VERBOSE });
   mkdirSync('.e2e', { recursive: true });
-  writeFileSync(STATE, JSON.stringify({ apiBase: stack.apiBase, admin: stack.admin, logPath: stack.logPath }));
+  writeFileSync(STATE, JSON.stringify({ apiBase: stack.apiBase, admin: stack.admin, logPath: stack.logPath, dbContainer: stack.dbContainer }));
   return async () => {
     await stack.stop();
     rmSync('.e2e', { recursive: true, force: true });

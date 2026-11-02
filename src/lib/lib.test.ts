@@ -78,6 +78,11 @@ describe('permissions', () => {
     expect(canAny(kyc, ['POOL.READ', 'MEMBERS.READ'])).toBe(true);
   });
 
+  it('needs every permission of a list', () => {
+    expect(can(kyc, ['MEMBERS.READ', 'MEMBERS.KYC'])).toBe(true);
+    expect(can({ ...kyc, permissions: ['MEMBERS.KYC'] }, ['MEMBERS.READ', 'MEMBERS.KYC'])).toBe(false);
+  });
+
   it('keeps the KYC key to the system admin role, which no permission grants', () => {
     expect(can(sys, 'SYSTEM_ADMIN')).toBe(true);
     expect(can({ ...kyc, permissions: [...kyc.permissions, 'ADMINS.READ'] }, 'SYSTEM_ADMIN')).toBe(false);

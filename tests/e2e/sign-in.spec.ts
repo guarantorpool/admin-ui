@@ -49,14 +49,15 @@ test.describe('sign-in (slice 1)', () => {
   });
 
   test('hides screens a narrow role cannot open', async ({ page }) => {
-    const narrow = await newAdmin(page, ['MEMBERS.KYC'], 'Narrow');
+    const narrow = await newAdmin(page, ['REFUNDS.READ'], 'Narrow');
     await signIn(page, narrow.email, narrow.password);
-    await expect(page).toHaveURL(/\/kyc$/);
+    await expect(page).toHaveURL(/\/refunds$/);
     const nav = page.getByRole('navigation', { name: 'Admin screens' });
-    await expect(nav.getByRole('button', { name: 'Members' })).toBeVisible();
-    for (const hidden of ['Guarantees', 'Money', 'Pool', 'Administration']) await expect(nav.getByRole('button', { name: hidden })).toHaveCount(0);
-    await expect(nav.getByRole('link', { name: 'KYC and address review' })).toBeVisible();
-    await expect(nav.getByRole('link', { name: 'All members' })).toHaveCount(0);
+    await expect(nav.getByRole('button', { name: 'Money' })).toBeVisible();
+    for (const hidden of ['Members', 'Guarantees', 'Pool', 'Administration']) await expect(nav.getByRole('button', { name: hidden })).toHaveCount(0);
+    await expect(nav.getByRole('link', { name: 'Refunds' })).toBeVisible();
+    // payments are guarantees' records, so they need GUARANTEES.READ
+    await expect(nav.getByRole('link', { name: 'Payments' })).toHaveCount(0);
     await page.goto('/admins');
     await expect(page.getByRole('heading', { name: 'Not available to your role' })).toBeVisible();
   });

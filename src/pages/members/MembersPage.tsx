@@ -7,6 +7,7 @@ import { listMembers, type KycStatus, type MemberStatus } from '@/api/members';
 import type { Account } from '@/api/types';
 import { PageHeader } from '@/components/shell/AppShell';
 import { Banner } from '@/components/ui/badge';
+import { Chip } from '@/components/ui/chip';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Pager, PAGE_SIZES } from '@/components/ui/pager';
@@ -170,19 +171,6 @@ function MembersList({ rows, linkFor, selectedId }: { rows: Account[]; linkFor: 
   );
 }
 
-function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      aria-pressed={on}
-      onClick={onClick}
-      className={cn('min-h-9 rounded-full border px-3.5 font-semibold', on ? 'border-primary bg-primary text-white' : 'border-ctl bg-surface text-ink-strong hover:bg-chip')}
-    >
-      {children}
-    </button>
-  );
-}
-
 export function MembersPage() {
   const grants = useGrants();
   if (!can(grants, 'MEMBERS.READ')) return <NoAccess />;
@@ -201,12 +189,13 @@ function Members() {
   const [statusFor, setStatusFor] = React.useState<Account | null>(null);
   const canUpdate = can(grants, 'MEMBERS.UPDATE');
 
-  // the search waits for a pause in typing, then goes in the address (only typing restarts the wait)
+  // the search waits for a pause in typing, then goes in the address; opening a member while it waits starts
+  // the wait again on the new page, so the update doesn't take the address back to the old one
   React.useEffect(() => {
     if (text.trim() === q) return;
     const t = setTimeout(() => update({ q: text.trim() }), 300);
     return () => clearTimeout(t);
-  }, [text]);
+  }, [text, memberId]);
 
   // the address can change the search too (back button, a link)
   React.useEffect(() => setText(q), [q]);

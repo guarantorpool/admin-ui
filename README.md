@@ -39,7 +39,7 @@ Starts Postgres in a container that keeps its data in memory and is removed when
 | `STACK_API_PORT` | `8080` | The backend's port; point `VITE_API_BASE_URL` at it |
 | `STACK_ADMIN_EMAIL` | `admin-a@test.local` | The first admin |
 
-On-chain reads, the KES rate and scheduled jobs are off (chain reads go to an address that refuses at once, so nothing leaves the machine), and so is the backend's rate limit. Uploads go to Cloudflare R2, which isn't set up, so uploading a profile image fails locally.
+On-chain reads, the KES rate and scheduled jobs are off (chain reads go to an address that refuses at once, so nothing leaves the machine), and so is the backend's rate limit. Uploads go to Cloudflare R2, which isn't set up, so uploading a profile image fails locally. The e2e tests stand in for a member's KYC and proof-of-address uploads by adding the upload's record straight into the throwaway database, and answer the signed link to open a file themselves.
 
 ## Checks
 

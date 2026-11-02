@@ -30,7 +30,7 @@ export const NAV: NavEntry[] = [
   direct({ path: '/alerts', label: 'Alerts', about: "Pool alerts, and acknowledging them with a note.", access: 'ALERTS.READ', comingIn: 'slice 10' }),
   group('members', 'Members', [
     { path: '/members', label: 'All members', about: 'Find a member and see everything about them.', access: 'MEMBERS.READ' },
-    { path: '/kyc', label: 'KYC and address review', about: "Check members' identity and address documents.", access: 'MEMBERS.KYC', comingIn: 'slice 3' },
+    { path: '/kyc', label: 'KYC and address review', about: "Check members' identity and address documents.", access: ['MEMBERS.READ', 'MEMBERS.KYC'] },
     { path: '/activity', label: 'Activity', about: 'Bring in activity records from a file, and search them.', access: 'LEDGER.READ', comingIn: 'slice 11' }
   ]),
   group('guarantees', 'Guarantees', [

@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ApiError, errorMessage } from '@/api/errors';
 import { getMember } from '@/api/members';
@@ -46,6 +47,7 @@ export function MemberDetail({ memberId, tab, onTab }: { memberId: string; tab: 
 
   const member = query.data;
   const canUpdate = can(grants, 'MEMBERS.UPDATE');
+  const canReview = can(grants, ['MEMBERS.READ', 'MEMBERS.KYC']);
   const disabled = member.status === 'disabled';
   const panel = (() => {
     switch (current) {
@@ -72,16 +74,30 @@ export function MemberDetail({ memberId, tab, onTab }: { memberId: string; tab: 
           {panel}
         </TabPanel>
       </section>
-      {canUpdate ? (
+      {canUpdate || canReview ? (
         <div className="flex flex-wrap items-center gap-2.5">
-          <Button variant="outline" disabled title="Coming in slice 9">
-            Set KES deposits and vault savings
-          </Button>
-          <Badge tone="plan">Coming in slice 9</Badge>
-          <Button variant={disabled ? 'primary' : 'danger'} className="ml-auto" onClick={() => setStatusOpen(true)}>
-            {disabled ? 'Enable the member' : 'Disable the member'}
-          </Button>
-          <MemberStatusDialog member={member} open={statusOpen} onOpenChange={setStatusOpen} />
+          {canReview ? (
+            <>
+              <Button asChild variant="outline">
+                <Link to={`/kyc/${memberId}`}>Review KYC</Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link to={`/kyc/address/${memberId}`}>Review proof of address</Link>
+              </Button>
+            </>
+          ) : null}
+          {canUpdate ? (
+            <>
+              <Button variant="outline" disabled title="Coming in slice 9">
+                Set KES deposits and vault savings
+              </Button>
+              <Badge tone="plan">Coming in slice 9</Badge>
+              <Button variant={disabled ? 'primary' : 'danger'} className="ml-auto" onClick={() => setStatusOpen(true)}>
+                {disabled ? 'Enable the member' : 'Disable the member'}
+              </Button>
+              <MemberStatusDialog member={member} open={statusOpen} onOpenChange={setStatusOpen} />
+            </>
+          ) : null}
         </div>
       ) : null}
     </>

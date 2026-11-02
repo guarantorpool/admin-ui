@@ -1,11 +1,9 @@
 import * as React from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { keepPreviousData, useQuery, type UseQueryResult } from '@tanstack/react-query';
-import { toast } from 'sonner';
 import { errorMessage } from '@/api/errors';
 import {
   getAssetBalances,
-  getFileLink,
   getMemberGuarantees,
   getNetworkValue,
   getNetworkValueHistory,
@@ -13,8 +11,7 @@ import {
   getRelationshipValue,
   getTrustScore,
   getTrustScoreHistory,
-  getUploads,
-  type Upload
+  getUploads
 } from '@/api/members';
 import type { Account } from '@/api/types';
 import { Badge, Banner } from '@/components/ui/badge';
@@ -37,6 +34,7 @@ import {
 } from '@/lib/labels';
 import { fullName } from '@/lib/names';
 import { can } from '@/lib/permissions';
+import { useOpenFile } from '@/lib/useOpenFile';
 import { useGrants } from '@/session/SessionProvider';
 
 // D-002: this is a detail view, so amounts are at full precision.
@@ -390,13 +388,13 @@ export function GuaranteesTab({ member }: { member: Account }) {
   );
 }
 
-const categoryName: Record<string, string> = {
+export const categoryName: Record<string, string> = {
   'kyc-document': 'KYC document',
   'proof-of-address': 'Proof of address',
   'profile-image': 'Profile image'
 };
 
-function fileSize(bytes: number | undefined): string {
+export function fileSize(bytes: number | undefined): string {
   if (bytes === undefined) return '';
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${formatNumber(bytes / 1024, 0)} KB`;
@@ -408,31 +406,12 @@ export function FilesTab({ member }: { member: Account }) {
   const grants = useGrants();
   const canOpenPrivate = can(grants, 'MEMBERS.KYC');
   const [page, setPage] = React.useState(1);
-  const [opening, setOpening] = React.useState('');
+  const { open, opening } = useOpenFile();
   const query = useQuery({
     queryKey: ['members', id, 'files', page],
     queryFn: () => getUploads(id, page, LIST_SIZE),
     placeholderData: keepPreviousData
   });
-
-  // the tab opens before the link is fetched, so the browser doesn't block it as a pop-up
-  const open = async (f: Upload) => {
-    const tab = window.open('', '_blank');
-    setOpening(f.id!);
-    try {
-      const { url } = await getFileLink(f.id!);
-      if (!url) throw new Error('The backend gave no link for this file.');
-      if (tab) {
-        tab.opener = null;
-        tab.location.href = url;
-      } else window.location.assign(url);
-    } catch (err) {
-      tab?.close();
-      toast.error(errorMessage(err));
-    } finally {
-      setOpening('');
-    }
-  };
 
   return (
     <Loaded query={query} what="files">
@@ -449,7 +428,7 @@ export function FilesTab({ member }: { member: Account }) {
                       sub={[category, isPrivate ? 'Private' : 'Public', fileSize(f.sizeBytes), `uploaded ${formatDate(f.createdAt)}`].filter(Boolean).join(' · ')}
                       actions={
                         !isPrivate || canOpenPrivate ? (
-                          <Button variant="outline" onClick={() => void open(f)} disabled={opening === f.id}>
+                          <Button variant="outline" onClick={() => void open(f.id!)} disabled={opening === f.id}>
                             {opening === f.id ? 'Opening…' : 'Open the file'}
                           </Button>
                         ) : (

@@ -118,3 +118,27 @@ export function percent(fraction: number | string | null | undefined): string {
   if (!Number.isFinite(n)) return '—';
   return `${Number((n * 100).toFixed(2))}%`;
 }
+
+// a proof of address document's review (BlockCoop D-025)
+const DOCUMENT_STATUS: Record<string, Label> = {
+  pending: { text: 'Pending', tone: 'warn' },
+  approved: { text: 'Approved', tone: 'ok' },
+  rejected: { text: 'Rejected', tone: 'bad' }
+};
+
+export const documentStatus = (code: string | null | undefined) => pick(DOCUMENT_STATUS, code);
+
+const ID_TYPE: Record<string, string> = {
+  national_id: 'National ID',
+  passport: 'Passport',
+  alien_id: 'Alien ID'
+};
+
+export const idType = (code: string | null | undefined) => (code ? ID_TYPE[code] ?? sentence(code) : '—');
+
+const DOCUMENT_TYPE: Record<string, string> = {
+  utility_bill: 'Utility bill',
+  bank_statement: 'Bank statement'
+};
+
+export const documentType = (code: string | null | undefined) => (code ? DOCUMENT_TYPE[code] ?? sentence(code) : '—');

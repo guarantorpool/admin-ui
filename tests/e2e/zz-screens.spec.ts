@@ -1,5 +1,5 @@
 import { test, type Page } from '@playwright/test';
-import { connect, newMember, signIn, stack, type Member } from './helpers';
+import { connect, newMember, randomIdNumber, signIn, stack, submitAddress, submitKyc, type Member } from './helpers';
 
 // Not a check: screenshots for review, only when SHOTS_DIR is set.
 const dir = process.env.SHOTS_DIR;
@@ -16,6 +16,9 @@ async function sampleMembers(): Promise<Member[]> {
   await connect(a, b);
   await connect(c, a, 'MUTUAL_TRUST');
   await connect(a, d);
+  await submitKyc(b, { idType: 'national_id', idNumber: randomIdNumber(), dateOfBirth: '1990-02-04', address: 'Kilimani, Nairobi' });
+  await submitKyc(c, { idType: 'passport', idNumber: `AK${randomIdNumber()}`, dateOfBirth: '1985-07-19', address: 'Milimani, Kisumu' });
+  await submitAddress(b, { latitude: -1.2921, longitude: 36.8219, comment: 'Behind the market, blue gate' });
   members = made;
   return made;
 }
@@ -27,7 +30,7 @@ for (const scheme of ['light', 'dark'] as const) {
     const tag = `${info.project.name}-${scheme}`;
     const phone = info.project.name === 'phone';
     await page.emulateMedia({ colorScheme: scheme });
-    const [amina] = await sampleMembers();
+    const [amina, brian] = await sampleMembers();
     await page.goto('/sign-in');
     await page.screenshot({ path: `${dir}/${tag}-1-sign-in.png` });
     const { admin } = stack();
@@ -66,5 +69,26 @@ for (const scheme of ['light', 'dark'] as const) {
       await page.getByRole('dialog', { name: /Disable Amina/ }).waitFor();
       await page.screenshot({ path: `${dir}/${tag}-13-disable.png` });
     }
+
+    await page.goto('/kyc');
+    await page.getByRole('heading', { name: 'KYC and address review' }).waitFor();
+    await settle(page);
+    await page.screenshot({ path: `${dir}/${tag}-14-kyc-queue.png` });
+    await page.goto(`/kyc/${brian!.id}`);
+    await page.getByRole('dialog', { name: 'Review' }).getByText('Kilimani, Nairobi').waitFor();
+    await settle(page);
+    await page.screenshot({ path: `${dir}/${tag}-15-kyc-review.png` });
+    await page.getByRole('dialog', { name: 'Review' }).getByRole('button', { name: 'Reject' }).click();
+    await page.getByRole('dialog', { name: 'Reject this KYC submission?' }).waitFor();
+    await page.screenshot({ path: `${dir}/${tag}-16-kyc-reject.png` });
+    await page.keyboard.press('Escape');
+    await page.goto(`/kyc/address/${brian!.id}`);
+    await page.getByRole('dialog', { name: 'Review' }).getByText('Behind the market, blue gate').waitFor();
+    await settle(page);
+    await page.screenshot({ path: `${dir}/${tag}-17-address-review.png` });
+    await page.goto(`/kyc/address?q=${encodeURIComponent(brian!.name.split(' ')[1]!)}`);
+    await page.getByRole('table', { name: 'Members' }).or(page.getByRole('list', { name: 'Members' })).waitFor();
+    await settle(page);
+    await page.screenshot({ path: `${dir}/${tag}-18-address-find.png` });
   });
 }

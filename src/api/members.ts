@@ -49,8 +49,8 @@ export const getAssetBalances = (id: string) => api.get<AssetBalances>(`/members
 export const getMemberGuarantees = (id: string, page: number, size: number) =>
   api.get<Page<Guarantee>>('/guarantees', { query: { memberId: id, page, size } });
 
-export const getUploads = (ownerId: string, page: number, size: number) =>
-  api.get<Page<Upload>>(`/uploads/${ownerId}`, { query: { page, size } });
+export const getUploads = (ownerId: string, page: number, size: number, category?: string) =>
+  api.get<Page<Upload>>(`/uploads/${ownerId}`, { query: { page, size, category } });
 
 /** A link to open a file. A private file's link is signed and lasts a few minutes, so it's asked for on each open. */
 export const getFileLink = (uploadId: string) => api.get<Schemas['FileLinkResponse']>(`/uploads/file/${uploadId}`);

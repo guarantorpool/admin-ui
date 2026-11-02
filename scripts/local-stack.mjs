@@ -23,7 +23,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const PORTAL_ORIGINS = 'http://localhost:3001,http://localhost:3002';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const docker = (...args) => execFileSync('docker', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+export const docker = (...args) => execFileSync('docker', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
 
 /** A password that meets the backend's rule, different every run. */
 function makePassword() {
@@ -163,7 +163,7 @@ export async function startStack({ quiet = false } = {}) {
       exited
     ]);
     say('Ready.');
-    return { apiBase: `http://localhost:${apiPort}/api`, apiPort, admin, logPath, dir, stop };
+    return { apiBase: `http://localhost:${apiPort}/api`, apiPort, admin, logPath, dir, dbContainer: name, stop };
   } catch (e) {
     const err = new Error(`${e.message}${backend ? `\n${tail(logPath)}` : ''}`);
     await stop();

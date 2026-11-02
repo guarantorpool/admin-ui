@@ -16,8 +16,8 @@ export type Permission =
   | 'REFUNDS.READ' | 'REFUNDS.MANAGE'
   | 'WALLETS.PROPOSE' | 'WALLETS.APPROVE';
 
-/** A screen's access rule: a permission, the system admin role, or open to every admin. */
-export type Access = Permission | 'SYSTEM_ADMIN' | 'ANY';
+/** A screen's access rule: a permission, several that are all needed, the system admin role, or open to every admin. */
+export type Access = Permission | readonly Permission[] | 'SYSTEM_ADMIN' | 'ANY';
 
 export interface Grants {
   role: string | null | undefined;
@@ -28,7 +28,8 @@ export function can(grants: Grants | null | undefined, access: Access): boolean 
   if (!grants) return false;
   if (access === 'ANY') return true;
   if (access === 'SYSTEM_ADMIN') return grants.role === SYSTEM_ADMIN_ROLE;
-  return (grants.permissions ?? []).includes(access);
+  const held = grants.permissions ?? [];
+  return typeof access === 'string' ? held.includes(access) : access.every((p) => held.includes(p));
 }
 
 export function canAny(grants: Grants | null | undefined, access: readonly Access[]): boolean {

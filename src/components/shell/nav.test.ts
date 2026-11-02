@@ -5,7 +5,9 @@ const labels = (grants: Parameters<typeof visibleNav>[0]) =>
 
 describe('menu', () => {
   it('hides what a narrow role cannot open, and empty groups', () => {
-    expect(labels({ role: 'KYC', permissions: ['MEMBERS.KYC'] })).toEqual(['Dashboard', 'Approvals inbox', 'Members: KYC and address review']);
+    expect(labels({ role: 'KYC', permissions: ['MEMBERS.READ', 'MEMBERS.KYC'] })).toEqual(['Dashboard', 'Approvals inbox', 'Members: All members, KYC and address review', 'Pool: Backing assets and prices']);
+    // the review queue is a list of members, so it needs MEMBERS.READ as well
+    expect(labels({ role: 'KYC', permissions: ['MEMBERS.KYC'] })).toEqual(['Dashboard', 'Approvals inbox']);
   });
 
   it('shows the KYC key only to the system admin role', () => {
@@ -24,6 +26,8 @@ describe('menu', () => {
   it('finds the breadcrumb group, for a screen and for one of its records', () => {
     expect(findScreen('/pool/settings')?.group?.label).toBe('Pool');
     expect(findScreen('/members/0b8f')?.screen.label).toBe('All members');
+    expect(findScreen('/kyc/address/0b8f')?.screen.label).toBe('KYC and address review');
+    expect(findScreen('/kyc-key')?.screen.label).toBe('KYC encryption key');
     expect(findScreen('/membersx')).toBeNull();
     expect(findScreen('/alerts')?.group).toBeNull();
     expect(findScreen('/nowhere')).toBeNull();
