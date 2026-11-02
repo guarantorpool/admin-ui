@@ -314,6 +314,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/members/{memberId}/locked-blocks/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Read a member's locked BLOCKS on-chain again now (admins, #141)
+         * @description As the member's own refresh: re-reads the vesting vaults and the Lipa savings lock, and a change updates their locked BLOCKS, Trust Score and Relationship Values. At most once every 30 seconds per member, counting the member's own calls; a faster call returns the last reading. 503 if the chain can't be read, keeping the last value. Audited.
+         *
+         *     **Requires:** `hasAuthority('MEMBERS.UPDATE')`
+         */
+        post: operations["refreshMemberLockedBlocks"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/members/{memberId}/invites": {
         parameters: {
             query?: never;
@@ -2187,7 +2209,7 @@ export interface paths {
         };
         /**
          * Guarantees (quotes are under /guarantees/quotes, #140)
-         * @description A member sees only their own. An admin with GUARANTEES.READ sees everyone's and can filter by memberId, status and flagged=true for guarantees whose COV = P ÷ (EL × TR) is below 1.0 (FR-4.6). Amounts are USDT. Admins also see blocksPrice: the BLOCKS price the backing was valued at when quoted and when activated, each null if none was read yet or the guarantee is older; and, on a guarantee from before USDT became the unit, conversion: the rate its BLOCKS amounts were converted at. Members never see either (#127, #138).
+         * @description A member sees only their own. An admin with GUARANTEES.READ sees everyone's and can filter by memberId, status and flagged=true for guarantees whose COV = P ÷ (EL × TR) is below 1.0 (FR-4.6). search matches part of the guarantee ID (GPG-…), ignoring case. Amounts are USDT. Admins also see blocksPrice: the BLOCKS price the backing was valued at when quoted and when activated, each null if none was read yet or the guarantee is older; and, on a guarantee from before USDT became the unit, conversion: the rate its BLOCKS amounts were converted at. Members never see either (#127, #138).
          *
          *     **Requires:** `hasAuthority('ACCOUNT_MEMBER') or hasAuthority('GUARANTEES.READ')`
          */
@@ -2271,7 +2293,7 @@ export interface paths {
         };
         /**
          * Quotes (#140)
-         * @description A member sees only their own. An admin with GUARANTEES.READ sees everyone's and can filter by memberId, status (quoted, paid, replaced or expired) and flagged=true for quotes whose COV = P ÷ (EL × TR) is below 1.0 (FR-4.6).
+         * @description A member sees only their own. An admin with GUARANTEES.READ sees everyone's and can filter by memberId, status (quoted, paid, replaced or expired) and flagged=true for quotes whose COV = P ÷ (EL × TR) is below 1.0 (FR-4.6). search matches part of the quote ID (GPQ-…), ignoring case. A replaced quote names the quote that replaced it in replacedBy.
          *
          *     **Requires:** `hasAuthority('ACCOUNT_MEMBER') or hasAuthority('GUARANTEES.READ')`
          */
@@ -2293,9 +2315,55 @@ export interface paths {
         };
         /**
          * One quote, its invoice and its latest payment through Lipa (#140)
-         * @description **Requires:** `hasAuthority('ACCOUNT_MEMBER') or hasAuthority('GUARANTEES.READ')`
+         * @description replacedBy is the quote that replaced it, once it was replaced; replaces lists the quotes it replaced, oldest first, empty for none.
+         *
+         *     **Requires:** `hasAuthority('ACCOUNT_MEMBER') or hasAuthority('GUARANTEES.READ')`
          */
         get: operations["viewQuote"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/guarantees/quotes/{quoteId}/lipa-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Every status the Lipa API reported for every attempt to pay a quote, oldest first (#140)
+         * @description Admins only. Each attempt is a paymentId, with one entry per status it reached (PROCESSING, SUCCESS or FAILED), from a CALLBACK or our STATUS_CHECK. A FAILED one has failureReason, for admins, and failureMessage, what the member was shown. Empty before any attempt.
+         *
+         *     **Requires:** `hasAuthority('GUARANTEES.READ')`
+         */
+        get: operations["lipaEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/facts/kes-activities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * KES activity from the Lipa API, per wallet (#141)
+         * @description M-Pesa deposits and payments as last read from the Lipa API's feed, the latest change first. Filter by memberNumber, walletAddress, type (DEPOSIT or PAYMENT) and status (COMPLETED, REVERSED or FAILED). No call is made to the Lipa API: a member's feed is read when they sign in and before each quote.
+         *
+         *     **Requires:** `hasAuthority('LEDGER.READ')`
+         */
+        get: operations["kesActivities"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2360,6 +2428,28 @@ export interface paths {
          * @description **Requires:** `hasAuthority('AUDIT.READ')`
          */
         get: operations["getAuditLogs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/audit-logs/lipa-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search what the Lipa API reported about payments, newest first (#140)
+         * @description Every callback and status check that was stored: a repeat of a status already stored for an attempt isn't. Filter by source (callback or status_check), status (PROCESSING, SUCCESS or FAILED), quoteId, paymentId and the days it was received.
+         *
+         *     **Requires:** `hasAuthority('AUDIT.READ')`
+         */
+        get: operations["getLipaEvents"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2813,17 +2903,17 @@ export interface components {
             code?: string;
             message?: string;
         };
+        LockedBlocksResponse: {
+            lockedBlocks?: string;
+            /** Format: date-time */
+            readAt?: string;
+        };
         InviteResponse: {
             /** Format: uuid */
             inviteId?: string;
             link?: string;
             /** Format: date-time */
             expiresAt?: string;
-        };
-        LockedBlocksResponse: {
-            lockedBlocks?: string;
-            /** Format: date-time */
-            readAt?: string;
         };
         KycSubmitRequest: {
             idType: string;
@@ -3044,6 +3134,8 @@ export interface components {
             validUntil?: string;
             invoice?: components["schemas"]["Invoice"];
             guaranteeId?: string;
+            replacedBy?: string;
+            replaces?: string[];
             payment?: components["schemas"]["Payment"];
             blocksPrice?: string;
         };
@@ -3754,6 +3846,23 @@ export interface components {
             /** Format: int64 */
             totalResults?: number;
         };
+        LipaPaymentEventResponse: {
+            /** Format: uuid */
+            id?: string;
+            quoteId?: string;
+            paymentId?: string;
+            status?: string;
+            amount?: string;
+            txHash?: string;
+            failureReason?: string;
+            failureMessage?: string;
+            /** Format: date-time */
+            completedAt?: string;
+            /** @enum {string} */
+            source?: "CALLBACK" | "STATUS_CHECK";
+            /** Format: date-time */
+            receivedAt?: string;
+        };
         FactResponse: {
             /** Format: uuid */
             id?: string;
@@ -3773,6 +3882,42 @@ export interface components {
         };
         PageResponseFactResponse: {
             results?: components["schemas"]["FactResponse"][];
+            /** Format: int32 */
+            page?: number;
+            /** Format: int32 */
+            size?: number;
+            /** Format: int32 */
+            totalPages?: number;
+            /** Format: int64 */
+            totalResults?: number;
+        };
+        KesActivityResponse: {
+            id?: string;
+            memberId?: string;
+            walletAddress?: string;
+            /** @enum {string} */
+            type?: "DEPOSIT" | "PAYMENT";
+            channel?: string;
+            recipientType?: string;
+            recipientReference?: string;
+            amountKes?: string;
+            kesPerUsd?: string;
+            amountUsd?: string;
+            amountBlocks?: string;
+            kesPerBlock?: string;
+            mpesaReceipt?: string;
+            txHash?: string;
+            /** @enum {string} */
+            status?: "COMPLETED" | "REVERSED" | "FAILED";
+            /** Format: date-time */
+            completedAt?: string;
+            /** Format: date-time */
+            lipaUpdatedAt?: string;
+            /** Format: date-time */
+            readAt?: string;
+        };
+        PageResponseKesActivityResponse: {
+            results?: components["schemas"]["KesActivityResponse"][];
             /** Format: int32 */
             page?: number;
             /** Format: int32 */
@@ -3830,6 +3975,17 @@ export interface components {
         };
         PageResponseAuditLogResponse: {
             results?: components["schemas"]["AuditLogResponse"][];
+            /** Format: int32 */
+            page?: number;
+            /** Format: int32 */
+            size?: number;
+            /** Format: int32 */
+            totalPages?: number;
+            /** Format: int64 */
+            totalResults?: number;
+        };
+        PageResponseLipaPaymentEventResponse: {
+            results?: components["schemas"]["LipaPaymentEventResponse"][];
             /** Format: int32 */
             page?: number;
             /** Format: int32 */
@@ -4976,6 +5132,64 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["RelationshipResponse"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not logged in, or the token or key is invalid */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Logged in, but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    refreshMemberLockedBlocks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                memberId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["LockedBlocksResponse"];
                 };
             };
             /** @description Invalid request */
@@ -11076,6 +11290,7 @@ export interface operations {
                 memberId?: string | null;
                 status?: string | null;
                 flagged?: boolean | null;
+                search?: string | null;
             };
             header?: never;
             path?: never;
@@ -11314,6 +11529,7 @@ export interface operations {
                 memberId?: string | null;
                 status?: string | null;
                 flagged?: boolean | null;
+                search?: string | null;
             };
             header?: never;
             path?: never;
@@ -11386,6 +11602,128 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["QuoteResponse"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not logged in, or the token or key is invalid */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Logged in, but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    lipaEvents: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                quoteId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["LipaPaymentEventResponse"][];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not logged in, or the token or key is invalid */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Logged in, but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    kesActivities: {
+        parameters: {
+            query?: {
+                memberNumber?: string | null;
+                walletAddress?: string | null;
+                type?: string | null;
+                status?: string | null;
+                page?: number;
+                size?: number;
+                sortBy?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PageResponseKesActivityResponse"];
                 };
             };
             /** @description Invalid request */
@@ -11563,6 +11901,71 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["PageResponseAuditLogResponse"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not logged in, or the token or key is invalid */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Logged in, but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getLipaEvents: {
+        parameters: {
+            query?: {
+                source?: string | null;
+                status?: string | null;
+                quoteId?: string | null;
+                paymentId?: string | null;
+                from?: string | null;
+                to?: string | null;
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PageResponseLipaPaymentEventResponse"];
                 };
             };
             /** @description Invalid request */

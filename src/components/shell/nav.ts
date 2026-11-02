@@ -40,7 +40,7 @@ export const NAV: NavEntry[] = [
   ]),
   group('money', 'Money', [
     { path: '/payments', label: 'Payments', about: 'Every premium payment, across guarantees.', access: 'GUARANTEES.READ', comingIn: 'Phase B' },
-    { path: '/refunds', label: 'Refunds', about: 'Money owed back to members, and recording payouts.', access: 'REFUNDS.READ', comingIn: 'slice 5' }
+    { path: '/refunds', label: 'Refunds', about: 'Money owed back to members, and recording payouts.', access: 'REFUNDS.READ' }
   ]),
   group('pool', 'Pool', [
     { path: '/pool/health', label: 'Pool health', about: "Check the pool's ratios, solvency and extra liquidity.", access: 'POOL.READ', comingIn: 'slice 7' },

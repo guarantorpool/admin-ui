@@ -1,5 +1,5 @@
 import { test, type Page } from '@playwright/test';
-import { connect, newMember, randomIdNumber, seedGuarantee, seedQuote, signIn, stack, submitAddress, submitKyc, type Member, type SeededGuarantee, type SeededQuote } from './helpers';
+import { connect, newMember, randomIdNumber, seedGuarantee, seedQuote, seedRefund, signIn, stack, submitAddress, submitKyc, type Member, type SeededGuarantee, type SeededQuote } from './helpers';
 
 // Not a check: screenshots for review, only when SHOTS_DIR is set.
 const dir = process.env.SHOTS_DIR;
@@ -24,6 +24,9 @@ async function sampleMembers(): Promise<Member[]> {
   await submitAddress(b, { latitude: -1.2921, longitude: 36.8219, comment: 'Behind the market, blue gate' });
   guarantees = [seedGuarantee(a), seedGuarantee(c, { flagged: true }), seedGuarantee(d)];
   quotes = [seedQuote(b, { flagged: true, lipa: { status: 'FAILED', message: 'Payment failed, please try again.' } }), seedQuote(d, { lipa: { status: 'PROCESSING' } }), seedQuote(c, { status: 'EXPIRED', quotedDaysAgo: 4 })];
+  seedRefund({ paymentId: guarantees[1]!.paymentId }, { type: 'stray_payment', status: 'PAID', amount: '95.04', daysAgo: 3 });
+  seedRefund({ quote: quotes[2]! }, { type: 'window_lapsed', amount: '158.4', daysAgo: 2 });
+  seedRefund({ paymentId: guarantees[2]!.paymentId }, { type: 'capacity_changed', amount: '158.4' });
   members = made;
   return made;
 }
@@ -121,5 +124,25 @@ for (const scheme of ['light', 'dark'] as const) {
     await page.getByRole('dialog', { name: 'Quote details' }).getByText('Payment failed, please try again.').waitFor();
     await settle(page);
     await page.screenshot({ path: `${dir}/${tag}-25-quote-lipa.png` });
+
+    // a refund of its own for each run, since a payout is entered on it
+    const refund = seedRefund({ paymentId: guarantees[0]!.paymentId }, { type: 'overpayment', amount: '12.345678', daysAgo: 0 });
+    await page.goto('/refunds');
+    await page.getByRole('table', { name: 'Refunds' }).or(page.getByRole('list', { name: 'Refunds' })).waitFor();
+    await settle(page);
+    await page.screenshot({ path: `${dir}/${tag}-26-refunds.png` });
+    await page.goto(`/refunds/${refund}`);
+    const panel = page.getByRole('dialog', { name: 'Refund details' });
+    await panel.getByText('12.345678 USDT').waitFor();
+    await settle(page);
+    await page.screenshot({ path: `${dir}/${tag}-27-refund.png` });
+    await panel.getByRole('button', { name: 'Record the payout' }).click();
+    const payout = page.getByRole('dialog', { name: 'Record how the refund was paid' });
+    await payout.getByLabel('Reference').fill('0x5f2c9a41e7b3d8f06a1c4e92b7d35f8a0c6e1b49d27f3a85c0e64b1d9f72a3c8');
+    await payout.getByLabel('Date paid').fill(new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Nairobi' }).format(new Date()));
+    await page.screenshot({ path: `${dir}/${tag}-28-record-payout.png` });
+    await payout.getByRole('button', { name: 'Enter the payout' }).click();
+    await panel.getByText(/Payout entered by you/).waitFor();
+    await page.screenshot({ path: `${dir}/${tag}-29-payout-entered.png` });
   });
 }

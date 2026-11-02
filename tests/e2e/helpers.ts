@@ -185,6 +185,8 @@ const pricing = (flagged: boolean) =>
 export interface SeededQuote {
   quoteId: string;
   amountDue: string;
+  /** its database ID, which a refund owed on it points at */
+  id: string;
 }
 
 /**
@@ -200,22 +202,25 @@ export function seedQuote(member: Member, opts: { status?: 'OPEN' | 'PAID' | 'RE
   // an open quote lasts 30 minutes, so it's made 5 minutes ago to be still open
   const quotedAt = `now() - interval '${opts.quotedDaysAgo ?? 0} days' - interval '${(opts.status ?? 'OPEN') === 'OPEN' ? 5 : 60} minutes'`;
   const lipa = opts.lipa;
+  const id = randomUUID();
   sql(`INSERT INTO guarantee_quotes (id, quote_number, member_id, amount_requested, tenure_months, status, quoted_at, valid_until,
     guarantee_number, ${PRICING}, base_default_rate_calculated, recovery_rate_calculated, liquidity_ratio_calculated,
     operating_fee, amount_due, operating_fee_rate, operating_fee_min_usd, operating_fee_max_usd, lipa_payment_id,
     payment_status, failure_reason, failure_message, check_anchor_at)
-    VALUES ('${randomUUID()}', '${quoteId}', '${member.id}', 5000, 6, '${opts.status ?? 'OPEN'}', ${quotedAt}, ${quotedAt} + interval '30 minutes',
+    VALUES ('${id}', '${quoteId}', '${member.id}', 5000, 6, '${opts.status ?? 'OPEN'}', ${quotedAt}, ${quotedAt} + interval '30 minutes',
     ${opts.guaranteeId ? `'${opts.guaranteeId}'` : 'NULL'}, ${pricing(flagged)}, false, false, false,
     ${fee}, ${amountDue}, 0.1, 1, 50, ${lipa ? `'lipa-${randomOf('0123456789abcdef', 12)}'` : 'NULL'},
     ${lipa ? `'${lipa.status}'` : 'NULL'}, ${lipa?.status === 'FAILED' ? "'INSUFFICIENT_FUNDS'" : 'NULL'},
     ${lipa?.message ? `'${lipa.message}'` : 'NULL'}, ${quotedAt})`);
-  return { quoteId, amountDue };
+  return { quoteId, amountDue, id };
 }
 
 export interface SeededGuarantee {
   guaranteeId: string;
   quoteId: string;
   txHash: string;
+  /** the database ID of its confirmed payment, which a refund owed on it points at */
+  paymentId: string;
 }
 
 /** A quote paid through the Lipa API, the active guarantee it created and its confirmed payment (see seedQuote). */
@@ -233,12 +238,30 @@ export function seedGuarantee(member: Member, opts: { flagged?: boolean; status?
     VALUES ('${id}', '${guaranteeId}', '${member.id}', 5000, 6, '${opts.status ?? 'ACTIVE'}', ${quotedAt}, ${quotedAt} + interval '30 minutes',
     ${activatedAt}, ${activatedAt} + interval '6 months', ${pricing(flagged)}, false, false, false, 0.0409)`);
   const fee = flagged ? '8.64' : '14.4';
+  const paymentId = randomUUID();
   sql(`INSERT INTO premium_payments (id, guarantee_id, method, amount_due, amount_received, amount_refunded, status, provider_reference,
     initiated_at, confirm_by, confirmed_at, currency, premium_usdt, provider, amount_asked, operating_fee, operating_fee_currency,
     operating_fee_rate, operating_fee_min_usd, operating_fee_max_usd, operating_fee_usdt)
-    VALUES ('${randomUUID()}', '${id}', 'LIPA', ${amountDue}, ${amountDue}, 0, 'CONFIRMED', '${txHash}', ${activatedAt}, ${activatedAt},
+    VALUES ('${paymentId}', '${id}', 'LIPA', ${amountDue}, ${amountDue}, 0, 'CONFIRMED', '${txHash}', ${activatedAt}, ${activatedAt},
     ${activatedAt}, 'USDT', ${flagged ? '86.4' : '144'}, 'lipa', ${amountDue}, ${fee}, 'USDT', 0.1, 1, 50, ${fee})`);
-  return { guaranteeId, quoteId, txHash };
+  return { guaranteeId, quoteId, txHash, paymentId };
+}
+
+/**
+ * Money owed back, as the backend records it when the Lipa API pays the pool more than is due, too late or for
+ * nothing: on a guarantee's payment, or on a quote when no guarantee was created. Returns its id.
+ */
+export function seedRefund(on: { paymentId: string } | { quote: SeededQuote }, opts: { type?: string; amount?: string; status?: 'OWED' | 'PAID'; daysAgo?: number } = {}): string {
+  const id = randomUUID();
+  const type = (opts.type ?? 'overpayment').toUpperCase();
+  const at = `now() - interval '${opts.daysAgo ?? 1} days'`;
+  const paid = opts.status === 'PAID';
+  sql(`INSERT INTO payment_refunds (id, payment_id, quote_id, amount, reason, refunded_at, idempotency_key, refund_type, status,
+    method, reference, paid_at, approved_by_email, approved_at)
+    VALUES ('${id}', ${'paymentId' in on ? `'${on.paymentId}'` : 'NULL'}, ${'quote' in on ? `'${on.quote.id}'` : 'NULL'}, ${opts.amount ?? '12.5'},
+    '${type.toLowerCase()}', ${at}, 'e2e-${id}', '${type}', '${opts.status ?? 'OWED'}',
+    ${paid ? `'TRANSFER', '${randomHash()}', ${at}, 'earlier-admin@test.local', ${at}` : 'NULL, NULL, NULL, NULL, NULL'})`);
+  return id;
 }
 
 export const randomIdNumber = () =>String(10_000_000 + Math.floor(Math.random() * 89_999_999));

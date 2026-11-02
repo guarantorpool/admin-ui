@@ -1,4 +1,4 @@
-import { connectionType, guaranteeStatus, kycStatus, lipaStatus, memberStatus, metricName, paymentMethod, paymentStatus, percent, proofOfAddress, quoteStatus, sentence } from './labels';
+import { connectionType, guaranteeStatus, kycStatus, lipaStatus, memberStatus, metricName, paymentMethod, paymentStatus, percent, proofOfAddress, quoteStatus, refundStatus, refundWhy, sentence } from './labels';
 import { fullName } from './names';
 
 describe('status labels', () => {
@@ -13,6 +13,8 @@ describe('status labels', () => {
     expect(paymentStatus('confirmed')).toEqual({ text: 'Paid', tone: 'ok' });
     expect(lipaStatus('FAILED').tone).toBe('bad');
     expect(paymentMethod('lipa')).toBe('Lipa API');
+    expect(refundStatus('entered')).toEqual({ text: 'Entered', tone: 'warn' });
+    expect(refundStatus('paid').tone).toBe('ok');
   });
 
   it('shows a code it does not know yet readably, and a missing one as a dash', () => {
@@ -21,6 +23,8 @@ describe('status labels', () => {
     expect(connectionType('mutual_trust')).toBe('Mutual trust');
     expect(metricName('lp_held')).toBe('LP tokens held');
     expect(sentence('in-review')).toBe('In review');
+    expect(refundWhy('window_lapsed')).toBe('The USDT arrived after the quote ended.');
+    expect(refundWhy('new_kind')).toBe('New kind');
   });
 });
 

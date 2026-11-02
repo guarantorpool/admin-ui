@@ -4,16 +4,15 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { ApiError, errorMessage } from '@/api/errors';
 import { decideClose, enterClose, getGuarantee, getPayments, type Guarantee, type Payment } from '@/api/guarantees';
-import { getMember } from '@/api/members';
 import { Badge, Banner } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DecisionDialog, NOTE_HINT, type Decision } from '@/components/ui/decision-dialog';
 import { Fields, Muted, StatusPill } from '@/components/ui/parts';
 import { TabPanel, Tabs } from '@/components/ui/tabs';
-import { formatAmount, formatDate, formatDateTime, formatNumber, formatUsdt } from '@/lib/format';
+import { formatDate, formatDateTime, formatIn, formatNumber, formatUsdt } from '@/lib/format';
 import { guaranteeStatus, paymentMethod, paymentStatus } from '@/lib/labels';
-import { fullName } from '@/lib/names';
 import { can } from '@/lib/permissions';
+import { useMemberName } from '@/pages/members/useMemberName';
 import { useGrants, useSession } from '@/session/SessionProvider';
 import { PricingTrail } from './PricingTrail';
 
@@ -25,20 +24,8 @@ export const GUARANTEE_TABS = [
 
 const usdt = (v: string | undefined) => formatUsdt(v, { full: true });
 /** An amount in a payment's own currency, at full precision. */
-const inCurrency = (v: string | undefined, currency: string | undefined) =>
-  currency === 'USDT' || currency === 'KES' || currency === 'BLOCKS' ? formatAmount(v, currency, { full: true }) : `${formatNumber(v)} ${currency ?? ''}`.trim();
+const inCurrency = (v: string | undefined, currency: string | undefined) => formatIn(v, currency, { full: true });
 const blocksPrice = (v: string | undefined) => (v ? `1 BLOCKS = ${formatNumber(v)} USDT` : '—');
-
-/** The member's name and number, when this admin can read members; their ID otherwise. */
-function useMemberName(memberId: string | undefined) {
-  const grants = useGrants();
-  const readable = !!memberId && can(grants, 'MEMBERS.READ');
-  const query = useQuery({ queryKey: ['members', memberId], queryFn: () => getMember(memberId!), enabled: readable });
-  if (!memberId) return { text: '—', link: null };
-  if (!readable) return { text: memberId, link: null };
-  if (!query.data) return { text: query.isError ? memberId : '…', link: null };
-  return { text: `${fullName(query.data) || 'Unnamed member'}, ${query.data.member?.memberNumber ?? ''}`, link: `/members/${memberId}` };
-}
 
 /** One guarantee by its business ID: its terms, the pricing behind them, its payments and a manual close. */
 export function GuaranteeDetail({ guaranteeId, tab, onTab }: { guaranteeId: string; tab: string; onTab: (t: string) => void }) {
@@ -109,6 +96,7 @@ export function GuaranteeDetail({ guaranteeId, tab, onTab }: { guaranteeId: stri
 }
 
 function PaymentList({ query }: { query: { isPending: boolean; isError: boolean; error: unknown; data?: Payment[] } }) {
+  const refunds = can(useGrants(), 'REFUNDS.READ');
   if (query.isPending) return <Muted>Loading the payments…</Muted>;
   if (query.isError) return <Banner tone="bad">{errorMessage(query.error)}</Banner>;
   const payments = query.data ?? [];
@@ -130,12 +118,23 @@ function PaymentList({ query }: { query: { isPending: boolean; isError: boolean;
               { k: p.method === 'lipa' ? 'Transaction hash' : 'Provider reference', v: <span className="font-mono text-[13px] [overflow-wrap:anywhere]">{p.providerReference ?? '—'}</span> },
               { k: 'Started', v: formatDateTime(p.initiatedAt, { zone: true }) },
               { k: 'Confirmed', v: formatDateTime(p.confirmedAt, { zone: true }) },
-              ...(Number(p.amountRefunded) > 0 ? [{ k: 'Owed back', v: `${inCurrency(p.amountRefunded, p.currency)}, ${inCurrency(p.amountOwed, p.currency)} not paid yet` }] : [])
+              ...(Number(p.amountRefunded) > 0 ? [{ k: 'Owed back', v: <OwedBack payment={p} link={refunds} /> }] : [])
             ]}
           />
         </li>
       ))}
     </ol>
+  );
+}
+
+/** What's owed back on a payment, linked to its refunds for an admin who can read them. */
+function OwedBack({ payment: p, link }: { payment: Payment; link: boolean }) {
+  const text = `${inCurrency(p.amountRefunded, p.currency)}, ${inCurrency(p.amountOwed, p.currency)} not paid yet`;
+  if (!link || !p.paymentId) return <>{text}</>;
+  return (
+    <Link to={`/refunds?payment=${p.paymentId}`} className="font-medium text-ink-strong underline underline-offset-4">
+      {text}
+    </Link>
   );
 }
 

@@ -1586,6 +1586,79 @@
         }
       }
     },
+    "/api/members/{memberId}/locked-blocks/refresh": {
+      "post": {
+        "tags": [
+          "Members"
+        ],
+        "summary": "Read a member's locked BLOCKS on-chain again now (admins, #141)",
+        "description": "As the member's own refresh: re-reads the vesting vaults and the Lipa savings lock, and a change updates their locked BLOCKS, Trust Score and Relationship Values. At most once every 30 seconds per member, counting the member's own calls; a faster call returns the last reading. 503 if the chain can't be read, keeping the last value. Audited.\n\n**Requires:** `hasAuthority('MEMBERS.UPDATE')`",
+        "operationId": "refreshMemberLockedBlocks",
+        "parameters": [
+          {
+            "name": "memberId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/LockedBlocksResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in, or the token or key is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/members/{memberId}/invites": {
       "get": {
         "tags": [
@@ -9587,7 +9660,7 @@
           "Guarantees"
         ],
         "summary": "Guarantees (quotes are under /guarantees/quotes, #140)",
-        "description": "A member sees only their own. An admin with GUARANTEES.READ sees everyone's and can filter by memberId, status and flagged=true for guarantees whose COV = P ÷ (EL × TR) is below 1.0 (FR-4.6). Amounts are USDT. Admins also see blocksPrice: the BLOCKS price the backing was valued at when quoted and when activated, each null if none was read yet or the guarantee is older; and, on a guarantee from before USDT became the unit, conversion: the rate its BLOCKS amounts were converted at. Members never see either (#127, #138).\n\n**Requires:** `hasAuthority('ACCOUNT_MEMBER') or hasAuthority('GUARANTEES.READ')`",
+        "description": "A member sees only their own. An admin with GUARANTEES.READ sees everyone's and can filter by memberId, status and flagged=true for guarantees whose COV = P ÷ (EL × TR) is below 1.0 (FR-4.6). search matches part of the guarantee ID (GPG-…), ignoring case. Amounts are USDT. Admins also see blocksPrice: the BLOCKS price the backing was valued at when quoted and when activated, each null if none was read yet or the guarantee is older; and, on a guarantee from before USDT became the unit, conversion: the rate its BLOCKS amounts were converted at. Members never see either (#127, #138).\n\n**Requires:** `hasAuthority('ACCOUNT_MEMBER') or hasAuthority('GUARANTEES.READ')`",
         "operationId": "list_7",
         "parameters": [
           {
@@ -9651,6 +9724,17 @@
             "schema": {
               "type": [
                 "boolean",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
                 "null"
               ]
             }
@@ -9944,7 +10028,7 @@
           "Guarantees"
         ],
         "summary": "Quotes (#140)",
-        "description": "A member sees only their own. An admin with GUARANTEES.READ sees everyone's and can filter by memberId, status (quoted, paid, replaced or expired) and flagged=true for quotes whose COV = P ÷ (EL × TR) is below 1.0 (FR-4.6).\n\n**Requires:** `hasAuthority('ACCOUNT_MEMBER') or hasAuthority('GUARANTEES.READ')`",
+        "description": "A member sees only their own. An admin with GUARANTEES.READ sees everyone's and can filter by memberId, status (quoted, paid, replaced or expired) and flagged=true for quotes whose COV = P ÷ (EL × TR) is below 1.0 (FR-4.6). search matches part of the quote ID (GPQ-…), ignoring case. A replaced quote names the quote that replaced it in replacedBy.\n\n**Requires:** `hasAuthority('ACCOUNT_MEMBER') or hasAuthority('GUARANTEES.READ')`",
         "operationId": "quotes",
         "parameters": [
           {
@@ -10011,6 +10095,17 @@
                 "null"
               ]
             }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
           }
         ],
         "responses": {
@@ -10073,7 +10168,7 @@
           "Guarantees"
         ],
         "summary": "One quote, its invoice and its latest payment through Lipa (#140)",
-        "description": "**Requires:** `hasAuthority('ACCOUNT_MEMBER') or hasAuthority('GUARANTEES.READ')`",
+        "description": "replacedBy is the quote that replaced it, once it was replaced; replaces lists the quotes it replaced, oldest first, empty for none.\n\n**Requires:** `hasAuthority('ACCOUNT_MEMBER') or hasAuthority('GUARANTEES.READ')`",
         "operationId": "viewQuote",
         "parameters": [
           {
@@ -10092,6 +10187,220 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/QuoteResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in, or the token or key is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/guarantees/quotes/{quoteId}/lipa-events": {
+      "get": {
+        "tags": [
+          "Guarantees"
+        ],
+        "summary": "Every status the Lipa API reported for every attempt to pay a quote, oldest first (#140)",
+        "description": "Admins only. Each attempt is a paymentId, with one entry per status it reached (PROCESSING, SUCCESS or FAILED), from a CALLBACK or our STATUS_CHECK. A FAILED one has failureReason, for admins, and failureMessage, what the member was shown. Empty before any attempt.\n\n**Requires:** `hasAuthority('GUARANTEES.READ')`",
+        "operationId": "lipaEvents",
+        "parameters": [
+          {
+            "name": "quoteId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LipaPaymentEventResponse"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in, or the token or key is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/facts/kes-activities": {
+      "get": {
+        "tags": [
+          "Ledger"
+        ],
+        "summary": "KES activity from the Lipa API, per wallet (#141)",
+        "description": "M-Pesa deposits and payments as last read from the Lipa API's feed, the latest change first. Filter by memberNumber, walletAddress, type (DEPOSIT or PAYMENT) and status (COMPLETED, REVERSED or FAILED). No call is made to the Lipa API: a member's feed is read when they sign in and before each quote.\n\n**Requires:** `hasAuthority('LEDGER.READ')`",
+        "operationId": "kesActivities",
+        "parameters": [
+          {
+            "name": "memberNumber",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "walletAddress",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          },
+          {
+            "name": "sortBy",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageResponseKesActivityResponse"
                 }
               }
             }
@@ -10372,6 +10681,158 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/PageResponseAuditLogResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in, or the token or key is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/audit-logs/lipa-events": {
+      "get": {
+        "tags": [
+          "Audit"
+        ],
+        "summary": "Search what the Lipa API reported about payments, newest first (#140)",
+        "description": "Every callback and status check that was stored: a repeat of a status already stored for an attempt isn't. Filter by source (callback or status_check), status (PROCESSING, SUCCESS or FAILED), quoteId, paymentId and the days it was received.\n\n**Requires:** `hasAuthority('AUDIT.READ')`",
+        "operationId": "getLipaEvents",
+        "parameters": [
+          {
+            "name": "source",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "quoteId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "paymentId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "date"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageResponseLipaPaymentEventResponse"
                 }
               }
             }
@@ -11823,6 +12284,18 @@
           }
         }
       },
+      "LockedBlocksResponse": {
+        "type": "object",
+        "properties": {
+          "lockedBlocks": {
+            "type": "string"
+          },
+          "readAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "InviteResponse": {
         "type": "object",
         "properties": {
@@ -11834,18 +12307,6 @@
             "type": "string"
           },
           "expiresAt": {
-            "type": "string",
-            "format": "date-time"
-          }
-        }
-      },
-      "LockedBlocksResponse": {
-        "type": "object",
-        "properties": {
-          "lockedBlocks": {
-            "type": "string"
-          },
-          "readAt": {
             "type": "string",
             "format": "date-time"
           }
@@ -12522,6 +12983,15 @@
           },
           "guaranteeId": {
             "type": "string"
+          },
+          "replacedBy": {
+            "type": "string"
+          },
+          "replaces": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
           "payment": {
             "$ref": "#/components/schemas/Payment"
@@ -14629,6 +15099,51 @@
           }
         }
       },
+      "LipaPaymentEventResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quoteId": {
+            "type": "string"
+          },
+          "paymentId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "string"
+          },
+          "txHash": {
+            "type": "string"
+          },
+          "failureReason": {
+            "type": "string"
+          },
+          "failureMessage": {
+            "type": "string"
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "CALLBACK",
+              "STATUS_CHECK"
+            ]
+          },
+          "receivedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "FactResponse": {
         "type": "object",
         "properties": {
@@ -14694,6 +15209,104 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/FactResponse"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalResults": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "KesActivityResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "memberId": {
+            "type": "string"
+          },
+          "walletAddress": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "DEPOSIT",
+              "PAYMENT"
+            ]
+          },
+          "channel": {
+            "type": "string"
+          },
+          "recipientType": {
+            "type": "string"
+          },
+          "recipientReference": {
+            "type": "string"
+          },
+          "amountKes": {
+            "type": "string"
+          },
+          "kesPerUsd": {
+            "type": "string"
+          },
+          "amountUsd": {
+            "type": "string"
+          },
+          "amountBlocks": {
+            "type": "string"
+          },
+          "kesPerBlock": {
+            "type": "string"
+          },
+          "mpesaReceipt": {
+            "type": "string"
+          },
+          "txHash": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "COMPLETED",
+              "REVERSED",
+              "FAILED"
+            ]
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lipaUpdatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "readAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "PageResponseKesActivityResponse": {
+        "type": "object",
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KesActivityResponse"
             }
           },
           "page": {
@@ -14843,6 +15456,33 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/AuditLogResponse"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalResults": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "PageResponseLipaPaymentEventResponse": {
+        "type": "object",
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LipaPaymentEventResponse"
             }
           },
           "page": {

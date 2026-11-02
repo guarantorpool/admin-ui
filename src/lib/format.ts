@@ -36,6 +36,27 @@ export function formatDateTime(value: DateInput, { zone = false } = {}): string 
   return zone ? `${text} ${zoneLabel()}` : text;
 }
 
+/** The day an instant falls on in the zone, as a date input holds it: "2026-11-03". */
+export function dayInZone(value: DateInput = new Date()): string {
+  const d = toDate(value);
+  if (!d) return '';
+  return new Intl.DateTimeFormat('en-CA', { timeZone: env.timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+}
+
+/** The instant a day ("2026-11-03") starts in the zone, as an ISO string. */
+export function startOfDay(day: string): string {
+  const utc = new Date(`${day}T00:00:00Z`);
+  // the zone's offset then: its clock reading at that instant, less UTC's
+  const shown: Record<string, number> = Object.fromEntries(
+    new Intl.DateTimeFormat('en-GB', { timeZone: env.timeZone, hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' })
+      .formatToParts(utc)
+      .map((p) => [p.type, Number(p.value)])
+  );
+  const at = (t: string) => shown[t] ?? 0;
+  const offset = Date.UTC(at('year'), at('month') - 1, at('day'), at('hour'), at('minute'), at('second')) - utc.getTime();
+  return new Date(utc.getTime() - offset).toISOString();
+}
+
 // Amounts are handled as decimal strings, so a full-precision figure is never passed through a float.
 
 type Amount = string | number | null | undefined;
@@ -112,3 +133,9 @@ export function formatAmount(value: Amount, asset: Asset, { full = false } = {})
 }
 
 export const formatUsdt = (value: Amount, opts?: { full?: boolean }) => formatAmount(value, 'USDT', opts);
+
+/** An amount in the currency it's held in; one the portal doesn't know is shown as a plain number and its code. */
+export function formatIn(value: Amount, currency: string | null | undefined, opts?: { full?: boolean }): string {
+  if (currency === 'USDT' || currency === 'KES' || currency === 'BLOCKS') return formatAmount(value, currency, opts);
+  return `${opts?.full ? formatNumber(value) : formatNumber(value, 2)} ${currency ?? ''}`.trim();
+}

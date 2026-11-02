@@ -180,3 +180,28 @@ const PAYMENT_METHOD: Record<string, string> = {
 };
 
 export const paymentMethod = (code: string | null | undefined) => (code ? PAYMENT_METHOD[code] ?? sentence(code) : '—');
+
+// a refund is owed, then entered by one admin, then paid once a second admin approves it (3.5 Refunds)
+const REFUND_STATUS: Record<string, Label> = {
+  owed: { text: 'Owed', tone: 'warn' },
+  entered: { text: 'Entered', tone: 'warn' },
+  paid: { text: 'Paid', tone: 'ok' }
+};
+
+export const refundStatus = (code: string | null | undefined) => pick(REFUND_STATUS, code);
+
+// The refund types the Lipa API can owe, as the filter offers them; the last two below only exist from before D-039.
+export const REFUND_TYPES = ['overpayment', 'window_lapsed', 'capacity_changed', 'stray_payment', 'amount_mismatch'] as const;
+
+// why each type is owed, in the brief's words (screen 11)
+const REFUND_WHY: Record<string, string> = {
+  overpayment: 'More than the amount due arrived. The extra is owed back.',
+  window_lapsed: 'The USDT arrived after the quote ended.',
+  capacity_changed: 'The USDT arrived, but the pool had no capacity left for the guarantee.',
+  stray_payment: "The USDT arrived for a quote already replaced or paid, or while a claim paused the member's new guarantees.",
+  amount_mismatch: 'Less than the amount due arrived, so it was never credited. The quote stays open.',
+  payment_failed: 'A direct payment, from before the Lipa API, failed after part of it arrived.',
+  blocks_payment: 'Paid in BLOCKS on a payment started before premiums were priced in USDT, so it never activated.'
+};
+
+export const refundWhy = (code: string | null | undefined) => (code ? REFUND_WHY[code] ?? sentence(code) : '—');

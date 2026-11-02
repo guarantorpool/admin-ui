@@ -8,6 +8,7 @@ import { GuaranteesPage } from '@/pages/guarantees/GuaranteesPage';
 import { KycPage } from '@/pages/kyc/KycPage';
 import { MembersPage } from '@/pages/members/MembersPage';
 import { ComingSoon, NotFound } from '@/pages/Placeholders';
+import { RefundsPage } from '@/pages/refunds/RefundsPage';
 import { useGrants, useSession } from '@/session/SessionProvider';
 
 /**
@@ -64,6 +65,8 @@ export function App() {
           <Route path="/guarantees/quotes" element={<GuaranteesPage />} />
           <Route path="/guarantees/quotes/:quoteId" element={<GuaranteesPage />} />
           <Route path="/guarantees/:guaranteeId" element={<GuaranteesPage />} />
+          <Route path="/refunds" element={<RefundsPage />} />
+          <Route path="/refunds/:refundId" element={<RefundsPage />} />
           {allScreens()
             .filter((s) => s.comingIn)
             .map((s) => (

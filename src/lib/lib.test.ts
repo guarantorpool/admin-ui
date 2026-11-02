@@ -1,5 +1,5 @@
 import { envBadge } from './env';
-import { formatAmount, formatDate, formatDateTime, formatNumber, formatUsdt } from './format';
+import { dayInZone, formatAmount, formatDate, formatDateTime, formatIn, formatNumber, formatUsdt, startOfDay } from './format';
 import { can, canAny } from './permissions';
 
 describe('envBadge', () => {
@@ -28,6 +28,11 @@ describe('dates in Nairobi time (D-002)', () => {
     expect(formatDateTime(Date.UTC(2026, 10, 2, 11, 5), { zone: true })).toBe('2 Nov 2026, 14:05 EAT');
   });
 
+  it('reads and starts days in Nairobi, for a date entered', () => {
+    expect(dayInZone('2026-11-01T21:30:00Z')).toBe('2026-11-02');
+    expect(startOfDay('2026-11-02')).toBe('2026-11-01T21:00:00.000Z');
+  });
+
   it('shows a dash for nothing or nonsense', () => {
     expect(formatDateTime(null)).toBe('—');
     expect(formatDate('not a date')).toBe('—');
@@ -38,6 +43,8 @@ describe('amounts (D-002)', () => {
   it('rounds to 2 decimals in lists', () => {
     expect(formatUsdt('1234.5')).toBe('1,234.50 USDT');
     expect(formatUsdt('0.005')).toBe('0.01 USDT');
+    expect(formatIn('12.345', 'USDT')).toBe('12.35 USDT');
+    expect(formatIn('12.345', 'XYZ', { full: true })).toBe('12.345 XYZ');
     expect(formatUsdt('0.004999')).toBe('0.00 USDT');
     expect(formatUsdt('999999.995')).toBe('1,000,000.00 USDT');
     expect(formatUsdt(-12.345)).toBe('-12.35 USDT');
