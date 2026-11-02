@@ -4,24 +4,12 @@ import { Bell, ChevronDown, LogOut, Menu, Moon, Sun, User, X } from 'lucide-reac
 import { Avatar, initials } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { env } from '@/lib/env';
+import { useCompact } from '@/lib/useMedia';
 import { cn } from '@/lib/utils';
 import { useGrants, useSession } from '@/session/SessionProvider';
 import * as store from '@/session/store';
 import { useTheme } from '@/theme/theme';
-import { findScreen, visibleNav, type NavGroup } from './nav';
-
-const COMPACT_QUERY = '(max-width: 767px)';
-
-function useCompact(): boolean {
-  const [compact, setCompact] = React.useState(() => matchMedia(COMPACT_QUERY).matches);
-  React.useEffect(() => {
-    const m = matchMedia(COMPACT_QUERY);
-    const on = () => setCompact(m.matches);
-    m.addEventListener('change', on);
-    return () => m.removeEventListener('change', on);
-  }, []);
-  return compact;
-}
+import { findScreen, isUnder, visibleNav, type NavGroup } from './nav';
 
 const iconButton =
   'relative flex size-9 shrink-0 items-center justify-center rounded-ctl border border-ctl bg-surface text-ink-strong hover:bg-chip [&_svg]:size-5';
@@ -46,7 +34,7 @@ function NavItem({ to, label, onNavigate, nested }: { to: string; label: string;
 
 function Group({ group, onNavigate }: { group: NavGroup; onNavigate: () => void }) {
   const { pathname } = useLocation();
-  const holdsCurrent = group.items.some((s) => s.path === pathname);
+  const holdsCurrent = group.items.some((s) => isUnder(pathname, s.path));
   const [open, setOpen] = React.useState(holdsCurrent);
   React.useEffect(() => {
     if (holdsCurrent) setOpen(true);

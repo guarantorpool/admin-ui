@@ -145,6 +145,10 @@ export async function startStack({ quiet = false } = {}) {
         VALUATION_CRON: '-',
         FACTOR_REFRESH_ENABLED: 'false',
         GUARANTEE_JOBS_ENABLED: 'false',
+        // a member's wallet sign-in reads the chain in the background (locked BLOCKS, Lipa activity); this
+        // address refuses at once, so nothing leaves the machine and locked BLOCKS stay 0
+        BSC_RPC_URLS: 'http://127.0.0.1:9',
+        ALCHEMY_BSC_URL: '',
         // test runs sign in more often than a person would
         SPRING_APPLICATION_JSON: JSON.stringify({ 'app.rate-limit.enabled': false })
       }

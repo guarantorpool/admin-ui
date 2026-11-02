@@ -4,6 +4,7 @@ import { allScreens, homePath, safeNext } from '@/components/shell/nav';
 import { Account } from '@/pages/Account';
 import { ForgotPassword, ResetPassword, SetPassword } from '@/pages/auth/PasswordPages';
 import { SignIn } from '@/pages/auth/SignIn';
+import { MembersPage } from '@/pages/members/MembersPage';
 import { ComingSoon, NotFound } from '@/pages/Placeholders';
 import { useGrants, useSession } from '@/session/SessionProvider';
 
@@ -51,9 +52,13 @@ export function App() {
         <Route element={<AppShell />}>
           <Route index element={<Home />} />
           <Route path="/account" element={<Account />} />
-          {allScreens().map((s) => (
-            <Route key={s.path} path={s.path} element={<ComingSoon />} />
-          ))}
+          <Route path="/members" element={<MembersPage />} />
+          <Route path="/members/:memberId" element={<MembersPage />} />
+          {allScreens()
+            .filter((s) => s.comingIn)
+            .map((s) => (
+              <Route key={s.path} path={s.path} element={<ComingSoon />} />
+            ))}
           <Route path="*" element={<NotFound />} />
         </Route>
       </Route>

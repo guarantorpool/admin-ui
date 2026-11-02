@@ -1,7 +1,8 @@
 import { can, type Access, type Grants } from '@/lib/permissions';
 
 // The side menu, in the wireframe's order. `access` hides an entry from a role that can't open it;
-// `comingIn` is the plan's slice or phase for screens not built yet (ADMIN_PORTAL_PLAN.md).
+// `comingIn` is the plan's slice or phase for screens not built yet (ADMIN_PORTAL_PLAN.md); a built
+// screen has none.
 
 export interface Screen {
   path: string;
@@ -28,7 +29,7 @@ export const NAV: NavEntry[] = [
   direct({ path: '/approvals', label: 'Approvals inbox', about: 'Everything waiting for a second admin, in one list.', access: 'ANY', comingIn: 'Phase B' }),
   direct({ path: '/alerts', label: 'Alerts', about: "Pool alerts, and acknowledging them with a note.", access: 'ALERTS.READ', comingIn: 'slice 10' }),
   group('members', 'Members', [
-    { path: '/members', label: 'All members', about: 'Find a member and see everything about them.', access: 'MEMBERS.READ', comingIn: 'slice 2' },
+    { path: '/members', label: 'All members', about: 'Find a member and see everything about them.', access: 'MEMBERS.READ' },
     { path: '/kyc', label: 'KYC and address review', about: "Check members' identity and address documents.", access: 'MEMBERS.KYC', comingIn: 'slice 3' },
     { path: '/activity', label: 'Activity', about: 'Bring in activity records from a file, and search them.', access: 'LEDGER.READ', comingIn: 'slice 11' }
   ]),
@@ -70,13 +71,18 @@ export function visibleNav(grants: Grants | null): NavEntry[] {
   });
 }
 
-/** Where a screen sits in the menu, for the breadcrumb. */
+/** A path is the screen's own, or one of its records (`/members/{id}`). */
+export function isUnder(path: string, screenPath: string): boolean {
+  return path === screenPath || path.startsWith(screenPath + '/');
+}
+
+/** Where a screen sits in the menu, for the breadcrumb. A record's path finds its screen. */
 export function findScreen(path: string): { screen: Screen; group: NavGroup | null } | null {
   if (path === ACCOUNT.path) return { screen: ACCOUNT, group: null };
   for (const e of NAV) {
-    if (e.kind === 'direct' && e.screen.path === path) return { screen: e.screen, group: null };
+    if (e.kind === 'direct' && isUnder(path, e.screen.path)) return { screen: e.screen, group: null };
     if (e.kind === 'group') {
-      const screen = e.group.items.find((s) => s.path === path);
+      const screen = e.group.items.find((s) => isUnder(path, s.path));
       if (screen) return { screen, group: e.group };
     }
   }

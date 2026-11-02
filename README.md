@@ -39,15 +39,15 @@ Starts Postgres in a container that keeps its data in memory and is removed when
 | `STACK_API_PORT` | `8080` | The backend's port; point `VITE_API_BASE_URL` at it |
 | `STACK_ADMIN_EMAIL` | `admin-a@test.local` | The first admin |
 
-On-chain reads, the KES rate and scheduled jobs are off, and so is the backend's rate limit. Uploads go to Cloudflare R2, which isn't set up, so uploading a profile image fails locally.
+On-chain reads, the KES rate and scheduled jobs are off (chain reads go to an address that refuses at once, so nothing leaves the machine), and so is the backend's rate limit. Uploads go to Cloudflare R2, which isn't set up, so uploading a profile image fails locally.
 
 ## Checks
 
 | Command | What it does |
 |---|---|
 | `npm run typecheck` | TypeScript, including the generated API types |
-| `npm test` | Vitest: formatting, permissions, the menu, the session store, the API client |
-| `npm run e2e` | Playwright: the main flows against `npm run stack`'s backend, started and removed by the run |
+| `npm test` | Vitest: formatting, labels, permissions, the menu, the session store, the API client |
+| `npm run e2e` | Playwright: the main flows against `npm run stack`'s backend, started and removed by the run. Members are signed up the way the member app does it, with a throwaway wallet (`ethers`, a dev dependency) |
 | `npm run api:types` | Regenerates `src/api/schema.d.ts` from the backend's OpenAPI document (`SWAGGER_ENABLED=true`); `-- --file` uses the saved `openapi/gp-api.json` |
 
 Run Playwright's browser install once: `npx playwright install chromium`.

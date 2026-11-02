@@ -13,10 +13,11 @@ import { Card, CardHeader, Lines } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Field } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { TabPanel, Tabs } from '@/components/ui/tabs';
 import { formatDateTime } from '@/lib/format';
+import { fullName } from '@/lib/names';
 import { roleLabel } from '@/lib/permissions';
 import { checkNewPassword, PASSWORD_RULES } from '@/lib/password';
-import { cn } from '@/lib/utils';
 import { useSession } from '@/session/SessionProvider';
 import * as store from '@/session/store';
 
@@ -28,34 +29,6 @@ const TABS = [
   { value: 'profile', label: 'Profile' },
   { value: 'security', label: 'Password and sessions' }
 ] as const;
-
-function Tabs({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  return (
-    <div role="tablist" aria-label="Your account" className="flex gap-1 border-b border-line">
-      {TABS.map((t) => (
-        <button
-          key={t.value}
-          role="tab"
-          type="button"
-          id={`tab-${t.value}`}
-          aria-selected={value === t.value}
-          aria-controls={`panel-${t.value}`}
-          onClick={() => onChange(t.value)}
-          className={cn(
-            '-mb-px min-h-9 border-b-2 px-3 font-semibold',
-            value === t.value ? 'border-primary text-ink-strong' : 'border-transparent text-muted hover:text-ink'
-          )}
-        >
-          {t.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function fullName(a: AccountData): string {
-  return [a.firstName, a.middleName, a.lastName].filter(Boolean).join(' ');
-}
 
 function EditProfile({ account, open, onOpenChange }: { account: AccountData; open: boolean; onOpenChange: (o: boolean) => void }) {
   const qc = useQueryClient();
@@ -325,8 +298,8 @@ export function Account() {
   return (
     <>
       <PageHeader title="Your account" />
-      <Tabs value={tab} onChange={(v) => setParams(v === 'profile' ? {} : { tab: v }, { replace: true })} />
-      <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
+      <Tabs label="Your account" idPrefix="account" tabs={TABS} value={tab} onChange={(v) => setParams(v === 'profile' ? {} : { tab: v }, { replace: true })} />
+      <TabPanel idPrefix="account" value={tab}>
         {profile.isPending ? (
           <p className="text-muted">Loading your account…</p>
         ) : profile.isError ? (
@@ -336,7 +309,7 @@ export function Account() {
         ) : (
           <SecurityTab account={profile.data} />
         )}
-      </div>
+      </TabPanel>
     </>
   );
 }

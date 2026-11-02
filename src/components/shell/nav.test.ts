@@ -14,14 +14,17 @@ describe('menu', () => {
     expect(labels({ role: 'ROLE_SYSTEM_ADMIN', permissions: all }).at(-1)).toBe('Administration: Admins and roles, Service keys, KYC encryption key, Audit log');
   });
 
-  it('gives every screen a unique path and a slice or phase', () => {
+  it('gives every screen a unique path, and each one not built yet a slice or phase', () => {
     const screens = allScreens();
     expect(new Set(screens.map((s) => s.path)).size).toBe(screens.length);
-    screens.forEach((s) => expect(s.comingIn).toMatch(/^(slice \d+|Phase [A-E])$/));
+    screens.filter((s) => s.comingIn !== undefined).forEach((s) => expect(s.comingIn).toMatch(/^(slice \d+|Phase [A-E])$/));
+    expect(findScreen('/members')?.screen.comingIn).toBeUndefined();
   });
 
-  it('finds the breadcrumb group', () => {
+  it('finds the breadcrumb group, for a screen and for one of its records', () => {
     expect(findScreen('/pool/settings')?.group?.label).toBe('Pool');
+    expect(findScreen('/members/0b8f')?.screen.label).toBe('All members');
+    expect(findScreen('/membersx')).toBeNull();
     expect(findScreen('/alerts')?.group).toBeNull();
     expect(findScreen('/nowhere')).toBeNull();
   });
