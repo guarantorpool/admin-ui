@@ -103,7 +103,11 @@ export type Asset = 'USDT' | 'KES' | 'BLOCKS';
 export function formatAmount(value: Amount, asset: Asset, { full = false } = {}): string {
   const n = full ? formatNumber(value) : formatNumber(value, 2);
   if (n === '—') return n;
-  if (full && asset === 'USDT' && !n.includes('.')) return `${n}.00 ${asset}`;
+  // full precision still shows cents: 14.4 reads 14.40, and nothing is rounded away
+  if (full && asset === 'USDT') {
+    const decimals = n.split('.')[1]?.length ?? 0;
+    if (decimals < 2) return `${n}${decimals ? '' : '.'}${'0'.repeat(2 - decimals)} ${asset}`;
+  }
   return `${n} ${asset}`;
 }
 

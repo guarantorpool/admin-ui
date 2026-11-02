@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { errorMessage } from '@/api/errors';
 import { listMembers, type KycStatus } from '@/api/members';
@@ -9,6 +9,7 @@ import { Banner } from '@/components/ui/badge';
 import { Chip } from '@/components/ui/chip';
 import { Input } from '@/components/ui/input';
 import { Pager, PAGE_SIZES } from '@/components/ui/pager';
+import { Rows, type Column } from '@/components/ui/rows';
 import { StatusPill } from '@/components/ui/parts';
 import { Sheet } from '@/components/ui/sheet';
 import { TabPanel, Tabs } from '@/components/ui/tabs';
@@ -16,7 +17,7 @@ import { formatDate } from '@/lib/format';
 import { kycStatus, proofOfAddress } from '@/lib/labels';
 import { fullName } from '@/lib/names';
 import { can } from '@/lib/permissions';
-import { useCompact, useMedia, WIDE_QUERY } from '@/lib/useMedia';
+import { useMedia, WIDE_QUERY } from '@/lib/useMedia';
 import { cn } from '@/lib/utils';
 import { NoAccess } from '@/pages/Placeholders';
 import { useGrants } from '@/session/SessionProvider';
@@ -38,61 +39,11 @@ const KYC_CHIPS: { value: KycStatus; label: string }[] = [
 
 const DEFAULT_SIZE = 25;
 
-interface Column {
-  header: string;
-  cell: (m: Account) => React.ReactNode;
-}
-
-function MemberRows({ label, rows, columns, grid, linkFor, sub }: { label: string; rows: Account[]; columns: Column[]; grid: string; linkFor: (id: string) => string; sub: (m: Account) => React.ReactNode }) {
-  const compact = useCompact();
-  if (compact) {
-    return (
-      <ul aria-label={label} className="m-0 list-none p-0">
-        {rows.map((m) => (
-          <li key={m.id} className="border-b border-line last:border-b-0">
-            <Link to={linkFor(m.id!)} className="flex flex-col gap-0.5 px-3.5 py-2 text-ink no-underline hover:bg-page">
-              <span className="flex flex-wrap items-center justify-between gap-1.5">
-                <span className="font-semibold [overflow-wrap:anywhere]">{fullName(m) || '—'}</span>
-                {columns.at(-1)!.cell(m)}
-              </span>
-              <span className="text-ink-3 [overflow-wrap:anywhere]">{sub(m)}</span>
-            </Link>
-          </li>
-        ))}
-      </ul>
-    );
-  }
-  return (
-    <div className="overflow-x-auto">
-      <div className="min-w-[680px]" role="table" aria-label={label}>
-        <div role="row" className={cn('grid gap-3 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.1em] text-muted', grid)}>
-          {columns.map((c) => (
-            <span key={c.header} role="columnheader">
-              {c.header}
-            </span>
-          ))}
-        </div>
-        {rows.map((m) => (
-          <div key={m.id} role="row" className="border-t border-line hover:bg-page">
-            <Link to={linkFor(m.id!)} className={cn('grid min-h-11 items-center gap-3 px-4 py-1 text-ink no-underline', grid)}>
-              {columns.map((c, i) => (
-                <span key={c.header} role="cell" className={cn('min-w-0 [overflow-wrap:anywhere]', i === 0 && 'font-semibold')}>
-                  {c.cell(m)}
-                </span>
-              ))}
-            </Link>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-const name: Column = { header: 'Member', cell: (m) => fullName(m) || '—' };
-const number: Column = { header: 'Member number', cell: (m) => m.member?.memberNumber ?? '—' };
-const phone: Column = { header: 'Phone', cell: (m) => m.phoneNumber ?? '—' };
-const KYC_COLUMNS: Column[] = [name, number, phone, { header: 'Joined', cell: (m) => formatDate(m.createdAt) }, { header: 'KYC status', cell: (m) => <StatusPill label={kycStatus(m.member?.kycStatus)} /> }];
-const ADDRESS_COLUMNS: Column[] = [name, number, phone, { header: 'Proof of address', cell: (m) => <StatusPill label={proofOfAddress(m.member?.proofOfAddress)} /> }];
+const name: Column<Account> = { header: 'Member', cell: (m) => fullName(m) || '—' };
+const number: Column<Account> = { header: 'Member number', cell: (m) => m.member?.memberNumber ?? '—' };
+const phone: Column<Account> = { header: 'Phone', cell: (m) => m.phoneNumber ?? '—' };
+const KYC_COLUMNS: Column<Account>[] = [name, number, phone, { header: 'Joined', cell: (m) => formatDate(m.createdAt) }, { header: 'KYC status', cell: (m) => <StatusPill label={kycStatus(m.member?.kycStatus)} /> }];
+const ADDRESS_COLUMNS: Column<Account>[] = [name, number, phone, { header: 'Proof of address', cell: (m) => <StatusPill label={proofOfAddress(m.member?.proofOfAddress)} /> }];
 
 export function KycPage() {
   const grants = useGrants();
@@ -161,7 +112,7 @@ function Review() {
   });
 
   const rows = query.data?.results ?? [];
-  const linkFor = (id: string) => `${base}/${id}${listSearch()}`;
+  const linkFor = (m: Account) => `${base}/${m.id}${listSearch()}`;
   const empty = pageTab === 'kyc' ? (status === 'pending' ? 'Nothing is waiting for review.' : 'No submissions match.') : 'No members match.';
 
   const list = !searching ? (
@@ -175,9 +126,9 @@ function Review() {
   ) : rows.length === 0 ? (
     <p className="m-0 px-4 py-5 text-muted">{empty}</p>
   ) : pageTab === 'kyc' ? (
-    <MemberRows label="KYC submissions" rows={rows} columns={KYC_COLUMNS} grid="grid-cols-[1.2fr_0.8fr_1.1fr_0.8fr_0.8fr]" linkFor={linkFor} sub={(m) => `${m.member?.memberNumber ?? '—'} · joined ${formatDate(m.createdAt)}`} />
+    <Rows rowKey={(m) => m.id!} label="KYC submissions" rows={rows} columns={KYC_COLUMNS} grid="grid-cols-[1.2fr_0.8fr_1.1fr_0.8fr_0.8fr]" linkFor={linkFor} sub={(m) => `${m.member?.memberNumber ?? '—'} · joined ${formatDate(m.createdAt)}`} />
   ) : (
-    <MemberRows label="Members" rows={rows} columns={ADDRESS_COLUMNS} grid="grid-cols-[1.2fr_0.8fr_1.1fr_0.9fr]" linkFor={linkFor} sub={(m) => `${m.member?.memberNumber ?? '—'} · ${m.phoneNumber ?? '—'}`} />
+    <Rows rowKey={(m) => m.id!} label="Members" rows={rows} columns={ADDRESS_COLUMNS} grid="grid-cols-[1.2fr_0.8fr_1.1fr_0.9fr]" linkFor={linkFor} sub={(m) => `${m.member?.memberNumber ?? '—'} · ${m.phoneNumber ?? '—'}`} />
   );
 
   return (

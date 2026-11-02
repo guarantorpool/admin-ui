@@ -166,7 +166,82 @@ export async function submitAddress(member: Member, pin: { latitude: number; lon
   await post(`${apiBase}/members/me/address-documents`, { uploadId, documentType: 'utility_bill', issueDate }, member.token);
 }
 
-export const randomIdNumber = () => String(10_000_000 + Math.floor(Math.random() * 89_999_999));
+const sql = (statement: string) => docker('exec', stack().dbContainer, 'psql', '-U', 'postgres', '-d', 'blockcoop', '-v', 'ON_ERROR_STOP=1', '-At', '-c', statement);
+
+const randomOf = (chars: string, n: number) => Array.from({ length: n }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+export const randomHash = () => `0x${randomOf('0123456789abcdef', 64)}`;
+
+// One priced quote: 5,000 USDT for 6 months at a Trust Score of 72, worked through the backend's formulas
+// (SM = 2 − TS/100, PD = BDR × SM, EL = GA × PD × LGD, BM = max(floor, 2 + CON − LR), P = (EL + BL) × TR).
+// A flagged one has its premium below its expected loss over the tenure (COV under 1).
+const PRICING = `trust_score_at_underwriting, strength_multiplier, base_default_rate, probability_of_default, recovery_rate,
+  loss_given_default, expected_loss, pool_size, available_capacity, concentration_ratio, liquidity_ratio, buffer_floor,
+  buffer_multiplier, buffer_loading, tenure_ratio, premium_amount, premium_rate, coverage_ratio, member_backing_usdt,
+  guarantee_to_savings_ratio, quote_usdt_per_blocks, flagged`;
+const pricing = (flagged: boolean) =>
+  `72, 1.28, 0.05, 0.064, 0.4, 0.6, 192, 200000, 150000, 0.0333, 0.8, 1.5, 1.5, 96, 0.5, ${flagged ? '86.4, 0.03456, 0.9' : '144, 0.0576, 1.5'},
+  2500, 2, 0.0412, ${flagged}`;
+
+export interface SeededQuote {
+  quoteId: string;
+  amountDue: string;
+}
+
+/**
+ * Stands in for a member asking for a quote, and for its payment through the Lipa API. A local run reaches
+ * neither Lipa nor the chain, and a quote needs the member's backing and network for headroom, so the
+ * records go straight into the throwaway database, as the backend would write them.
+ */
+export function seedQuote(member: Member, opts: { status?: 'OPEN' | 'PAID' | 'REPLACED' | 'EXPIRED'; flagged?: boolean; lipa?: { status: 'PROCESSING' | 'SUCCESS' | 'FAILED'; message?: string }; guaranteeId?: string; quotedDaysAgo?: number } = {}): SeededQuote {
+  const quoteId = `GPQ-${randomOf('ABCDEFGHJKLMNPQRSTUVWXYZ23456789', 6)}`;
+  const flagged = opts.flagged ?? false;
+  const fee = flagged ? '8.64' : '14.4';
+  const amountDue = flagged ? '95.04' : '158.4';
+  // an open quote lasts 30 minutes, so it's made 5 minutes ago to be still open
+  const quotedAt = `now() - interval '${opts.quotedDaysAgo ?? 0} days' - interval '${(opts.status ?? 'OPEN') === 'OPEN' ? 5 : 60} minutes'`;
+  const lipa = opts.lipa;
+  sql(`INSERT INTO guarantee_quotes (id, quote_number, member_id, amount_requested, tenure_months, status, quoted_at, valid_until,
+    guarantee_number, ${PRICING}, base_default_rate_calculated, recovery_rate_calculated, liquidity_ratio_calculated,
+    operating_fee, amount_due, operating_fee_rate, operating_fee_min_usd, operating_fee_max_usd, lipa_payment_id,
+    payment_status, failure_reason, failure_message, check_anchor_at)
+    VALUES ('${randomUUID()}', '${quoteId}', '${member.id}', 5000, 6, '${opts.status ?? 'OPEN'}', ${quotedAt}, ${quotedAt} + interval '30 minutes',
+    ${opts.guaranteeId ? `'${opts.guaranteeId}'` : 'NULL'}, ${pricing(flagged)}, false, false, false,
+    ${fee}, ${amountDue}, 0.1, 1, 50, ${lipa ? `'lipa-${randomOf('0123456789abcdef', 12)}'` : 'NULL'},
+    ${lipa ? `'${lipa.status}'` : 'NULL'}, ${lipa?.status === 'FAILED' ? "'INSUFFICIENT_FUNDS'" : 'NULL'},
+    ${lipa?.message ? `'${lipa.message}'` : 'NULL'}, ${quotedAt})`);
+  return { quoteId, amountDue };
+}
+
+export interface SeededGuarantee {
+  guaranteeId: string;
+  quoteId: string;
+  txHash: string;
+}
+
+/** A quote paid through the Lipa API, the active guarantee it created and its confirmed payment (see seedQuote). */
+export function seedGuarantee(member: Member, opts: { flagged?: boolean; status?: 'ACTIVE' | 'IN_CLAIM' | 'CLOSED' } = {}): SeededGuarantee {
+  const flagged = opts.flagged ?? false;
+  const guaranteeId = `GPG-${new Date().getFullYear()}-${randomOf('0123456789', 6)}`;
+  const txHash = randomHash();
+  const { quoteId, amountDue } = seedQuote(member, { status: 'PAID', flagged, guaranteeId, lipa: { status: 'SUCCESS' }, quotedDaysAgo: 3 });
+  const id = randomUUID();
+  const quotedAt = "now() - interval '3 days' - interval '1 hour'";
+  const activatedAt = "now() - interval '3 days' - interval '40 minutes'";
+  sql(`INSERT INTO guarantees (id, guarantee_number, member_id, amount_requested, tenure_months, status, quoted_at, valid_until,
+    activated_at, ends_at, ${PRICING}, base_default_rate_calculated, recovery_rate_calculated, liquidity_ratio_calculated,
+    activation_usdt_per_blocks)
+    VALUES ('${id}', '${guaranteeId}', '${member.id}', 5000, 6, '${opts.status ?? 'ACTIVE'}', ${quotedAt}, ${quotedAt} + interval '30 minutes',
+    ${activatedAt}, ${activatedAt} + interval '6 months', ${pricing(flagged)}, false, false, false, 0.0409)`);
+  const fee = flagged ? '8.64' : '14.4';
+  sql(`INSERT INTO premium_payments (id, guarantee_id, method, amount_due, amount_received, amount_refunded, status, provider_reference,
+    initiated_at, confirm_by, confirmed_at, currency, premium_usdt, provider, amount_asked, operating_fee, operating_fee_currency,
+    operating_fee_rate, operating_fee_min_usd, operating_fee_max_usd, operating_fee_usdt)
+    VALUES ('${randomUUID()}', '${id}', 'LIPA', ${amountDue}, ${amountDue}, 0, 'CONFIRMED', '${txHash}', ${activatedAt}, ${activatedAt},
+    ${activatedAt}, 'USDT', ${flagged ? '86.4' : '144'}, 'lipa', ${amountDue}, ${fee}, 'USDT', 0.1, 1, 50, ${fee})`);
+  return { guaranteeId, quoteId, txHash };
+}
+
+export const randomIdNumber = () =>String(10_000_000 + Math.floor(Math.random() * 89_999_999));
 
 /**
  * Invites an admin with a new role holding `permissions`, and sets their password through the portal's

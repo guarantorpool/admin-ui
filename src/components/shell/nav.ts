@@ -34,7 +34,7 @@ export const NAV: NavEntry[] = [
     { path: '/activity', label: 'Activity', about: 'Bring in activity records from a file, and search them.', access: 'LEDGER.READ', comingIn: 'slice 11' }
   ]),
   group('guarantees', 'Guarantees', [
-    { path: '/guarantees', label: 'Guarantees and quotes', about: 'Every guarantee and quote, with its pricing and payments.', access: 'GUARANTEES.READ', comingIn: 'slice 4' },
+    { path: '/guarantees', label: 'Guarantees and quotes', about: 'Every guarantee and quote, with its pricing and payments.', access: 'GUARANTEES.READ' },
     { path: '/loans', label: 'Loans and lender reports', about: 'Record what lenders report about guaranteed loans.', access: 'GUARANTEES.READ', comingIn: 'slice 6' },
     { path: '/claims', label: 'Claims', about: 'Pay lenders when a guaranteed loan defaults.', access: 'GUARANTEES.READ', comingIn: 'slice 6' }
   ]),

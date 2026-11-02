@@ -1,4 +1,4 @@
-import { connectionType, guaranteeStatus, kycStatus, memberStatus, metricName, percent, proofOfAddress, sentence } from './labels';
+import { connectionType, guaranteeStatus, kycStatus, lipaStatus, memberStatus, metricName, paymentMethod, paymentStatus, percent, proofOfAddress, quoteStatus, sentence } from './labels';
 import { fullName } from './names';
 
 describe('status labels', () => {
@@ -9,6 +9,10 @@ describe('status labels', () => {
     expect(kycStatus('pending').tone).toBe('warn');
     expect(proofOfAddress('partial').text).toBe('Map pin only');
     expect(guaranteeStatus('pending_payment').text).toBe('Quote');
+    expect(quoteStatus('quoted')).toEqual({ text: 'Open', tone: 'warn' });
+    expect(paymentStatus('confirmed')).toEqual({ text: 'Paid', tone: 'ok' });
+    expect(lipaStatus('FAILED').tone).toBe('bad');
+    expect(paymentMethod('lipa')).toBe('Lipa API');
   });
 
   it('shows a code it does not know yet readably, and a missing one as a dash', () => {

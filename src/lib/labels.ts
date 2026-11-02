@@ -142,3 +142,41 @@ const DOCUMENT_TYPE: Record<string, string> = {
 };
 
 export const documentType = (code: string | null | undefined) => (code ? DOCUMENT_TYPE[code] ?? sentence(code) : '—');
+
+// an open quote is "quoted" in the API, and "Open" on screen as in the wireframe (BlockCoop #140)
+const QUOTE_STATUS: Record<string, Label> = {
+  quoted: { text: 'Open', tone: 'warn' },
+  accepted: { text: 'Accepted', tone: 'warn' },
+  paid: { text: 'Paid', tone: 'ok' },
+  replaced: { text: 'Replaced', tone: 'neutral' },
+  expired: { text: 'Expired', tone: 'neutral' }
+};
+
+export const quoteStatus = (code: string | null | undefined) => pick(QUOTE_STATUS, code);
+
+const PAYMENT_STATUS: Record<string, Label> = {
+  pending: { text: 'Pending', tone: 'warn' },
+  confirmed: { text: 'Paid', tone: 'ok' },
+  failed: { text: 'Failed', tone: 'bad' },
+  refunded: { text: 'Refunded', tone: 'neutral' },
+  needs_confirmation: { text: 'Needs confirmation', tone: 'warn' }
+};
+
+export const paymentStatus = (code: string | null | undefined) => pick(PAYMENT_STATUS, code);
+
+// the Lipa API's own status for a payment on a quote
+const LIPA_STATUS: Record<string, Label> = {
+  PROCESSING: { text: 'Processing', tone: 'warn' },
+  SUCCESS: { text: 'Success', tone: 'ok' },
+  FAILED: { text: 'Failed', tone: 'bad' }
+};
+
+export const lipaStatus = (code: string | null | undefined) => pick(LIPA_STATUS, code);
+
+const PAYMENT_METHOD: Record<string, string> = {
+  lipa: 'Lipa API',
+  wallet: 'Wallet',
+  mobile_money: 'M-Pesa'
+};
+
+export const paymentMethod = (code: string | null | undefined) => (code ? PAYMENT_METHOD[code] ?? sentence(code) : '—');

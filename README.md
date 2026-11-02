@@ -41,6 +41,8 @@ Starts Postgres in a container that keeps its data in memory and is removed when
 
 On-chain reads, the KES rate and scheduled jobs are off (chain reads go to an address that refuses at once, so nothing leaves the machine), and so is the backend's rate limit. Uploads go to Cloudflare R2, which isn't set up, so uploading a profile image fails locally. The e2e tests stand in for a member's KYC and proof-of-address uploads by adding the upload's record straight into the throwaway database, and answer the signed link to open a file themselves.
 
+Quotes and guarantees are seeded the same way. A real quote needs the member's headroom (backing and network), and a guarantee only exists once the Lipa API's payment passes the callback, Lipa's status check and the on-chain check of its transaction, none of which a local run reaches. So `seedQuote` and `seedGuarantee` in `tests/e2e/helpers.ts` write the quote, the guarantee and its Lipa payment as the backend would. Everything the screens do with them (filters, manual close, approve and reject) goes through the real API.
+
 ## Checks
 
 | Command | What it does |

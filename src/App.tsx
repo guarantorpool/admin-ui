@@ -4,6 +4,7 @@ import { allScreens, homePath, safeNext } from '@/components/shell/nav';
 import { Account } from '@/pages/Account';
 import { ForgotPassword, ResetPassword, SetPassword } from '@/pages/auth/PasswordPages';
 import { SignIn } from '@/pages/auth/SignIn';
+import { GuaranteesPage } from '@/pages/guarantees/GuaranteesPage';
 import { KycPage } from '@/pages/kyc/KycPage';
 import { MembersPage } from '@/pages/members/MembersPage';
 import { ComingSoon, NotFound } from '@/pages/Placeholders';
@@ -59,6 +60,10 @@ export function App() {
           <Route path="/kyc/address" element={<KycPage />} />
           <Route path="/kyc/address/:memberId" element={<KycPage />} />
           <Route path="/kyc/:memberId" element={<KycPage />} />
+          <Route path="/guarantees" element={<GuaranteesPage />} />
+          <Route path="/guarantees/quotes" element={<GuaranteesPage />} />
+          <Route path="/guarantees/quotes/:quoteId" element={<GuaranteesPage />} />
+          <Route path="/guarantees/:guaranteeId" element={<GuaranteesPage />} />
           {allScreens()
             .filter((s) => s.comingIn)
             .map((s) => (

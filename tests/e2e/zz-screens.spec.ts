@@ -1,5 +1,5 @@
 import { test, type Page } from '@playwright/test';
-import { connect, newMember, randomIdNumber, signIn, stack, submitAddress, submitKyc, type Member } from './helpers';
+import { connect, newMember, randomIdNumber, seedGuarantee, seedQuote, signIn, stack, submitAddress, submitKyc, type Member, type SeededGuarantee, type SeededQuote } from './helpers';
 
 // Not a check: screenshots for review, only when SHOTS_DIR is set.
 const dir = process.env.SHOTS_DIR;
@@ -7,6 +7,9 @@ test.skip(!dir, 'SHOTS_DIR not set');
 
 /** A few connected members, made once for every screenshot run. */
 let members: Member[] | null = null;
+let guarantees: SeededGuarantee[] = [];
+let quotes: SeededQuote[] = [];
+
 async function sampleMembers(): Promise<Member[]> {
   if (members) return members;
   const people = [['Amina', 'Wanjiru'], ['Brian', 'Otieno'], ['Grace', 'Achieng'], ['John', 'Kamau']] as const;
@@ -19,6 +22,8 @@ async function sampleMembers(): Promise<Member[]> {
   await submitKyc(b, { idType: 'national_id', idNumber: randomIdNumber(), dateOfBirth: '1990-02-04', address: 'Kilimani, Nairobi' });
   await submitKyc(c, { idType: 'passport', idNumber: `AK${randomIdNumber()}`, dateOfBirth: '1985-07-19', address: 'Milimani, Kisumu' });
   await submitAddress(b, { latitude: -1.2921, longitude: 36.8219, comment: 'Behind the market, blue gate' });
+  guarantees = [seedGuarantee(a), seedGuarantee(c, { flagged: true }), seedGuarantee(d)];
+  quotes = [seedQuote(b, { flagged: true, lipa: { status: 'FAILED', message: 'Payment failed, please try again.' } }), seedQuote(d, { lipa: { status: 'PROCESSING' } }), seedQuote(c, { status: 'EXPIRED', quotedDaysAgo: 4 })];
   members = made;
   return made;
 }
@@ -90,5 +95,31 @@ for (const scheme of ['light', 'dark'] as const) {
     await page.getByRole('table', { name: 'Members' }).or(page.getByRole('list', { name: 'Members' })).waitFor();
     await settle(page);
     await page.screenshot({ path: `${dir}/${tag}-18-address-find.png` });
+
+    await page.goto('/guarantees');
+    await page.getByRole('table', { name: 'Guarantees' }).or(page.getByRole('list', { name: 'Guarantees' })).waitFor();
+    await settle(page);
+    await page.screenshot({ path: `${dir}/${tag}-19-guarantees.png` });
+    const g = guarantees[0]!.guaranteeId;
+    for (const [n, t] of [[20, 'overview'], [21, 'pricing'], [22, 'payments']] as const) {
+      await page.goto(`/guarantees/${g}?tab=${t}`);
+      await page.getByRole('dialog', { name: 'Guarantee details' }).getByRole('heading', { name: g }).waitFor();
+      await settle(page);
+      await page.screenshot({ path: `${dir}/${tag}-${n}-guarantee-${t}.png` });
+    }
+    await page.goto(`/guarantees/${g}`);
+    await page.getByRole('dialog', { name: 'Guarantee details' }).getByRole('button', { name: 'Enter a manual close' }).click();
+    await page.getByRole('dialog', { name: 'Enter a manual close' }).waitFor();
+    await page.screenshot({ path: `${dir}/${tag}-23-manual-close.png` });
+    await page.keyboard.press('Escape');
+    await page.goto('/guarantees/quotes');
+    await page.getByRole('table', { name: 'Quotes' }).or(page.getByRole('list', { name: 'Quotes' })).waitFor();
+    await settle(page);
+    await page.screenshot({ path: `${dir}/${tag}-24-quotes.png` });
+    const q = quotes[0]!.quoteId;
+    await page.goto(`/guarantees/quotes/${q}?tab=lipa`);
+    await page.getByRole('dialog', { name: 'Quote details' }).getByText('Payment failed, please try again.').waitFor();
+    await settle(page);
+    await page.screenshot({ path: `${dir}/${tag}-25-quote-lipa.png` });
   });
 }

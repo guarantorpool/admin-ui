@@ -1,0 +1,119 @@
+import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { ApiError, errorMessage } from '@/api/errors';
+import { getQuote } from '@/api/guarantees';
+import { listMembers } from '@/api/members';
+import { Badge, Banner } from '@/components/ui/badge';
+import { Fields, Muted, SectionTitle, StatusPill } from '@/components/ui/parts';
+import { TabPanel, Tabs } from '@/components/ui/tabs';
+import { formatDateTime, formatNumber, formatUsdt } from '@/lib/format';
+import { lipaStatus, quoteStatus } from '@/lib/labels';
+import { fullName } from '@/lib/names';
+import { can } from '@/lib/permissions';
+import { useGrants } from '@/session/SessionProvider';
+import { PricingTrail } from './PricingTrail';
+
+export const QUOTE_TABS = [
+  { value: 'overview', label: 'Overview' },
+  { value: 'pricing', label: 'Pricing trail and invoice' },
+  { value: 'lipa', label: 'Latest Lipa API payment' }
+] as const;
+
+const usdt = (v: string | undefined) => formatUsdt(v, { full: true });
+const link = 'font-medium text-ink-strong underline underline-offset-4';
+
+/** A quote names its member by member number; this finds the member, when this admin can read members. */
+function useMemberByNumber(number: string | undefined) {
+  const grants = useGrants();
+  const readable = !!number && can(grants, 'MEMBERS.READ');
+  const query = useQuery({ queryKey: ['members', 'by-number', number], queryFn: () => listMembers({ page: 1, size: 1, search: number }), enabled: readable });
+  const found = query.data?.results?.find((m) => m.member?.memberNumber === number);
+  return found ? { text: `${fullName(found) || 'Unnamed member'}, ${number}`, link: `/members/${found.id}` } : { text: number ?? '—', link: null };
+}
+
+/** One quote by its quote ID: its terms, the pricing and invoice, and the latest payment through Lipa. */
+export function QuoteDetail({ quoteId, tab, onTab }: { quoteId: string; tab: string; onTab: (t: string) => void }) {
+  const query = useQuery({ queryKey: ['quotes', quoteId], queryFn: () => getQuote(quoteId) });
+  const member = useMemberByNumber(query.data?.memberId);
+
+  if (query.isPending) return <Muted>Loading the quote…</Muted>;
+  if (query.isError) {
+    const gone = query.error instanceof ApiError && query.error.status === 404;
+    return <Banner tone="bad">{gone ? `There's no quote ${quoteId}.` : errorMessage(query.error)}</Banner>;
+  }
+
+  const q = query.data;
+  const invoice = q.invoice ?? {};
+  const current = QUOTE_TABS.some((t) => t.value === tab) ? tab : 'overview';
+  const payment = q.payment;
+
+  return (
+    <>
+      <section className="flex flex-col gap-3.5 rounded-card border border-line bg-surface px-5 pb-4 pt-5">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <h2 className="m-0 font-heading text-xl font-bold">{q.quoteId}</h2>
+          <StatusPill label={quoteStatus(q.status)} />
+          {q.flagged ? <Badge tone="bad">Flagged</Badge> : null}
+        </div>
+        <Tabs label="Quote" idPrefix="quote" tabs={QUOTE_TABS} value={current} onChange={onTab} />
+        <TabPanel key={current} idPrefix="quote" value={current} className="flex flex-col gap-3.5">
+          {current === 'pricing' ? (
+            <>
+              <SectionTitle>Invoice</SectionTitle>
+              <Fields
+                rows={[
+                  { k: 'Premium', v: usdt(invoice.amount) },
+                  { k: 'Operating fee', v: usdt(invoice.operatingFee) },
+                  { k: 'Amount due (amountDue)', v: usdt(invoice.amountDue) },
+                  { k: 'Valid until', v: formatDateTime(invoice.validUntil, { zone: true }) },
+                  { k: 'BLOCKS price when quoted', v: q.blocksPrice ? `1 BLOCKS = ${formatNumber(q.blocksPrice)} USDT` : '—' }
+                ]}
+              />
+              <PricingTrail priced={{ underwriting: q.underwriting, premium: invoice.amount, premiumRate: q.premiumRate, coverageRatio: q.coverageRatio, memberBacking: q.memberBacking, guaranteeToSavingsRatio: q.guaranteeToSavingsRatio }} />
+            </>
+          ) : current === 'lipa' ? (
+            payment ? (
+              <Fields
+                rows={[
+                  { k: 'Lipa payment ID', v: <span className="font-mono text-[13px]">{payment.paymentId ?? '—'}</span> },
+                  { k: 'Status', v: <StatusPill label={lipaStatus(payment.status)} /> },
+                  ...(payment.status === 'FAILED' ? [{ k: 'What the member was told (failureMessage)', v: payment.failureMessage ?? '—' }] : [])
+                ]}
+              />
+            ) : (
+              <Muted>No Lipa API payment on this quote.</Muted>
+            )
+          ) : (
+            <Fields
+              rows={[
+                {
+                  k: 'Member',
+                  v: member.link ? (
+                    <Link to={member.link} className={link}>
+                      {member.text}
+                    </Link>
+                  ) : (
+                    member.text
+                  )
+                },
+                { k: 'Guarantee amount', v: usdt(q.guaranteeAmount) },
+                { k: 'Tenure', v: `${formatNumber(q.tenureMonths)} months` },
+                { k: 'Amount due (amountDue)', v: usdt(invoice.amountDue) },
+                { k: 'Quoted', v: formatDateTime(q.quotedAt, { zone: true }) },
+                { k: 'Ends (validUntil)', v: formatDateTime(q.validUntil, { zone: true }) },
+                { k: 'Flagged', v: q.flagged ? 'Yes, premium below expected loss' : 'No' },
+                { k: 'Guarantee created', v: q.guaranteeId ?? 'None' }
+              ]}
+            />
+          )}
+        </TabPanel>
+      </section>
+      {q.guaranteeId ? (
+        <Link to={`/guarantees/${q.guaranteeId}`} className={`self-start ${link}`}>
+          Open the guarantee it created
+        </Link>
+      ) : null}
+      <Banner tone="plan">Planned: the quote that replaced this one and the quotes it replaced, and every Lipa API payment attempt with its transaction hash and failureReason.</Banner>
+    </>
+  );
+}

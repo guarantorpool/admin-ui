@@ -8,6 +8,7 @@ import { getMember, getUploads } from '@/api/members';
 import type { Account } from '@/api/types';
 import { Banner } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { DecisionDialog, NOTE_HINT, type Decision } from '@/components/ui/decision-dialog';
 import { Fields, Item, Items, Muted, SectionTitle, StatusPill } from '@/components/ui/parts';
 import { TabPanel, Tabs, type TabOption } from '@/components/ui/tabs';
 import { formatDate, formatDateTime } from '@/lib/format';
@@ -15,7 +16,6 @@ import { documentStatus, documentType, idType, kycStatus, proofOfAddress } from 
 import { fullName } from '@/lib/names';
 import { useOpenFile } from '@/lib/useOpenFile';
 import { fileSize } from '@/pages/members/MemberTabs';
-import { DecisionDialog, type Decision } from './DecisionDialog';
 
 export const REVIEW_TABS = [
   { value: 'kyc', label: 'KYC submission' },
@@ -57,6 +57,17 @@ export function MemberReview({ memberId, tab, onTab }: { memberId: string; tab: 
   );
 }
 
+/** One admin decides, and it takes effect at once. A rejection's reason is shown to the member. */
+function review(accept: boolean, verb: string, what: string): Pick<Decision, 'title' | 'description' | 'confirm' | 'danger' | 'note'> {
+  return {
+    title: `${verb} ${what}?`,
+    description: `One admin decides, and it takes effect at once. ${accept ? 'It counts towards the member’s Trust Score straight away.' : 'The member sees the reason, and can put forward a new one.'}`,
+    confirm: verb,
+    danger: !accept,
+    note: accept ? undefined : { label: 'Reason', hint: `${NOTE_HINT} The member sees it.`, required: 'Give a reason. The member sees it.' }
+  };
+}
+
 /** Member details and status change with a decision: the list, the member's page and their Trust Score. */
 function useAfterDecision() {
   const qc = useQueryClient();
@@ -80,9 +91,7 @@ function KycPanel({ member }: { member: Account }) {
 
   const decide = (verified: boolean) =>
     setDecision({
-      verb: verified ? 'Verify' : 'Reject',
-      reject: !verified,
-      what: 'this KYC submission',
+      ...review(verified, verified ? 'Verify' : 'Reject', 'this KYC submission'),
       rows: [
         { k: 'Member', v: `${name}, ${member.member?.memberNumber ?? ''}` },
         { k: 'Submitted', v: formatDateTime(kyc.submittedAt, { zone: true }) }
@@ -173,9 +182,7 @@ function AddressPanel({ member }: { member: Account }) {
 
   const decide = (d: AddressDocument, approved: boolean) =>
     setDecision({
-      verb: approved ? 'Approve' : 'Reject',
-      reject: !approved,
-      what: 'this document',
+      ...review(approved, approved ? 'Approve' : 'Reject', 'this document'),
       rows: [
         { k: 'Member', v: `${name}, ${member.member?.memberNumber ?? ''}` },
         { k: 'Document', v: `${documentType(d.documentType)}, issued ${formatDate(d.issueDate)}` }

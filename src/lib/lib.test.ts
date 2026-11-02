@@ -47,7 +47,8 @@ describe('amounts (D-002)', () => {
     expect(formatUsdt('1234.123456789012345678', { full: true })).toBe('1,234.123456789012345678 USDT');
     expect(formatUsdt('90071992547409931.000001', { full: true })).toBe('90,071,992,547,409,931.000001 USDT');
     expect(formatUsdt('1500', { full: true })).toBe('1,500.00 USDT');
-    expect(formatUsdt('1500.10', { full: true })).toBe('1,500.1 USDT');
+    expect(formatUsdt('1500.10', { full: true })).toBe('1,500.10 USDT');
+    expect(formatUsdt('-0.5', { full: true })).toBe('-0.50 USDT');
   });
 
   it('labels KES and BLOCKS the same way', () => {
