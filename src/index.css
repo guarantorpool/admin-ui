@@ -1,0 +1,37 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* The approved wireframe's colour tokens (#142). */
+@layer base {
+  :root {
+    --page: #F6F7F9; --surface: #FFFFFF; --nav: #0B2350; --nav-on: #FFFFFF; --nav-on-fg: #0B2350;
+    --primary: #0B2350; --ink-strong: #0B2350; --ink: #111827; --ink2: #374151; --ink3: #4B5563;
+    --muted: #5B6472; --disabled: #6B7280; --line: #E5E7EB; --line2: #D1D5DB; --ctl: #9CA3AF;
+    --chip: #EDEEF1; --selected: #E3E9F5; --danger: #B91C1C;
+    --ok-bg: #DDF3E0; --ok-fg: #0B5D1E; --warn-bg: #FDF3D7; --warn-fg: #5F4000;
+    --bad-bg: #FBE3E3; --bad-fg: #8F1414; --plan-bg: #E6E3FA; --plan-fg: #3F2BA6;
+    color-scheme: light;
+  }
+  .dark {
+    --page: #0F1621; --surface: #18212F; --nav: #0A1019; --nav-on: #2A3B58; --nav-on-fg: #FFFFFF;
+    --primary: #3D6FCC; --ink-strong: #DCE6F7; --ink: #E6EAF0; --ink2: #C9D1DC; --ink3: #B3BDCB;
+    --muted: #A0ABBB; --disabled: #8894A6; --line: #2B3648; --line2: #364255; --ctl: #64728A;
+    --chip: #263244; --selected: #24344F; --danger: #F87171;
+    --ok-bg: #123A22; --ok-fg: #8FE0A6; --warn-bg: #3D2F0B; --warn-fg: #F2D27A;
+    --bad-bg: #451A1A; --bad-fg: #F9B4B4; --plan-bg: #2C2660; --plan-fg: #C9C2FA;
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-page text-ink font-body antialiased;
+    font-size: 14px;
+    line-height: 1.45;
+  }
+  h1, h2, h3 {
+    @apply font-heading text-ink-strong;
+  }
+  :focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+}
