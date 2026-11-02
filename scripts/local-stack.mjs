@@ -131,8 +131,7 @@ export async function startStack({ quiet = false } = {}) {
         DB_PASSWORD: dbPassword,
         JWT_SECRET: randomBytes(48).toString('base64url'),
         KYC_ENCRYPTION_KEY: `k1:${randomBytes(32).toString('base64')}`,
-        // invitation and reset links open the portal; both portal ports may call the API
-        WEB_URL: 'http://localhost:3001',
+        // admin email links use ADMIN_WEB_URL, whose default is the portal on :3001; both portal ports may call the API
         CORS_ALLOWED_ORIGINS: PORTAL_ORIGINS,
         SYSTEM_ADMIN_EMAIL: admin.email,
         SYSTEM_ADMIN_PASSWORD: admin.password,
