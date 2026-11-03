@@ -1,0 +1,23 @@
+# The portal on the server, behind the backend's Caddy (BlockCoop deploy/Caddyfile), which serves it over HTTPS on
+# ADMIN_DOMAIN. It joins the blockcoop-edge network, which the backend's compose project creates, so deploy the
+# backend first. Set the VITE_ values in .env (see .env.example), then: docker compose up -d --build
+services:
+  web:
+    build:
+      context: .
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:?set VITE_API_BASE_URL in .env}
+        VITE_APP_ENV: ${VITE_APP_ENV:?set VITE_APP_ENV in .env}
+        VITE_IDLE_LOCK_MINUTES: ${VITE_IDLE_LOCK_MINUTES:-5}
+        VITE_TIME_ZONE: ${VITE_TIME_ZONE:-Africa/Nairobi}
+    image: blockcoop-admin-ui:latest
+    networks:
+      edge:
+        # the name the backend's Caddy passes requests to
+        aliases: [admin-web]
+    restart: unless-stopped
+
+networks:
+  edge:
+    name: blockcoop-edge
+    external: true

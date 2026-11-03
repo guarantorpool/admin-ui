@@ -1,0 +1,53 @@
+# Every push to main is tested, then deployed to the server, which pulls it and rebuilds (deploy/deploy.sh).
+# Needs the repository secrets DEPLOY_HOST, DEPLOY_SSH_KEY and DEPLOY_KNOWN_HOSTS (README, Hosting).
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# one deploy at a time; a newer push waits for the running one instead of cutting it off
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+env:
+  PORTAL_URL: https://admin-blockcoop.duckdns.org/
+
+jobs:
+  # Vitest and a build (which typechecks); Playwright needs the backend's local stack, so it isn't run here
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+        env:
+          VITE_API_BASE_URL: https://api.test/api
+          VITE_APP_ENV: ci
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy on the server
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          # the server lets this key run deploy/deploy.sh and nothing else, so no command is sent
+          ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes root@"$DEPLOY_HOST"
+
+      - name: Check it from outside
+        run: curl -fsS -o /dev/null --retry 6 --retry-delay 10 --retry-all-errors "$PORTAL_URL"

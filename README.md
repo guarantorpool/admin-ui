@@ -54,6 +54,20 @@ Quotes and guarantees are seeded the same way. A real quote needs the member's h
 
 Run Playwright's browser install once: `npx playwright install chromium`.
 
+## Hosting
+
+The portal runs on the backend's server, deployed the same way ([D-003](docs/decisions/D-003-hosting-beside-the-backend.md)). [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) runs Vitest and a build on every push to `main`, then logs in to the server, where [`deploy/deploy.sh`](deploy/deploy.sh) pulls `main`, rebuilds the container and waits for it to be healthy. The image ([`Dockerfile`](Dockerfile)) builds the portal and serves it with Caddy ([`deploy/Caddyfile`](deploy/Caddyfile)), which adds the security headers. The backend's Caddy handles HTTPS on `ADMIN_DOMAIN` and passes requests to this container over the `blockcoop-edge` network, which the backend's compose project creates.
+
+To set it up on the server, as root, once the backend is deployed with `ADMIN_DOMAIN` set (BlockCoop `docs/BACKEND_GUIDE.md`, Running with Docker):
+
+1. Clone this repo beside the backend, e.g. `/root/projects/admin-ui`, the same way the backend was cloned.
+2. Copy `.env.example` to `.env` and set `VITE_API_BASE_URL` (e.g. `https://blockcoop.duckdns.org/api`) and `VITE_APP_ENV` (e.g. `dev`). `docker compose` passes them to the build; the ports aren't used on the server. Run `docker compose up -d --build` once.
+3. On the backend, set `ADMIN_WEB_URL` to the portal's address, e.g. `https://admin-blockcoop.duckdns.org`, so CORS allows it and admin emails link to it.
+4. `ssh-keygen -t ed25519 -N "" -f ~/.ssh/gh_actions_admin_ui` and add its public key to `~/.ssh/authorized_keys` as `restrict,command="bash /root/projects/admin-ui/deploy/deploy.sh" ssh-ed25519 AAAA…`, so it can run this deploy and nothing else. The backend's key runs only the backend's.
+5. In this repo's Settings → Secrets and variables → Actions, add `DEPLOY_HOST`, `DEPLOY_SSH_KEY` (the whole private key `~/.ssh/gh_actions_admin_ui`) and `DEPLOY_KNOWN_HOSTS`, as for the backend. Change `PORTAL_URL` in the workflow if the domain differs.
+
+The deploy can also be run by hand on the server with `bash deploy/deploy.sh`, or from the Actions tab (Run workflow).
+
 ## Decisions
 
 The portal keeps its own [decisions](DECISIONS.md) and [risks](RISKS.md), numbered from D-001 and R-001. Backend decisions are cited by name, for example *BlockCoop D-009*.
