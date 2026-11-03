@@ -1,5 +1,5 @@
-import { test, type Page } from '@playwright/test';
-import { apiToken, connect, newMember, post, randomIdNumber, seedDefault, seedGuarantee, seedLoanDocument, seedPoolSamples, seedQuote, seedRefund, signIn, stack, submitAddress, submitKyc, type Member, type SeededGuarantee, type SeededQuote } from './helpers';
+import { expect, test, type Browser, type Page } from '@playwright/test';
+import { apiToken, call, connect, newAdmin, newMember, post, randomIdNumber, seedDefault, seedGuarantee, seedLoanDocument, seedPoolSamples, seedQuote, seedRefund, signIn, stack, submitAddress, submitKyc, type Member, type SeededGuarantee, type SeededQuote } from './helpers';
 
 // Not a check: screenshots for review, only when SHOTS_DIR is set.
 const dir = process.env.SHOTS_DIR;
@@ -50,14 +50,38 @@ async function sampleMembers(): Promise<Member[]> {
   return made;
 }
 
+/**
+ * Pool setting changes for screenshots, made once a run: one applied at once, one approved and one rejected for the
+ * history, and a change and a change set waiting, proposed by a second admin so the first can be shown approving.
+ */
+async function seedSettingSamples(browser: Browser) {
+  const { apiBase, admin } = stack();
+  const token = await apiToken(admin.email, admin.password);
+  const waiting = await call<{ totalResults: number }>('GET', `${apiBase}/parameter-changes?status=pending&key=operating_fee_rate`, undefined, token);
+  if (waiting.totalResults) return;
+  const page = await browser.newPage();
+  const ops = await newAdmin(page, ['PARAMETERS.READ', 'PARAMETERS.PROPOSE', 'PARAMETERS.APPROVE'], 'Operations');
+  await page.close();
+  const theirs = await apiToken(ops.email, ops.password);
+  const patch = <T>(path: string, body: unknown, as: string) => call<T>('PATCH', `${apiBase}${path}`, body, as);
+  await patch('/pool-parameters/invite_max_unused', { value: 12, reason: 'Members asked for more invites' }, token);
+  const grace = await patch<{ id: string }>('/pool-parameters/claim_grace_days', { value: 45, reason: 'Lenders report defaults late' }, token);
+  await patch(`/parameter-changes/${grace.id}/approve`, { note: 'Agreed with the lenders' }, theirs);
+  const alerts = await patch<{ id: string }>('/pool-parameters/alert_refund_count', { value: 5, reason: 'Alert on fewer refunds' }, token);
+  await patch(`/parameter-changes/${alerts.id}/reject`, { note: 'Too noisy at five' }, theirs);
+  await patch('/pool-parameters/operating_fee_rate', { value: 0.025, reason: 'Quarterly review of running costs' }, theirs);
+  await post(`${apiBase}/parameter-change-sets`, { changes: [{ key: 'pillar_weight_identity', value: 0.2 }, { key: 'pillar_weight_activity', value: 0.2 }], reason: 'Identity counts for more once KYC is required' }, theirs);
+}
+
 const settle = (page: Page) => page.waitForLoadState('networkidle');
 
 for (const scheme of ['light', 'dark'] as const) {
-  test(`screens in ${scheme} @shots`, async ({ page }, info) => {
+  test(`screens in ${scheme} @shots`, async ({ page, browser }, info) => {
     const tag = `${info.project.name}-${scheme}`;
     const phone = info.project.name === 'phone';
     await page.emulateMedia({ colorScheme: scheme });
     const [amina, brian] = await sampleMembers();
+    await seedSettingSamples(browser);
     await page.goto('/sign-in');
     await page.screenshot({ path: `${dir}/${tag}-1-sign-in.png` });
     const { admin } = stack();
@@ -224,5 +248,43 @@ for (const scheme of ['light', 'dark'] as const) {
     await proposed.getByRole('button', { name: 'Approve' }).click();
     await page.getByRole('dialog', { name: 'Approve this pool wallet?' }).waitFor();
     await page.screenshot({ path: `${dir}/${tag}-42-wallet-approve.png` });
+    await page.keyboard.press('Escape');
+
+    await page.goto('/pool/settings');
+    await page.getByRole('region', { name: 'Haircuts' }).waitFor();
+    await settle(page);
+    await page.screenshot({ path: `${dir}/${tag}-43-pool-settings.png`, fullPage: true });
+    await page.goto('/pool/settings/claim_grace_days');
+    const setting = page.getByRole('dialog', { name: 'Pool setting' });
+    await setting.getByRole('list', { name: 'Changes to this setting' }).waitFor();
+    await page.screenshot({ path: `${dir}/${tag}-44-setting.png` });
+    await setting.getByRole('button', { name: 'Change this setting' }).click();
+    const change = page.getByRole('dialog', { name: 'Change claim_grace_days' });
+    await change.getByLabel('New value').fill('60');
+    await change.getByLabel('Reason (optional)').fill('Lenders still report late');
+    await page.screenshot({ path: `${dir}/${tag}-45-change-setting.png` });
+    await page.keyboard.press('Escape');
+    await page.goto('/pool/settings');
+    await page.getByRole('button', { name: 'Propose a change set' }).click();
+    const changeSet = page.getByRole('dialog', { name: 'Propose a change set' });
+    // opened before the settings loaded, it still leaves out the two weights with a change waiting
+    await expect(changeSet.getByLabel('Setting 1', { exact: true })).toHaveValue('pillar_weight_relationship');
+    await changeSet.getByLabel('New value for pillar_weight_relationship').fill('0.3');
+    await changeSet.getByLabel('New value for pillar_weight_financial').fill('0.3');
+    await page.screenshot({ path: `${dir}/${tag}-46-change-set.png` });
+    await page.keyboard.press('Escape');
+    await page.goto('/pool/settings?view=waiting');
+    const waitingSet = page.getByRole('list', { name: 'Waiting changes' }).getByRole('listitem').filter({ hasText: 'Change set of 2' });
+    await waitingSet.waitFor();
+    await settle(page);
+    await page.screenshot({ path: `${dir}/${tag}-47-settings-waiting.png` });
+    await waitingSet.getByRole('button', { name: 'Approve' }).click();
+    await page.getByRole('dialog', { name: 'Approve this change set?' }).waitFor();
+    await page.screenshot({ path: `${dir}/${tag}-48-change-set-approve.png` });
+    await page.keyboard.press('Escape');
+    await page.goto('/pool/settings?view=history');
+    await page.getByRole('list', { name: 'Setting changes' }).waitFor();
+    await settle(page);
+    await page.screenshot({ path: `${dir}/${tag}-49-settings-history.png` });
   });
 }
