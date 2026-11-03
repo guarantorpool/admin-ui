@@ -14,6 +14,31 @@ const waiting = (page: Page) => page.getByRole('list', { name: 'Waiting changes'
 const history = (page: Page) => page.getByRole('list', { name: 'Setting changes' }).getByRole('listitem');
 
 test.describe('Pool settings (slice 8)', () => {
+  test('a big group shows six settings at a time, and opens on the setting open', async ({ page }) => {
+    const admin = await newAdmin(page, ['PARAMETERS.READ'], 'Pages');
+    await signIn(page, admin.email, admin.password);
+    await page.goto('/pool/settings');
+    const benchmarks = group(page, 'Trust Score benchmarks');
+    await expect(benchmarks.getByRole('link')).toHaveCount(6);
+    await expect(benchmarks.getByText('Showing 1–6 of 11')).toBeVisible();
+    await expect(row(page, 'benchmark_loans_taken')).toHaveCount(0);
+    await benchmarks.getByRole('button', { name: 'Next page' }).click();
+    await expect(benchmarks.getByRole('link')).toHaveCount(5);
+    await expect(row(page, 'benchmark_loans_taken')).toBeVisible();
+    // the other cards keep their own page, and a small group has no pager
+    await expect(group(page, 'Trust Score activity').getByText('Page 1 of 2')).toBeVisible();
+    await expect(group(page, 'Haircuts').getByRole('button', { name: 'Next page' })).toHaveCount(0);
+
+    await page.goto('/pool/settings/benchmark_loans_taken');
+    await expect(sheet(page)).toBeVisible();
+    // behind the open setting, hidden from assistive tech, the card is on the page with it; closed, it stays there
+    await expect(page.locator('section[aria-label="Trust Score benchmarks"]').getByText('Page 2 of 2')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page).toHaveURL(/\/pool\/settings$/);
+    await expect(benchmarks.getByText('Page 2 of 2')).toBeVisible();
+    await expect(row(page, 'benchmark_loans_taken')).toBeVisible();
+  });
+
   test('shows every setting in its group, and one that applies at once changes straight away', async ({ page }) => {
     const admin = await newAdmin(page, ALL, 'AtOnce');
     await signIn(page, admin.email, admin.password);

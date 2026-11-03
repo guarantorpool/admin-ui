@@ -80,8 +80,8 @@ export function App() {
           <Route path="/pool/health" element={<PoolHealthPage />} />
           <Route path="/pool/wallets" element={<PoolWalletsPage />} />
           <Route path="/pool/wallets/:walletId" element={<PoolWalletsPage />} />
-          <Route path="/pool/settings" element={<PoolSettingsPage />} />
-          <Route path="/pool/settings/:key" element={<PoolSettingsPage />} />
+          {/* one route, so opening and closing a setting keeps each card on its page */}
+          <Route path="/pool/settings/:key?" element={<PoolSettingsPage />} />
           <Route path="/backing" element={<BackingPage />} />
           <Route path="/backing/:memberId" element={<BackingPage />} />
           {allScreens()
