@@ -1,10 +1,15 @@
 #!/usr/bin/env bash
 # Deploys the latest main on the server: GitHub Actions runs it over SSH (.github/workflows/deploy.yml), with a key
-# that can run nothing else, and it can be run by hand. .env is left as it is.
+# that can run nothing else, or the server's timer runs it (deploy/poll.sh), and it can be run by hand. .env is left
+# as it is.
 # The braces make bash read the whole script before running it, so the git reset below can replace this file.
 {
 set -euo pipefail
 cd "$(dirname "$0")/.."
+
+# one deploy at a time, however it was started
+exec 9>.git/deploy.lock
+flock 9
 
 git fetch --quiet origin main
 git reset --hard --quiet origin/main

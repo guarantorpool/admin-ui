@@ -1,5 +1,6 @@
 # Every push to main is tested, then deployed to the server, which pulls it and rebuilds (deploy/deploy.sh).
-# Needs the repository secrets DEPLOY_HOST, DEPLOY_SSH_KEY and DEPLOY_KNOWN_HOSTS (README, Hosting).
+# The deploy job needs the repository secrets DEPLOY_HOST, DEPLOY_SSH_KEY and DEPLOY_KNOWN_HOSTS (README, Hosting).
+# Without them it does nothing, and the server's timer deploys instead once this run's test job passes (deploy/poll.sh).
 name: Deploy
 
 on:
@@ -35,10 +36,16 @@ jobs:
   deploy:
     needs: test
     runs-on: ubuntu-latest
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
     steps:
+      - name: No deploy secrets
+        if: env.DEPLOY_HOST == ''
+        run: echo "No deploy secrets in this repository; the server's timer deploys this commit (deploy/poll.sh)."
+
       - name: Deploy on the server
+        if: env.DEPLOY_HOST != ''
         env:
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
           DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
         run: |
@@ -50,4 +57,5 @@ jobs:
           ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes root@"$DEPLOY_HOST"
 
       - name: Check it from outside
+        if: env.DEPLOY_HOST != ''
         run: curl -fsS -o /dev/null --retry 6 --retry-delay 10 --retry-all-errors "$PORTAL_URL"
