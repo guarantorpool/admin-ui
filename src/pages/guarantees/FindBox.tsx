@@ -1,15 +1,13 @@
 import * as React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { X } from 'lucide-react';
-import { errorMessage } from '@/api/errors';
 import { GUARANTEE_ID, QUOTE_ID } from '@/api/guarantees';
-import { getMember, listMembers } from '@/api/members';
+import { getMember } from '@/api/members';
 import { Input } from '@/components/ui/input';
 import { fullName } from '@/lib/names';
 import { can } from '@/lib/permissions';
+import { MemberMatches } from '@/pages/members/MemberMatches';
 import { useGrants } from '@/session/SessionProvider';
-
-const MATCHES = 6;
 
 /**
  * One box for both: a member, chosen from those whose name, email, phone or member number matches, filters
@@ -28,11 +26,6 @@ export function FindBox({ kind, memberId, onMember, onOpen }: { kind: 'guarantee
     return () => clearTimeout(t);
   }, [text, isId]);
 
-  const found = useQuery({
-    queryKey: ['members', 'list', { page: 1, size: MATCHES, q: search }],
-    queryFn: () => listMembers({ page: 1, size: MATCHES, search }),
-    enabled: members && search.length >= 2
-  });
   const chosen = useQuery({ queryKey: ['members', memberId], queryFn: () => getMember(memberId!), enabled: members && !!memberId });
 
   const submit = (e: React.FormEvent) => {
@@ -49,7 +42,7 @@ export function FindBox({ kind, memberId, onMember, onOpen }: { kind: 'guarantee
     : isId
       ? 'Press Enter to open it.'
       : '';
-  const matches = !isId && search.length >= 2 && search === text.trim() ? found : null;
+  const matches = members && !isId && search.length >= 2 && search === text.trim();
 
   return (
     <div className="flex min-w-0 flex-[1_1_260px] flex-col gap-1.5 sm:max-w-[420px]">
@@ -64,35 +57,13 @@ export function FindBox({ kind, memberId, onMember, onOpen }: { kind: 'guarantee
           onKeyDown={(e) => e.key === 'Escape' && text && (e.stopPropagation(), setText(''))}
         />
         {matches ? (
-          <div className="absolute inset-x-0 top-full z-20 mt-1 overflow-hidden rounded-ctl border border-line bg-surface shadow-[0_8px_24px_rgba(11,35,80,0.16)]">
-            {matches.isPending ? (
-              <p className="m-0 px-3 py-2 text-muted">Finding members…</p>
-            ) : matches.isError ? (
-              <p className="m-0 px-3 py-2 text-bad-fg">{errorMessage(matches.error)}</p>
-            ) : matches.data.results?.length ? (
-              <ul aria-label="Matching members" className="m-0 list-none p-0">
-                {matches.data.results.map((m) => (
-                  <li key={m.id}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onMember(m.id);
-                        setText('');
-                      }}
-                      className="flex min-h-10 w-full flex-col items-start px-3 py-1.5 text-left hover:bg-page focus-visible:bg-page"
-                    >
-                      <span className="font-semibold">{fullName(m) || 'Unnamed member'}</span>
-                      <span className="text-[13px] text-muted">
-                        {m.member?.memberNumber ?? '—'} · {m.phoneNumber ?? '—'}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="m-0 px-3 py-2 text-muted">No members match.</p>
-            )}
-          </div>
+          <MemberMatches
+            search={search}
+            onPick={(m) => {
+              onMember(m);
+              setText('');
+            }}
+          />
         ) : null}
       </form>
       {hint ? (

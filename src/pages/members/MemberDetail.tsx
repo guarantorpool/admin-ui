@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ApiError, errorMessage } from '@/api/errors';
 import { getMember } from '@/api/members';
-import { Badge, Banner } from '@/components/ui/badge';
+import { Banner } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Muted, StatusPill } from '@/components/ui/parts';
 import { TabPanel, Tabs, type TabOption } from '@/components/ui/tabs';
@@ -88,10 +88,9 @@ export function MemberDetail({ memberId, tab, onTab }: { memberId: string; tab: 
           ) : null}
           {canUpdate ? (
             <>
-              <Button variant="outline" disabled title="Coming in slice 9">
+              <Button variant="outline" onClick={() => onTab('backing')}>
                 Set KES deposits and vault savings
               </Button>
-              <Badge tone="plan">Coming in slice 9</Badge>
               <Button variant={disabled ? 'primary' : 'danger'} className="ml-auto" onClick={() => setStatusOpen(true)}>
                 {disabled ? 'Enable the member' : 'Disable the member'}
               </Button>

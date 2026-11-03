@@ -102,9 +102,8 @@ function RowMenu({ member, onStatus }: { member: Account; onStatus: (m: Account)
       </DropdownMenuTrigger>
       <DropdownMenuContent>
         <DropdownMenuItem onSelect={() => onStatus(member)}>{member.status === 'disabled' ? 'Enable the member' : 'Disable the member'}</DropdownMenuItem>
-        <DropdownMenuItem disabled className="flex-col items-start gap-0 py-1.5 text-disabled data-[disabled]:cursor-not-allowed">
-          <span>Set KES deposits and vault savings</span>
-          <span className="text-xs">Coming in slice 9</span>
+        <DropdownMenuItem asChild>
+          <Link to={`/backing/${member.id}`}>Set KES deposits and vault savings</Link>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

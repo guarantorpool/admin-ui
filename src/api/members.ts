@@ -59,3 +59,14 @@ export const disableMember = (id: string, reason: string) =>
   api.patch<Account>(`/members/${id}/disable`, (reason ? { reason } : {}) satisfies Schemas['DisableRequest']);
 
 export const enableMember = (id: string) => api.patch<Account>(`/members/${id}/enable`);
+
+/**
+ * Enters a member's KES non-withdrawable deposits and USDT vault savings, both replaced, for a second admin to
+ * approve. One change waits at a time.
+ */
+export const setAssetBalances = (id: string, kesDeposits: number, usdtVaultSavings: number, note?: string) =>
+  api.put<AssetBalances>(`/members/${id}/asset-balances`, { kesDeposits, usdtVaultSavings, ...(note ? { note } : {}) } satisfies Schemas['AssetBalancesRequest']);
+
+/** Approves or rejects the waiting change; only an admin who didn't enter it can. */
+export const decideAssetBalances = (id: string, approval: 'approve' | 'reject', note?: string) =>
+  api.patch<AssetBalances>(`/members/${id}/asset-balances/${approval}`, (note ? { note } : {}) satisfies Schemas['DecisionRequest']);

@@ -46,7 +46,7 @@ export const NAV: NavEntry[] = [
     { path: '/pool/health', label: 'Pool health', about: "Check the pool's ratios, solvency and extra liquidity.", access: 'POOL.READ' },
     { path: '/pool/wallets', label: 'Pool wallets', about: "Manage the wallet that receives the pool's USDT.", access: 'POOL.READ' },
     { path: '/pool/settings', label: 'Pool settings', about: "Change the pool's settings.", access: 'PARAMETERS.READ' },
-    { path: '/backing', label: 'Backing assets and prices', about: "Set members' KES deposits and vault savings, and see the prices backing is valued at.", access: 'MEMBERS.READ', comingIn: 'slice 9' }
+    { path: '/backing', label: 'Backing assets and prices', about: "Set members' KES deposits and vault savings, and see the prices backing is valued at.", access: 'MEMBERS.READ' }
   ]),
   group('admin', 'Administration', [
     { path: '/admins', label: 'Admins and roles', about: 'Manage who can do what.', access: 'ADMINS.READ', comingIn: 'slice 12' },
