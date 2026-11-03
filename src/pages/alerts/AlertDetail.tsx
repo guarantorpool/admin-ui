@@ -2,7 +2,7 @@ import * as React from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { acknowledgeAlert, alertDetails, findAlert, type Alert } from '@/api/alerts';
+import { acknowledgeAlert, alertDetails, findAlert, newerAlert, type Alert } from '@/api/alerts';
 import { errorMessage } from '@/api/errors';
 import { Banner } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -32,8 +32,8 @@ export function AlertDetail({ alertId, listed }: { alertId: string; listed?: Ale
   const query = useQuery({ queryKey: ['alerts', 'one', alertId], queryFn: () => findAlert(alertId), enabled: !listed });
   const grants = useGrants();
 
-  // an acknowledgement just made is newer than the list's row
-  const alert = query.data ?? listed;
+  // an acknowledgement just made is newer than the list's row, until the list is read again
+  const alert = newerAlert(query.data, listed);
   if (!alert) {
     if (query.isPending) return <Muted>Loading the alert…</Muted>;
     return <Banner tone="bad">{query.isError ? errorMessage(query.error) : "There's no such alert."}</Banner>;

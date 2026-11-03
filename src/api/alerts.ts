@@ -18,13 +18,20 @@ export const listAlerts = (q: AlertQuery) => api.get<Page<Alert>>('/alerts', { q
 
 /** The GP API has no read of one alert, so it's looked for in the list, every status, newest first. */
 export async function findAlert(id: string): Promise<Alert | null> {
-  for (let page = 1; page <= 10; page++) {
+  for (let page = 1; ; page++) {
     const found = await listAlerts({ page, size: 100 });
     const alert = found.results?.find((a) => a.id === id);
     if (alert) return alert;
-    if (page >= (found.totalPages ?? 0)) break;
+    if (page >= (found.totalPages ?? 0)) return null;
   }
-  return null;
+}
+
+const changedAt = (a: Alert) => Math.max(...[a.lastSeenAt, a.acknowledgedAt, a.resolvedAt].map((t) => (t ? Date.parse(t) : 0)));
+
+/** The later of two reads of one alert: whichever saw it last seen, acknowledged or resolved most recently. */
+export function newerAlert(a?: Alert | null, b?: Alert | null): Alert | undefined {
+  if (!a || !b) return a ?? b ?? undefined;
+  return changedAt(a) > changedAt(b) ? a : b;
 }
 
 /** Marks an open alert seen, with what was done about it. It stays acknowledged until its condition clears. */
