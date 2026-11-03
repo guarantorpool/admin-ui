@@ -1,9 +1,11 @@
 import { test, type Page } from '@playwright/test';
-import { apiToken, connect, newMember, post, randomIdNumber, seedDefault, seedGuarantee, seedLoanDocument, seedQuote, seedRefund, signIn, stack, submitAddress, submitKyc, type Member, type SeededGuarantee, type SeededQuote } from './helpers';
+import { apiToken, connect, newMember, post, randomIdNumber, seedDefault, seedGuarantee, seedLoanDocument, seedPoolSamples, seedQuote, seedRefund, signIn, stack, submitAddress, submitKyc, type Member, type SeededGuarantee, type SeededQuote } from './helpers';
 
 // Not a check: screenshots for review, only when SHOTS_DIR is set.
 const dir = process.env.SHOTS_DIR;
 test.skip(!dir, 'SHOTS_DIR not set');
+// every screen in one run, well past the usual minute
+test.setTimeout(240_000);
 
 /** A few connected members, made once for every screenshot run. */
 let members: Member[] | null = null;
@@ -189,5 +191,38 @@ for (const scheme of ['light', 'dark'] as const) {
     await claimPayout.getByLabel('KES per USD that day').fill('129');
     await claimPayout.getByText(/Comes to/).waitFor();
     await page.screenshot({ path: `${dir}/${tag}-35-claim-payout.png` });
+    await page.keyboard.press('Escape');
+
+    seedPoolSamples();
+    await page.goto('/pool/health');
+    await page.getByText('Base default rate').waitFor();
+    await settle(page);
+    await page.screenshot({ path: `${dir}/${tag}-36-pool-health.png`, fullPage: true });
+    await page.goto('/pool/health?view=liquidity');
+    const waiting = page.getByRole('list', { name: 'Movements' }).getByRole('listitem').filter({ hasText: 'Top-up before paying a claim' });
+    await waiting.waitFor();
+    await settle(page);
+    await page.screenshot({ path: `${dir}/${tag}-37-extra-liquidity.png` });
+    await waiting.getByRole('button', { name: 'Approve' }).click();
+    await page.getByRole('dialog', { name: 'Approve this movement?' }).waitFor();
+    await page.screenshot({ path: `${dir}/${tag}-38-movement-approve.png` });
+    await page.keyboard.press('Escape');
+    await page.getByRole('button', { name: 'Enter a movement' }).click();
+    const movement = page.getByRole('dialog', { name: 'Enter a movement of extra liquidity' });
+    await movement.getByLabel('Amount, in USDT').fill('10000');
+    await movement.getByLabel('Reason').fill('Top-up before paying the Mavuno Credit claim');
+    await page.screenshot({ path: `${dir}/${tag}-39-enter-movement.png` });
+    await page.keyboard.press('Escape');
+    await page.goto('/pool/wallets');
+    await page.getByRole('table', { name: 'Pool wallets' }).or(page.getByRole('list', { name: 'Pool wallets' })).waitFor();
+    await settle(page);
+    await page.screenshot({ path: `${dir}/${tag}-40-pool-wallets.png` });
+    await page.getByRole('table', { name: 'Pool wallets' }).or(page.getByRole('list', { name: 'Pool wallets' })).getByRole('link').filter({ hasText: 'Waiting for approval' }).click();
+    const proposed = page.getByRole('dialog', { name: 'Pool wallet details' });
+    await proposed.getByText(/Proposed by earlier-admin/).waitFor();
+    await page.screenshot({ path: `${dir}/${tag}-41-wallet-waiting.png`, fullPage: true });
+    await proposed.getByRole('button', { name: 'Approve' }).click();
+    await page.getByRole('dialog', { name: 'Approve this pool wallet?' }).waitFor();
+    await page.screenshot({ path: `${dir}/${tag}-42-wallet-approve.png` });
   });
 }

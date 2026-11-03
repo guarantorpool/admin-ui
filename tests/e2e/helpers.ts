@@ -9,6 +9,7 @@ interface StackState {
   admin: { email: string; password: string };
   logPath: string;
   dbContainer: string;
+  chainUrl: string;
 }
 
 export function stack(): StackState {
@@ -291,6 +292,52 @@ export function seedDefault(loanId: string, guaranteeId: string, opts: { owed: s
     default_note = 'Missed three payments'${opts.verified ? `, default_verified_at = now() - interval '${opts.daysAgo - 1} days', default_verified_by_email = 'earlier-admin@test.local'` : ''}
     WHERE id = '${loanId}'`);
   sql(`UPDATE guarantees SET status = 'IN_CLAIM' WHERE guarantee_number = '${guaranteeId}'`);
+}
+
+/**
+ * A new Safe on the chain stand-in (scripts/local-stack.mjs), with `owners` new signers of whom `threshold` must
+ * sign. Returns its address, which can then be proposed as a pool wallet.
+ */
+export async function newSafe(owners: number, threshold: number): Promise<{ address: string; owners: string[] }> {
+  const address = Wallet.createRandom().address.toLowerCase();
+  const signers = Array.from({ length: owners }, () => Wallet.createRandom().address.toLowerCase());
+  await post(`${stack().chainUrl}/safes`, { address, owners: signers, threshold });
+  return { address, owners: signers };
+}
+
+/**
+ * Extra liquidity and pool wallets for screenshots, made once: approved and rejected movements and one waiting, and
+ * a current and a retired wallet with a new one waiting. What's waiting is entered as an earlier admin, so the first
+ * admin can be shown approving it; two admins do this through the screens in the tests.
+ */
+export function seedPoolSamples() {
+  const by = `(SELECT id FROM accounts WHERE lower(email) = lower('${stack().admin.email}'))`;
+  const earlier = "'earlier-admin@test.local'";
+  if (sql("SELECT count(*) FROM liquidity_adjustments WHERE note = 'Sacco contribution'") === '0') {
+    const row = (type: string, amount: string, note: string, status: string, days: number) => {
+      const at = `now() - interval '${days} days'`;
+      const decided = status === 'APPROVED' ? `${by}, ${earlier}, ${at} + interval '3 hours', NULL, NULL, NULL` : status === 'REJECTED' ? `NULL, NULL, NULL, ${by}, ${earlier}, ${at} + interval '3 hours'` : 'NULL, NULL, NULL, NULL, NULL, NULL';
+      return `('${randomUUID()}', '${type}', ${amount}, '${note}', '${status}', ${by}, ${status === 'PENDING' ? earlier : `'${stack().admin.email}'`}, ${at}, ${decided}, ${status === 'REJECTED' ? "'Not agreed with the sacco'" : 'NULL'})`;
+    };
+    sql(`INSERT INTO liquidity_adjustments (id, type, amount, note, status, created_by, created_by_email, created_at, approved_by, approved_by_email, approved_at, rejected_by, rejected_by_email, rejected_at, decision_note) VALUES
+      ${row('TOP_UP', '25000', 'Sacco contribution', 'APPROVED', 58)},
+      ${row('WITHDRAWAL', '5000', 'Contribution returned to the sacco', 'APPROVED', 30)},
+      ${row('WITHDRAWAL', '1200', 'Operating costs', 'REJECTED', 9)},
+      ${row('TOP_UP', '10000.5', 'Top-up before paying a claim', 'PENDING', 0)}`);
+  }
+  const signers = (n: number) => Array.from({ length: n }, () => Wallet.createRandom().address.toLowerCase()).join(',');
+  const wallet = (status: string, slot: string, n: number, threshold: number, from: string, until: string, watch: string, proposed: string, note: string, proposer: string) =>
+    `('${randomUUID()}', '${Wallet.createRandom().address.toLowerCase()}', '${status}', ${slot}, '${signers(n)}', ${threshold}, ${from}, ${until}, ${watch}, ${by}, ${proposer}, ${proposed}, '${note}',
+      ${status === 'PROPOSED' ? 'NULL, NULL, NULL' : `${by}, ${earlier}, ${proposed} + interval '3 hours'`}, NULL)`;
+  const cols = 'id, address, status, slot, signers, threshold, current_from, current_until, watch_until, proposed_by, proposed_by_email, proposed_at, proposal_note, decided_by, decided_by_email, decided_at, decision_note';
+  if (sql("SELECT count(*) FROM pool_wallets WHERE status = 'CURRENT'") === '0') {
+    sql(`INSERT INTO pool_wallets (${cols}) VALUES
+      ${wallet('RETIRED', 'NULL', 3, 2, "now() - interval '260 days'", "now() - interval '9 days'", "now() + interval '21 days'", "now() - interval '262 days'", 'First pool wallet', `'${stack().admin.email}'`)},
+      ${wallet('CURRENT', "'CURRENT'", 5, 3, "now() - interval '9 days'", 'NULL', 'NULL', "now() - interval '10 days'", 'Scheduled replacement', `'${stack().admin.email}'`)}`);
+  }
+  if (sql("SELECT count(*) FROM pool_wallets WHERE status = 'PROPOSED'") === '0') {
+    sql(`INSERT INTO pool_wallets (${cols}) VALUES ${wallet('PROPOSED', "'PROPOSED'", 5, 3, 'NULL', 'NULL', 'NULL', "now() - interval '2 hours'", 'One signer replaced: Grace leaves the board', earlier)}`);
+  }
 }
 
 export const randomIdNumber = () =>String(10_000_000 + Math.floor(Math.random() * 89_999_999));

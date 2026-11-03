@@ -10,7 +10,7 @@ import { DecisionDialog, NOTE_HINT, type Decision } from '@/components/ui/decisi
 import { Fields, Item, Items, Muted, StatusPill } from '@/components/ui/parts';
 import { TabPanel, Tabs } from '@/components/ui/tabs';
 import { formatDate, formatDateTime, formatIn, formatNumber, formatUsdt } from '@/lib/format';
-import { loanSource, loanStatus, stepName, stepStatus } from '@/lib/labels';
+import { loanStatus, stepName, stepStatus } from '@/lib/labels';
 import { can } from '@/lib/permissions';
 import { useOpenFile } from '@/lib/useOpenFile';
 import { useMemberName } from '@/pages/members/useMemberName';

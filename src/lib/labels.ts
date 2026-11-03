@@ -245,3 +245,28 @@ const STEP_STATUS: Record<string, Label> = {
 export const stepStatus = (code: string | null | undefined) => pick(STEP_STATUS, code);
 
 export const loanSource = (code: string | null | undefined) => (code === 'guaranteed' ? 'Guaranteed' : code === 'lipa_onchain' ? 'Lipa API' : sentence(code ?? '—'));
+
+// extra liquidity: a movement counts toward Liquid Funds only once a second admin approves it (3.4.3)
+export const movementStatus = stepStatus;
+
+export const movementType = (code: string | null | undefined) => (code === 'top_up' ? 'Into Liquid Funds' : code === 'withdrawal' ? 'Out of Liquid Funds' : sentence(code ?? '—'));
+
+// a pool wallet is proposed, then current once approved, and retired when the next one is approved (BlockCoop #68)
+const WALLET_STATUS: Record<string, Label> = {
+  proposed: { text: 'Waiting for approval', tone: 'warn' },
+  current: { text: 'Current', tone: 'ok' },
+  retired: { text: 'Retired', tone: 'neutral' },
+  rejected: { text: 'Rejected', tone: 'bad' }
+};
+
+export const walletStatus = (code: string | null | undefined) => pick(WALLET_STATUS, code);
+
+// what last recalculated the Correction Factor
+const FACTOR_TRIGGER: Record<string, string> = {
+  scheduled: 'Scheduled recalculation',
+  change: 'A pool total moved',
+  parameter: 'A pool setting changed',
+  valuation: 'Prices changed'
+};
+
+export const factorTrigger = (code: string | null | undefined) => (code ? FACTOR_TRIGGER[code] ?? sentence(code) : '—');

@@ -43,8 +43,8 @@ export const NAV: NavEntry[] = [
     { path: '/refunds', label: 'Refunds', about: 'Money owed back to members, and recording payouts.', access: 'REFUNDS.READ' }
   ]),
   group('pool', 'Pool', [
-    { path: '/pool/health', label: 'Pool health', about: "Check the pool's ratios, solvency and extra liquidity.", access: 'POOL.READ', comingIn: 'slice 7' },
-    { path: '/pool/wallets', label: 'Pool wallets', about: "Manage the wallet that receives the pool's USDT.", access: 'POOL.READ', comingIn: 'slice 7' },
+    { path: '/pool/health', label: 'Pool health', about: "Check the pool's ratios, solvency and extra liquidity.", access: 'POOL.READ' },
+    { path: '/pool/wallets', label: 'Pool wallets', about: "Manage the wallet that receives the pool's USDT.", access: 'POOL.READ' },
     { path: '/pool/settings', label: 'Pool settings', about: "Change the pool's settings.", access: 'PARAMETERS.READ', comingIn: 'slice 8' },
     { path: '/backing', label: 'Backing assets and prices', about: "Set members' KES deposits and vault savings, and see the prices backing is valued at.", access: 'MEMBERS.READ', comingIn: 'slice 9' }
   ]),
