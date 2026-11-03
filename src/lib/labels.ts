@@ -205,3 +205,68 @@ const REFUND_WHY: Record<string, string> = {
 };
 
 export const refundWhy = (code: string | null | undefined) => (code ? REFUND_WHY[code] ?? sentence(code) : '—');
+
+// A guaranteed loan is open until the lender reports it repaid or defaulted. A default's claim is verified against
+// its documents, paid once claim_waiting_days have passed, then recovered or written off (3.5).
+interface LoanState {
+  status?: string;
+  claimPaid?: string;
+  defaultVerifiedAt?: string;
+  recoveryClosedAt?: string;
+  writtenOff?: boolean;
+}
+
+export function loanStatus(l: LoanState): Label {
+  if (l.status === 'open') return { text: 'Open', tone: 'ok' };
+  if (l.status === 'repaid') return { text: 'Repaid', tone: 'neutral' };
+  if (l.status !== 'defaulted') return pick({}, l.status);
+  if (!l.claimPaid) return l.defaultVerifiedAt ? { text: 'Claim waiting', tone: 'bad' } : { text: 'Default, not verified', tone: 'bad' };
+  if (l.writtenOff) return { text: 'Written off', tone: 'neutral' };
+  return l.recoveryClosedAt ? { text: 'Recovered', tone: 'ok' } : { text: 'Claim paid, recovering', tone: 'warn' };
+}
+
+// what each step waiting on a loan, or done on it, is called
+const STEP: Record<string, string> = {
+  repayment: 'Repaid in full',
+  default: 'Default reported',
+  reversal: 'Default reversed',
+  payout: 'Claim paid',
+  write_off: 'Written off'
+};
+
+export const stepName = (code: string | null | undefined) => (code ? STEP[code] ?? sentence(code) : '—');
+
+const STEP_STATUS: Record<string, Label> = {
+  pending: { text: 'Waiting for approval', tone: 'warn' },
+  approved: { text: 'Approved', tone: 'ok' },
+  rejected: { text: 'Rejected', tone: 'bad' }
+};
+
+export const stepStatus = (code: string | null | undefined) => pick(STEP_STATUS, code);
+
+export const loanSource = (code: string | null | undefined) => (code === 'guaranteed' ? 'Guaranteed' : code === 'lipa_onchain' ? 'Lipa API' : sentence(code ?? '—'));
+
+// extra liquidity: a movement counts toward Liquid Funds only once a second admin approves it (3.4.3)
+export const movementStatus = stepStatus;
+
+export const movementType = (code: string | null | undefined) => (code === 'top_up' ? 'Into Liquid Funds' : code === 'withdrawal' ? 'Out of Liquid Funds' : sentence(code ?? '—'));
+
+// a pool wallet is proposed, then current once approved, and retired when the next one is approved (BlockCoop #68)
+const WALLET_STATUS: Record<string, Label> = {
+  proposed: { text: 'Waiting for approval', tone: 'warn' },
+  current: { text: 'Current', tone: 'ok' },
+  retired: { text: 'Retired', tone: 'neutral' },
+  rejected: { text: 'Rejected', tone: 'bad' }
+};
+
+export const walletStatus = (code: string | null | undefined) => pick(WALLET_STATUS, code);
+
+// what last recalculated the Correction Factor
+const FACTOR_TRIGGER: Record<string, string> = {
+  scheduled: 'Scheduled recalculation',
+  change: 'A pool total moved',
+  parameter: 'A pool setting changed',
+  valuation: 'Prices changed'
+};
+
+export const factorTrigger = (code: string | null | undefined) => (code ? FACTOR_TRIGGER[code] ?? sentence(code) : '—');

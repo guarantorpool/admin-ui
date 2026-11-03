@@ -35,16 +35,16 @@ export const NAV: NavEntry[] = [
   ]),
   group('guarantees', 'Guarantees', [
     { path: '/guarantees', label: 'Guarantees and quotes', about: 'Every guarantee and quote, with its pricing and payments.', access: 'GUARANTEES.READ' },
-    { path: '/loans', label: 'Loans and lender reports', about: 'Record what lenders report about guaranteed loans.', access: 'GUARANTEES.READ', comingIn: 'slice 6' },
-    { path: '/claims', label: 'Claims', about: 'Pay lenders when a guaranteed loan defaults.', access: 'GUARANTEES.READ', comingIn: 'slice 6' }
+    { path: '/loans', label: 'Loans and lender reports', about: 'Record what lenders report about guaranteed loans.', access: 'GUARANTEES.READ' },
+    { path: '/claims', label: 'Claims', about: 'Pay lenders when a guaranteed loan defaults.', access: 'GUARANTEES.READ' }
   ]),
   group('money', 'Money', [
     { path: '/payments', label: 'Payments', about: 'Every premium payment, across guarantees.', access: 'GUARANTEES.READ', comingIn: 'Phase B' },
     { path: '/refunds', label: 'Refunds', about: 'Money owed back to members, and recording payouts.', access: 'REFUNDS.READ' }
   ]),
   group('pool', 'Pool', [
-    { path: '/pool/health', label: 'Pool health', about: "Check the pool's ratios, solvency and extra liquidity.", access: 'POOL.READ', comingIn: 'slice 7' },
-    { path: '/pool/wallets', label: 'Pool wallets', about: "Manage the wallet that receives the pool's USDT.", access: 'POOL.READ', comingIn: 'slice 7' },
+    { path: '/pool/health', label: 'Pool health', about: "Check the pool's ratios, solvency and extra liquidity.", access: 'POOL.READ' },
+    { path: '/pool/wallets', label: 'Pool wallets', about: "Manage the wallet that receives the pool's USDT.", access: 'POOL.READ' },
     { path: '/pool/settings', label: 'Pool settings', about: "Change the pool's settings.", access: 'PARAMETERS.READ', comingIn: 'slice 8' },
     { path: '/backing', label: 'Backing assets and prices', about: "Set members' KES deposits and vault savings, and see the prices backing is valued at.", access: 'MEMBERS.READ', comingIn: 'slice 9' }
   ]),

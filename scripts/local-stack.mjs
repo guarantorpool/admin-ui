@@ -7,6 +7,9 @@
 //
 // Playwright starts and stops it the same way (tests/e2e/global-setup.ts).
 //
+// The chain is a stand-in on this machine too (startChain): it knows only the Safes registered with it, so a pool
+// wallet can be proposed and approved, and every other read is refused as an unreachable chain would refuse it.
+//
 // Settings for this script only, not for the portal's .env:
 //   BLOCKCOOP_DIR     the backend repo (default ../BlockCoop); its jar is built with ./mvnw package
 //   STACK_API_PORT    the backend's port (default 8080, which VITE_API_BASE_URL points at)
@@ -14,6 +17,7 @@
 
 import { spawn, execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
+import { createServer } from 'node:http';
 import { createWriteStream, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -74,6 +78,62 @@ export async function waitForMail(logPath, to, subject, { skip = 0, timeoutMs = 
 export const loginCode = (mail) => /login code is:\s*(\d{6})/.exec(mail.body)?.[1];
 export const linkIn = (mail, route) => new RegExp(`https?://\\S+/${route}\\?token=\\S+`).exec(mail.body)?.[0];
 
+// ------------------------------------------------------------------ the chain stand-in
+
+const SAFE_CALLS = { '0xa0e67e2b': 'getOwners', '0xe75235b8': 'getThreshold' };
+const word = (hex) => hex.replace(/^0x/, '').padStart(64, '0');
+
+/**
+ * A JSON-RPC stand-in for BNB Smart Chain, on a free local port. It answers the three reads that check a pool wallet
+ * (the block number, a contract's code, a Safe's getOwners and getThreshold) for the Safes registered with
+ * `POST /safes` ({ address, owners, threshold }); any other call gets a JSON-RPC error, so the backend's other chain
+ * reads fail as they would with no chain at all.
+ */
+export async function startChain() {
+  const safes = new Map();
+  const answer = ({ method, params = [] }) => {
+    if (method === 'eth_blockNumber') return '0x100';
+    if (method === 'eth_getCode') return safes.has(String(params[0]).toLowerCase()) ? '0x6080' : '0x';
+    if (method === 'eth_call') {
+      const safe = safes.get(String(params[0]?.to).toLowerCase());
+      const call = SAFE_CALLS[String(params[0]?.data).slice(0, 10)];
+      if (safe && call === 'getOwners') return '0x' + word('20') + word(safe.owners.length.toString(16)) + safe.owners.map(word).join('');
+      if (safe && call === 'getThreshold') return '0x' + word(safe.threshold.toString(16));
+    }
+    throw new Error(`${method} is not answered by the local chain`);
+  };
+  const server = createServer((req, res) => {
+    let body = '';
+    req.on('data', (c) => (body += c));
+    req.on('end', () => {
+      res.setHeader('content-type', 'application/json');
+      try {
+        const json = JSON.parse(body || '{}');
+        if (req.url === '/safes') {
+          safes.set(json.address.toLowerCase(), { owners: json.owners.map((o) => o.toLowerCase()), threshold: json.threshold });
+          res.end('{}');
+          return;
+        }
+        try {
+          res.end(JSON.stringify({ jsonrpc: '2.0', id: json.id, result: answer(json) }));
+        } catch (e) {
+          res.end(JSON.stringify({ jsonrpc: '2.0', id: json.id, error: { code: -32000, message: e.message } }));
+        }
+      } catch {
+        res.statusCode = 400;
+        res.end('{}');
+      }
+    });
+  });
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  const close = () =>
+    new Promise((r) => {
+      server.close(r);
+      server.closeAllConnections();
+    });
+  return { url: `http://127.0.0.1:${server.address().port}`, close };
+}
+
 /**
  * Starts Postgres and the backend. Returns how to reach them and stop(), which removes the container
  * and the log folder.
@@ -90,6 +150,7 @@ export async function startStack({ quiet = false } = {}) {
   const dbPassword = randomBytes(18).toString('base64url');
   const name = `gp-admin-stack-${randomBytes(4).toString('hex')}`;
   let backend = null;
+  let chain = null;
   let stopped = false;
 
   const stop = async () => {
@@ -99,6 +160,7 @@ export async function startStack({ quiet = false } = {}) {
       backend.kill();
       await Promise.race([new Promise((r) => backend.once('exit', r)), sleep(10_000)]);
     }
+    await chain?.close();
     try {
       docker('stop', '-t', '2', name);
     } catch {
@@ -118,6 +180,7 @@ export async function startStack({ quiet = false } = {}) {
       return true;
     }, 60_000);
 
+    chain = await startChain();
     say(`Starting the backend from ${jar} on port ${apiPort}…`);
     const log = createWriteStream(logPath);
     backend = spawn('java', ['-jar', jar], {
@@ -144,9 +207,10 @@ export async function startStack({ quiet = false } = {}) {
         VALUATION_CRON: '-',
         FACTOR_REFRESH_ENABLED: 'false',
         GUARANTEE_JOBS_ENABLED: 'false',
-        // a member's wallet sign-in reads the chain in the background (locked BLOCKS, Lipa activity); this
-        // address refuses at once, so nothing leaves the machine and locked BLOCKS stay 0
-        BSC_RPC_URLS: 'http://127.0.0.1:9',
+        // the chain stand-in: it answers for registered Safes only, so a member's wallet sign-in, which reads the
+        // chain in the background (locked BLOCKS, Lipa activity), is refused, nothing leaves the machine and
+        // locked BLOCKS stay 0
+        BSC_RPC_URLS: chain.url,
         ALCHEMY_BSC_URL: '',
         // test runs sign in more often than a person would
         SPRING_APPLICATION_JSON: JSON.stringify({ 'app.rate-limit.enabled': false })
@@ -162,7 +226,7 @@ export async function startStack({ quiet = false } = {}) {
       exited
     ]);
     say('Ready.');
-    return { apiBase: `http://localhost:${apiPort}/api`, apiPort, admin, logPath, dir, dbContainer: name, stop };
+    return { apiBase: `http://localhost:${apiPort}/api`, apiPort, admin, logPath, dir, dbContainer: name, chainUrl: chain.url, stop };
   } catch (e) {
     const err = new Error(`${e.message}${backend ? `\n${tail(logPath)}` : ''}`);
     await stop();
