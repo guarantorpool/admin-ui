@@ -5,7 +5,7 @@ import { apiToken, call, connect, newAdmin, newMember, post, randomIdNumber, see
 const dir = process.env.SHOTS_DIR;
 test.skip(!dir, 'SHOTS_DIR not set');
 // every screen in one run, well past the usual minute
-test.setTimeout(240_000);
+test.setTimeout(600_000);
 
 /** A few connected members, made once for every screenshot run. */
 let members: Member[] | null = null;
@@ -105,6 +105,8 @@ for (const scheme of ['light', 'dark'] as const) {
     const tag = `${info.project.name}-${scheme}`;
     const phone = info.project.name === 'phone';
     await page.emulateMedia({ colorScheme: scheme });
+    // most screens are opened by their address, which isn't activity; the run takes longer than the idle lock
+    await page.addInitScript(() => localStorage.setItem('blockcoop-admin.activity', String(Date.now())));
     const [amina, brian] = await sampleMembers();
     await seedSettingSamples(browser);
     await seedBackingSamples(browser, amina!);
@@ -138,7 +140,8 @@ for (const scheme of ['light', 'dark'] as const) {
       await settle(page);
       await page.screenshot({ path: `${dir}/${tag}-11-members-list-view.png` });
       await page.getByRole('button', { name: 'Table', exact: true }).click();
-      await page.getByRole('button', { name: `Options for ${amina!.name}` }).click();
+      // by her number: a run that starts again after a failure makes another Amina
+      await page.getByRole('row').filter({ hasText: amina!.number }).getByRole('button', { name: `Options for ${amina!.name}` }).click();
       await page.screenshot({ path: `${dir}/${tag}-12-member-options.png` });
       await page.keyboard.press('Escape');
       await page.goto(`/members/${amina!.id}`);
