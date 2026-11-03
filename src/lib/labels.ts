@@ -318,6 +318,34 @@ const ALERT_TYPE: Record<string, string> = {
 
 export const ALERT_TYPES = Object.keys(ALERT_TYPE);
 
+// what an activity record says happened; the last six are read on-chain, never imported (BlockCoop D-017, D-019)
+const FACT_TYPE: Record<string, string> = {
+  DEPOSIT: 'Deposit',
+  WITHDRAWAL: 'Withdrawal',
+  LOAN_DISBURSED: 'Loan paid out',
+  LOAN_REPAYMENT: 'Loan repayment',
+  BLOCKS_STAKED: 'BLOCKS staked',
+  BLOCKS_UNSTAKED: 'BLOCKS unstaked',
+  BLOCKS_LOCKED: 'BLOCKS locked',
+  BLOCKS_UNLOCKED: 'BLOCKS unlocked',
+  LIPA_PAYMENT: 'Lipa payment in BLOCKS',
+  LIPA_TOKEN_PAYMENT: 'Lipa payment in USDT',
+  LIPA_BUY: 'BLOCKS bought through Lipa',
+  LIPA_LOCK: 'Lipa savings lock'
+};
+
+export const FACT_TYPES = Object.keys(FACT_TYPE);
+
+/** The types a CSV file may hold. */
+export const IMPORTABLE_FACT_TYPES = FACT_TYPES.slice(0, 6);
+
+export const factType = (code: string | null | undefined) => (code ? FACT_TYPE[code] ?? sentence(code) : '—');
+
+const FACT_VIA: Record<string, string> = { API: 'Service key', CSV: 'CSV import', SEED: 'Seed data', ONCHAIN: 'On-chain' };
+
+/** How an activity record reached the GP API. */
+export const factVia = (code: string | null | undefined) => (code ? FACT_VIA[code] ?? sentence(code) : '—');
+
 export const alertType = (code: string | null | undefined) => (code ? ALERT_TYPE[code] ?? sentence(code) : '—');
 
 // the figures an alert carries, by their key in its details
