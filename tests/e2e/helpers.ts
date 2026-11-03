@@ -265,6 +265,41 @@ export function seedRefund(on: { paymentId: string } | { quote: SeededQuote }, o
   return id;
 }
 
+export interface SeededAlert {
+  type: string;
+  severity?: 'INFO' | 'WARNING' | 'CRITICAL';
+  summary: string;
+  details?: Record<string, unknown>;
+  status?: 'OPEN' | 'ACKNOWLEDGED' | 'RESOLVED';
+  count?: number;
+  /** when it was last seen; first seen a day before that */
+  minutesAgo?: number;
+  note?: string;
+}
+
+/**
+ * A pool alert as the backend raises one. Most need a failure the local stack can't make happen (a refused Lipa
+ * payment, a stale KES rate), so it goes straight into the throwaway database, under a condition no other has.
+ * Returns its id.
+ */
+export function seedAlert(a: SeededAlert): string {
+  const id = randomUUID();
+  const text = (v: string) => `'${v.replace(/'/g, "''")}'`;
+  const status = a.status ?? 'OPEN';
+  const key = `e2e-${id}`;
+  const last = `now() - interval '${a.minutesAgo ?? 1} minutes'`;
+  const acknowledged = status === 'ACKNOWLEDGED' || (status === 'RESOLVED' && a.note);
+  sql(`INSERT INTO pool_alerts (id, type, severity, dedupe_key, open_key, summary, details, first_seen_at, last_seen_at, seen_count, status,
+    acknowledged_by_email, acknowledged_at, acknowledge_note, resolved_at)
+    VALUES ('${id}', '${a.type}', '${a.severity ?? 'CRITICAL'}', '${key}', ${status === 'RESOLVED' ? 'NULL' : text(`${a.type}:${key}`)}, ${text(a.summary)},
+    ${a.details ? text(JSON.stringify(a.details)) : 'NULL'}, ${last} - interval '1 day', ${last}, ${a.count ?? 1}, '${status}',
+    ${acknowledged ? `'earlier-admin@test.local', ${last}, ${text(a.note ?? 'Looked into it')}` : 'NULL, NULL, NULL'}, ${status === 'RESOLVED' ? 'now()' : 'NULL'})`);
+  return id;
+}
+
+/** The backend seeing an alert's condition clear. */
+export const resolveAlert = (id: string) => sql(`UPDATE pool_alerts SET status = 'RESOLVED', open_key = NULL, resolved_at = now() WHERE id = '${id}'`);
+
 /**
  * A lender's document on a loan. Attaching one stores the file in Cloudflare R2, which a local run doesn't reach,
  * so its record goes straight into the throwaway database, as seedUpload's does. Returns its id.

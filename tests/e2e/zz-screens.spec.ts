@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
-import { apiToken, call, connect, newAdmin, newMember, post, randomIdNumber, seedDefault, seedGuarantee, seedLoanDocument, seedPoolSamples, seedQuote, seedRefund, signIn, stack, submitAddress, submitKyc, type Member, type SeededGuarantee, type SeededQuote } from './helpers';
+import { apiToken, call, connect, newAdmin, newMember, post, randomIdNumber, seedDefault, seedGuarantee, seedLoanDocument, seedAlert, seedPoolSamples, seedQuote, seedRefund, signIn, stack, submitAddress, submitKyc, type Member, type SeededGuarantee, type SeededQuote } from './helpers';
 
 // Not a check: screenshots for review, only when SHOTS_DIR is set.
 const dir = process.env.SHOTS_DIR;
@@ -87,6 +87,15 @@ async function seedBackingSamples(browser: Browser, member: Member) {
   await call('PUT', at, { kesDeposits: 120000, usdtVaultSavings: 350.5, note: 'From the March sacco statement' }, token);
   await call('PATCH', `${at}/approve`, { note: 'Matches the statement' }, theirs);
   await call('PUT', at, { kesDeposits: 135250.75, usdtVaultSavings: 410.125, note: 'April statement: deposits and savings up' }, theirs);
+}
+
+/** A few alerts for each run, the newest a refused Lipa payment; returns its id. */
+function seedAlertSamples(): string {
+  const days = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString();
+  seedAlert({ type: 'REFUND_HELD_TOO_LONG', severity: 'WARNING', summary: '2 refund(s) owed and not paid back for more than 36 hours', status: 'ACKNOWLEDGED', note: 'Paying both back today', count: 4, minutesAgo: 95, details: { refunds: 2, heldHours: 36, oldestSince: days(-2) } });
+  seedAlert({ type: 'ONCHAIN_READER_FAILING', severity: 'WARNING', summary: 'The lp reader has failed 3 runs in a row (14 member(s) last run)', status: 'RESOLVED', count: 3, minutesAgo: 300, details: { reader: 'lp', failedMembers: 14, runsInARow: 3, threshold: 3 } });
+  seedAlert({ type: 'KES_RATE_STALE', summary: 'The KES rate is out of date, so KES deposits count for nothing as backing', count: 12, minutesAgo: 20, details: { rateSource: 'manual', rateUpdatedAt: days(-3), maxAgeHours: 48 } });
+  return seedAlert({ type: 'LIPA_PAYMENT_REFUSED', summary: 'A Lipa payment for quote GPQ-7KD2QX was refused: the amount sent was less than the amount due', minutesAgo: 0, details: { quoteId: 'GPQ-7KD2QX', paymentId: 'lipa-pay-81273', txHash: '0x5f2c9a41e7b3d8f06a1c4e92b7d35f8a0c6e1b49d27f3a85c0e64b1d9f72a3c8', reason: 'the amount sent was less than the amount due' } });
 }
 
 const settle = (page: Page) => page.waitForLoadState('networkidle');
@@ -323,6 +332,22 @@ for (const scheme of ['light', 'dark'] as const) {
     await enter.getByLabel('KES non-withdrawable deposits').fill('48000');
     await enter.getByLabel('Note (optional)').fill('From the sacco statement');
     await page.screenshot({ path: `${dir}/${tag}-53-backing-enter.png` });
+    await page.keyboard.press('Escape');
+
+    const refused = seedAlertSamples();
+    await page.goto('/alerts');
+    await page.getByRole('table', { name: 'Alerts' }).or(page.getByRole('list', { name: 'Alerts' })).waitFor();
+    await settle(page);
+    await page.screenshot({ path: `${dir}/${tag}-54-alerts.png` });
+    await page.goto(`/alerts/${refused}`);
+    const alert = page.getByRole('dialog', { name: 'Alert details' });
+    await alert.getByRole('region', { name: 'What triggered it' }).waitFor();
+    await alert.getByLabel('What was done').fill('Asked the member to pay the rest; Lipa refunds the short payment');
+    await page.screenshot({ path: `${dir}/${tag}-55-alert.png`, fullPage: true });
+    await page.keyboard.press('Escape');
+    await page.getByRole('button', { name: /^Notifications/ }).click();
+    await page.getByRole('menu').getByRole('menuitem').first().waitFor();
+    await page.screenshot({ path: `${dir}/${tag}-56-bell.png` });
     await page.keyboard.press('Escape');
   });
 }

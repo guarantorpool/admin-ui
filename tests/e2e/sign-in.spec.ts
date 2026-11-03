@@ -8,7 +8,7 @@ test.describe('sign-in (slice 1)', () => {
     // the system admin's first screen until the dashboard exists
     await expect(page).toHaveURL(/\/alerts$/);
     await expect(page.getByRole('heading', { name: 'Alerts' })).toBeVisible();
-    await expect(page.getByText('Coming in slice 10')).toBeVisible();
+    await expect(page.getByRole('group', { name: 'Status' }).getByRole('button', { name: /^Open/ })).toBeVisible();
     await expect(page.getByText('Local', { exact: true })).toBeVisible();
     const nav = page.getByRole('navigation', { name: 'Admin screens' });
     for (const group of ['Members', 'Guarantees', 'Money', 'Pool', 'Administration']) await expect(nav.getByRole('button', { name: group })).toBeVisible();

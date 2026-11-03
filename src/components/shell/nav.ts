@@ -27,7 +27,7 @@ const group = (id: string, label: string, items: Screen[]): NavEntry => ({ kind:
 export const NAV: NavEntry[] = [
   direct({ path: '/dashboard', label: 'Dashboard', about: 'What needs attention, and the pool at a glance.', access: 'ANY', comingIn: 'Phase E' }),
   direct({ path: '/approvals', label: 'Approvals inbox', about: 'Everything waiting for a second admin, in one list.', access: 'ANY', comingIn: 'Phase B' }),
-  direct({ path: '/alerts', label: 'Alerts', about: "Pool alerts, and acknowledging them with a note.", access: 'ALERTS.READ', comingIn: 'slice 10' }),
+  direct({ path: '/alerts', label: 'Alerts', about: "Pool alerts, and acknowledging them with a note.", access: 'ALERTS.READ' }),
   group('members', 'Members', [
     { path: '/members', label: 'All members', about: 'Find a member and see everything about them.', access: 'MEMBERS.READ' },
     { path: '/kyc', label: 'KYC and address review', about: "Check members' identity and address documents.", access: ['MEMBERS.READ', 'MEMBERS.KYC'] },
