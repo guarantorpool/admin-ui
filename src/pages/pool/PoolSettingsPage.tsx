@@ -6,6 +6,7 @@ import { getParameter, listChanges, listParameters, type Parameter } from '@/api
 import { PageHeader } from '@/components/shell/AppShell';
 import { Badge, Banner } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Pager } from '@/components/ui/pager';
 import { Fields, Muted, SectionTitle } from '@/components/ui/parts';
 import { Rows, type Column } from '@/components/ui/rows';
 import { Sheet } from '@/components/ui/sheet';
@@ -25,6 +26,8 @@ import { ChangeDialog, ChangeSetDialog } from './SettingForms';
 const VIEWS = ['current', 'waiting', 'history'] as const;
 type View = (typeof VIEWS)[number];
 const DEFAULT_SIZE = 25;
+// settings on a group's card at a time
+const GROUP_SIZE = 6;
 
 /** A setting's key, breaking only after an underscore when it doesn't fit: pillar_weight_ / relationship. */
 function KeyName({ name }: { name: string | undefined }) {
@@ -138,22 +141,35 @@ function Current({ settings, loading }: { settings: Parameter[]; loading: boolea
       <Muted>Most settings take two admins: one proposes a change and a different one approves it. The five under "Applies at once" change straight away when changed on their own. Open a setting to change it or see its history.</Muted>
       <div className="grid items-start gap-3.5 xl:grid-cols-2">
         {groupSettings(settings).map((g) => (
-          <section key={g.title} aria-label={g.title} className="flex min-w-0 flex-col overflow-hidden rounded-card border border-line bg-surface">
-            <h2 className="m-0 px-4 pb-1 pt-3.5 text-base font-bold">{g.title}</h2>
-            <Rows<Parameter>
-              label={g.title}
-              rows={g.settings}
-              rowKey={(p) => p.key!}
-              columns={COLUMNS}
-              grid="grid-cols-[minmax(0,1fr)_5.5rem_10rem]"
-              minWidth={480}
-              linkFor={(p) => `/pool/settings/${encodeURIComponent(p.key!)}${search ? `?${search}` : ''}`}
-              sub={(p) => `Value ${settingValue(p.key, p.value)}`}
-            />
-          </section>
+          <SettingGroup key={g.title} title={g.title} settings={g.settings} search={search} />
         ))}
       </div>
     </>
+  );
+}
+
+/** One group's card, a page of settings at a time so no card grows past the rest; it opens on the setting open. */
+function SettingGroup({ title, settings, search }: { title: string; settings: Parameter[]; search: string }) {
+  const { key } = useParams();
+  const [page, setPage] = React.useState(() => Math.floor(Math.max(0, settings.findIndex((p) => p.key === key)) / GROUP_SIZE) + 1);
+  const pages = Math.ceil(settings.length / GROUP_SIZE);
+  // a group can shrink under the page shown, when a setting moves to "Applies at once"
+  const shown = Math.min(page, Math.max(1, pages));
+  return (
+    <section aria-label={title} className="flex min-w-0 flex-col overflow-hidden rounded-card border border-line bg-surface">
+      <h2 className="m-0 px-4 pb-1 pt-3.5 text-base font-bold">{title}</h2>
+      <Rows<Parameter>
+        label={title}
+        rows={settings.slice((shown - 1) * GROUP_SIZE, shown * GROUP_SIZE)}
+        rowKey={(p) => p.key!}
+        columns={COLUMNS}
+        grid="grid-cols-[minmax(0,1fr)_5.5rem_10rem]"
+        minWidth={480}
+        linkFor={(p) => `/pool/settings/${encodeURIComponent(p.key!)}${search ? `?${search}` : ''}`}
+        sub={(p) => `Value ${settingValue(p.key, p.value)}`}
+      />
+      {pages > 1 ? <Pager page={shown} size={GROUP_SIZE} total={settings.length} onPage={setPage} /> : null}
+    </section>
   );
 }
 
