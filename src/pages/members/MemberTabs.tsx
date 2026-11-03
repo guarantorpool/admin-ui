@@ -54,6 +54,7 @@ import { fullName } from "@/lib/names";
 import { BackingPanel } from "@/pages/backing/BackingPanel";
 import { can } from "@/lib/permissions";
 import { useOpenFile } from "@/lib/useOpenFile";
+import { cn } from "@/lib/utils";
 import { useGrants } from "@/session/SessionProvider";
 
 // D-002: this is a detail view, so amounts are at full precision.
@@ -191,6 +192,8 @@ export function BackingTab({ member }: { member: Account }) {
 export function TrustTab({ member }: { member: Account }) {
   const id = member.id!;
   const [page, setPage] = React.useState(1);
+  // the pillars whose inputs are showing; each folds away under its own row
+  const [open, setOpen] = React.useState<ReadonlySet<string>>(new Set());
   const query = useQuery({
     queryKey: ["members", id, "trust"],
     queryFn: () => getTrustScore(id),
@@ -200,34 +203,61 @@ export function TrustTab({ member }: { member: Account }) {
     queryFn: () => getTrustScoreHistory(id, page, HISTORY_SIZE),
     placeholderData: keepPreviousData,
   });
+  const toggle = (pillar: string) =>
+    setOpen((was) => {
+      const next = new Set(was);
+      if (!next.delete(pillar)) next.add(pillar);
+      return next;
+    });
   return (
     <Loaded query={query} what="the Trust Score">
       {(t) => {
         const pillars = PILLARS.map((p) =>
           t.pillars?.find((x) => x.pillar === p),
         ).filter((p) => p !== undefined);
+        const metrics = t.metrics ?? [];
+        // the four pillars in order, then any other one a metric names
+        const groups = [
+          ...new Set<string>([
+            ...PILLARS,
+            ...metrics.map((m) => m.pillar ?? ""),
+          ]),
+        ]
+          .map((p) => ({
+            pillar: p,
+            of: t.pillars?.find((x) => x.pillar === p),
+            metrics: metrics.filter((m) => (m.pillar ?? "") === p),
+          }))
+          .filter((g) => g.metrics.length);
+        const allOpen = groups.every((g) => open.has(g.pillar));
         return (
           <div className="flex flex-col gap-3.5">
-            <StatTiles
-              tiles={[
-                {
-                  label: "Trust Score",
-                  value: t.trustScore === undefined ? "—" : score(t.trustScore),
-                  unit: "of 100",
-                  note: t.calculatedAt
-                    ? `Weighted across the four pillars. Last changed ${formatDateTime(t.calculatedAt, { zone: true })}`
-                    : "Not calculated yet",
-                },
-              ]}
-            />
-            <Bars
-              bars={pillars.map((p) => ({
-                label: `${pillarName(p.pillar)} (${percent(p.weight)} of the score)`,
-                value: `${score(p.score)} of 100`,
-                pct: p.score ?? 0,
-              }))}
-            />
-            {t.metrics?.length ? (
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <StatTiles
+                className="min-w-0 flex-1"
+                tiles={[
+                  {
+                    label: "Trust Score",
+                    value: t.trustScore === undefined ? "—" : score(t.trustScore),
+                    unit: "of 100",
+                    note: t.calculatedAt
+                      ? `Weighted across the four pillars. Last changed ${formatDateTime(t.calculatedAt, { zone: true })}`
+                      : "Not calculated yet",
+                  },
+                ]}
+              />
+              {groups.length ? (
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    setOpen(new Set(allOpen ? [] : groups.map((g) => g.pillar)))
+                  }
+                >
+                  {allOpen ? "Close all pillars" : "Open all pillars"}
+                </Button>
+              ) : null}
+            </div>
+            {groups.length ? (
               <>
                 <SectionTitle>What each input scores</SectionTitle>
                 <div className="overflow-x-auto rounded-card border border-line bg-surface">
@@ -247,52 +277,126 @@ export function TrustTab({ member }: { member: Account }) {
                         </th>
                       </tr>
                     </thead>
-                    <tbody>
-                      {t.metrics.map((m) => (
-                        <tr key={m.metric} className="border-t border-line">
-                          <td className="px-3 py-2">
-                            <span className="font-medium">
-                              {metricName(m.metric)}
-                            </span>
-                            <span className="block text-xs text-muted">
-                              {pillarName(m.pillar)}
-                            </span>
-                          </td>
-                          <td className="px-3 py-2 tabular-nums">
-                            {m.outOf
-                              ? `${formatNumber(m.value)} of ${formatNumber(m.outOf)}`
-                              : formatNumber(m.value)}
-                          </td>
-                          <td className="px-3 py-2 tabular-nums">
-                            {m.benchmark ? formatNumber(m.benchmark) : "—"}
-                          </td>
-                          <td className="px-3 py-2 text-right tabular-nums">
-                            {score(m.score)}
-                          </td>
-                          <td className="px-3 py-2 text-right tabular-nums">
-                            {score(m.scoreContribution)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
+                    {groups.map((g) => {
+                      const shown = open.has(g.pillar);
+                      return (
+                        <tbody key={g.pillar}>
+                          <tr className="border-t border-line bg-chip">
+                            <td colSpan={5} className="p-0">
+                              <button
+                                type="button"
+                                aria-expanded={shown}
+                                onClick={() => toggle(g.pillar)}
+                                className="flex min-h-9 w-full items-center justify-between gap-3 px-3 py-1.5 text-left font-semibold text-ink-strong"
+                              >
+                                <span className="flex min-w-0 items-center gap-2">
+                                  <svg
+                                    aria-hidden="true"
+                                    viewBox="0 0 12 12"
+                                    className={cn(
+                                      "size-3 shrink-0 transition-transform motion-reduce:transition-none",
+                                      shown && "rotate-90",
+                                    )}
+                                  >
+                                    <path
+                                      d="M4 2l4 4-4 4"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      strokeWidth="1.6"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                    />
+                                  </svg>
+                                  {pillarName(g.pillar)}
+                                  {g.of ? (
+                                    <span className="font-normal text-muted">
+                                      · {percent(g.of.weight)} of the score
+                                    </span>
+                                  ) : null}
+                                </span>
+                                {g.of ? (
+                                  <span className="flex items-center gap-2 tabular-nums">
+                                    <span
+                                      aria-hidden="true"
+                                      className="h-1.5 w-[70px] overflow-hidden rounded bg-line"
+                                    >
+                                      <span
+                                        className="block h-1.5 bg-primary"
+                                        style={{
+                                          width: `${Math.max(0, Math.min(100, g.of.score ?? 0))}%`,
+                                        }}
+                                      />
+                                    </span>
+                                    {score(g.of.score)} of 100
+                                  </span>
+                                ) : null}
+                              </button>
+                            </td>
+                          </tr>
+                          {shown
+                            ? g.metrics.map((m) => (
+                                <tr key={m.metric} className="border-t border-line">
+                                  <td className="px-3 py-1.5 font-medium">
+                                    {metricName(m.metric)}
+                                  </td>
+                                  <td className="px-3 py-1.5 tabular-nums">
+                                    {m.outOf
+                                      ? `${formatNumber(m.value)} of ${formatNumber(m.outOf)}`
+                                      : formatNumber(m.value)}
+                                  </td>
+                                  <td className="px-3 py-1.5 tabular-nums">
+                                    {m.benchmark ? formatNumber(m.benchmark) : "—"}
+                                  </td>
+                                  <td className="px-3 py-1.5 text-right tabular-nums">
+                                    {score(m.score)}
+                                  </td>
+                                  <td className="px-3 py-1.5 text-right tabular-nums">
+                                    {score(m.scoreContribution)}
+                                  </td>
+                                </tr>
+                              ))
+                            : null}
+                        </tbody>
+                      );
+                    })}
                   </table>
                 </div>
               </>
-            ) : null}
+            ) : (
+              // with no inputs to group them over, the pillars show as bars
+              <Bars
+                bars={pillars.map((p) => ({
+                  label: `${pillarName(p.pillar)} (${percent(p.weight)} of the score)`,
+                  value: `${score(p.score)} of 100`,
+                  pct: p.score ?? 0,
+                }))}
+              />
+            )}
             <SectionTitle>History</SectionTitle>
             <Loaded query={history} what="the history">
               {(h) =>
                 h.results?.length ? (
                   <div className="overflow-hidden rounded-card border border-line bg-surface">
-                    <Items inset label="Trust Score history">
+                    {/* one line an entry: the score, then when and why */}
+                    <ul
+                      aria-label="Trust Score history"
+                      className="m-0 flex list-none flex-col p-0"
+                    >
                       {h.results.map((s, i) => (
-                        <Item
+                        <li
                           key={`${s.calculatedAt}-${i}`}
-                          title={`${score(s.trustScore)} of 100`}
-                          sub={`${formatDateTime(s.calculatedAt, { zone: true })} · ${scoreTrigger(s.trigger)}`}
-                        />
+                          className="flex flex-wrap items-baseline justify-between gap-x-3 border-t border-line px-3.5 py-1.5 first:border-t-0"
+                        >
+                          <span className="font-semibold tabular-nums">
+                            {score(s.trustScore)} of 100
+                          </span>
+                          <span className="text-muted">
+                            {formatDateTime(s.calculatedAt, { zone: true })} ·{" "}
+                            {scoreTrigger(s.trigger)}
+                          </span>
+                        </li>
                       ))}
-                    </Items>
+                    </ul>
                     <Pager
                       page={page}
                       size={HISTORY_SIZE}

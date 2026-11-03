@@ -54,8 +54,15 @@ test.describe('members (slice 2)', () => {
     await expect(connection).toContainText('Accepted');
 
     await panel.getByRole('tab', { name: 'Trust Score' }).click();
-    await expect(panel.getByText('Identity (', { exact: false })).toBeVisible();
+    // each pillar's inputs fold under its row until it's opened
+    const identity = panel.getByRole('button', { name: /^Identity/ });
+    await expect(identity).toHaveAttribute('aria-expanded', 'false');
+    await expect(panel.getByRole('cell', { name: 'Phone verified' })).toHaveCount(0);
+    await identity.click();
     await expect(panel.getByRole('cell', { name: 'Phone verified' })).toBeVisible();
+    await panel.getByRole('button', { name: 'Open all pillars' }).click();
+    await expect(panel.getByRole('button', { name: 'Close all pillars' })).toBeVisible();
+    await expect(panel.getByRole('button', { name: /^Financial/ })).toHaveAttribute('aria-expanded', 'true');
 
     await panel.getByRole('tab', { name: 'Limit' }).click();
     await expect(panel.getByText('Maximum guarantee', { exact: true })).toBeVisible();
