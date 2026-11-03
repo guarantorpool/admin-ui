@@ -393,3 +393,16 @@ const ALERT_DETAIL: Record<string, string> = {
 
 /** A detail's name: `amountAsked` → "Amount asked", for one the table doesn't know too. */
 export const alertDetail = (key: string) => ALERT_DETAIL[key] ?? sentence(key.replace(/([a-z0-9])([A-Z])/g, '$1_$2'));
+
+const KEY_STATUS: Record<string, Label> = {
+  active: { text: 'In use', tone: 'ok' },
+  rotated: { text: 'Rotated', tone: 'neutral' },
+  revoked: { text: 'Revoked', tone: 'bad' }
+};
+
+/** A service key: in use, or revoked by hand or by rotating it. */
+export const keyStatus = (code: string | null | undefined) => pick(KEY_STATUS, code);
+
+const SCOPE: Record<string, string> = { 'facts:write': 'Send activity records', 'facts:read': 'Read activity records' };
+
+export const scopeLabel = (code: string | null | undefined) => (code ? SCOPE[code] ?? code : '—');

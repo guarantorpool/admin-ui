@@ -167,6 +167,14 @@ export async function submitAddress(member: Member, pin: { latitude: number; lon
   await post(`${apiBase}/members/me/address-documents`, { uploadId, documentType: 'utility_bill', issueDate }, member.token);
 }
 
+/** Leaves the member's KYC details on a key the server doesn't have, as if that key were lost. Returns how to undo it. */
+export function loseKycKey(member: Member): () => void {
+  const where = `WHERE member_id = '${member.id}'`;
+  const before = sql(`SELECT id_number FROM member_kyc ${where}`).trim();
+  sql(`UPDATE member_kyc SET id_number = 'k0:' || substring(id_number from position(':' in id_number) + 1) ${where}`);
+  return () => sql(`UPDATE member_kyc SET id_number = '${before}' ${where}`);
+}
+
 const sql = (statement: string) => docker('exec', stack().dbContainer, 'psql', '-U', 'postgres', '-d', 'blockcoop', '-v', 'ON_ERROR_STOP=1', '-At', '-c', statement);
 
 const randomOf = (chars: string, n: number) => Array.from({ length: n }, () => chars[Math.floor(Math.random() * chars.length)]).join('');

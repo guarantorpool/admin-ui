@@ -4,12 +4,14 @@ import { allScreens, homePath, safeNext } from '@/components/shell/nav';
 import { Account } from '@/pages/Account';
 import { ActivityPage } from '@/pages/activity/ActivityPage';
 import { AdminsPage } from '@/pages/admins/AdminsPage';
+import { AuditPage } from '@/pages/audit/AuditPage';
 import { AlertsPage } from '@/pages/alerts/AlertsPage';
 import { BackingPage } from '@/pages/backing/BackingPage';
 import { ForgotPassword, ResetPassword, SetPassword } from '@/pages/auth/PasswordPages';
 import { SignIn } from '@/pages/auth/SignIn';
 import { GuaranteesPage } from '@/pages/guarantees/GuaranteesPage';
 import { KycPage } from '@/pages/kyc/KycPage';
+import { KycKeyPage } from '@/pages/kycKey/KycKeyPage';
 import { ClaimsPage } from '@/pages/loans/ClaimsPage';
 import { LoansPage } from '@/pages/loans/LoansPage';
 import { MembersPage } from '@/pages/members/MembersPage';
@@ -18,6 +20,7 @@ import { PoolHealthPage } from '@/pages/pool/PoolHealthPage';
 import { PoolSettingsPage } from '@/pages/pool/PoolSettingsPage';
 import { PoolWalletsPage } from '@/pages/pool/PoolWalletsPage';
 import { RefundsPage } from '@/pages/refunds/RefundsPage';
+import { ServiceKeysPage } from '@/pages/serviceKeys/ServiceKeysPage';
 import { useGrants, useSession } from '@/session/SessionProvider';
 
 /**
@@ -91,6 +94,9 @@ export function App() {
           <Route path="/backing/:memberId" element={<BackingPage />} />
           <Route path="/admins" element={<AdminsPage />} />
           <Route path="/admins/roles/:roleId?" element={<AdminsPage />} />
+          <Route path="/service-keys" element={<ServiceKeysPage />} />
+          <Route path="/kyc-key" element={<KycKeyPage />} />
+          <Route path="/audit" element={<AuditPage />} />
           {allScreens()
             .filter((s) => s.comingIn)
             .map((s) => (
