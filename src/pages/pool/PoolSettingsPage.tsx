@@ -161,7 +161,8 @@ function SettingGroup({ title, settings, search }: { title: string; settings: Pa
   return (
     <section aria-label={title} className="flex h-[30rem] min-w-0 flex-col overflow-hidden rounded-card border border-line bg-surface">
       <h2 className="m-0 px-4 pb-1 pt-3.5 text-base font-bold">{title}</h2>
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      {/* a styled scrollbar is always drawn, where an overlay one (Chrome on Windows 11) hides that rows are cut off */}
+      <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-color:var(--ctl)_transparent] [scrollbar-width:thin]">
         <Rows<Parameter>
           label={title}
           rows={settings.slice((shown - 1) * GROUP_SIZE, shown * GROUP_SIZE)}

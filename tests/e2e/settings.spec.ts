@@ -22,6 +22,10 @@ test.describe('Pool settings (slice 8)', () => {
     await expect(benchmarks.getByRole('link')).toHaveCount(6);
     await expect(benchmarks.getByText('Showing 1–6 of 11')).toBeVisible();
     await expect(row(page, 'benchmark_loans_taken')).toHaveCount(0);
+    // a page taller than the card scrolls inside it, down to its last setting
+    const last = benchmarks.getByText('benchmark_deposit_volume', { exact: true });
+    await last.scrollIntoViewIfNeeded();
+    await expect(last).toBeInViewport({ ratio: 1 });
     await benchmarks.getByRole('button', { name: 'Next page' }).click();
     await expect(benchmarks.getByRole('link')).toHaveCount(5);
     await expect(row(page, 'benchmark_loans_taken')).toBeVisible();
