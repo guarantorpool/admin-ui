@@ -2,6 +2,7 @@ import { Navigate, Outlet, Route, Routes, useLocation, useSearchParams } from 'r
 import { AppShell } from '@/components/shell/AppShell';
 import { allScreens, homePath, safeNext } from '@/components/shell/nav';
 import { Account } from '@/pages/Account';
+import { AlertsPage } from '@/pages/alerts/AlertsPage';
 import { BackingPage } from '@/pages/backing/BackingPage';
 import { ForgotPassword, ResetPassword, SetPassword } from '@/pages/auth/PasswordPages';
 import { SignIn } from '@/pages/auth/SignIn';
@@ -61,6 +62,7 @@ export function App() {
         <Route element={<AppShell />}>
           <Route index element={<Home />} />
           <Route path="/account" element={<Account />} />
+          <Route path="/alerts/:alertId?" element={<AlertsPage />} />
           <Route path="/members" element={<MembersPage />} />
           <Route path="/members/:memberId" element={<MembersPage />} />
           <Route path="/kyc" element={<KycPage />} />

@@ -278,3 +278,87 @@ const CHANGE_STATUS: Record<string, Label> = {
 };
 
 export const changeStatus = (code: string | null | undefined) => pick(CHANGE_STATUS, code);
+
+// Pool alerts (#67): how serious each is, and whether it's open, acknowledged by an admin with a note, or cleared.
+const ALERT_LEVEL: Record<string, Label> = {
+  CRITICAL: { text: 'Critical', tone: 'bad' },
+  WARNING: { text: 'Warning', tone: 'warn' },
+  INFO: { text: 'Info', tone: 'neutral' }
+};
+
+export const alertLevel = (code: string | null | undefined) => pick(ALERT_LEVEL, code);
+
+export const ALERT_LEVELS = ['CRITICAL', 'WARNING', 'INFO'] as const;
+
+const ALERT_STATUS: Record<string, Label> = {
+  OPEN: { text: 'Open', tone: 'bad' },
+  ACKNOWLEDGED: { text: 'Acknowledged', tone: 'warn' },
+  RESOLVED: { text: 'Resolved', tone: 'ok' }
+};
+
+export const alertStatus = (code: string | null | undefined) => pick(ALERT_STATUS, code);
+
+// what raised each alert; the last three are from before the Lipa API (D-039) and only show on old alerts
+const ALERT_TYPE: Record<string, string> = {
+  LIPA_PAYMENT_REFUSED: 'Lipa payment refused',
+  DIRECT_PAYMENT_UNSETTLED: 'Direct payment not settled',
+  KES_RATE_STALE: 'KES rate out of date',
+  BLOCKS_PRICE_STALE: 'BLOCKS price out of date',
+  VALUATION_FAILED: 'Revaluing backing failed',
+  BOOK_RATIO_BELOW_TARGET: 'Book ratio below target',
+  POOL_WALLET_CHANGED: 'Pool wallet changed',
+  RETIRED_WALLET_PAYMENT: 'Payment to a retired wallet',
+  REFUND_VOLUME: 'Many refunds',
+  REFUND_HELD_TOO_LONG: 'Refunds owed too long',
+  ONCHAIN_READER_FAILING: 'On-chain reader failing',
+  MOBILE_MONEY_PAUSED: 'Mobile money paused',
+  PAYBILL_MISMATCH: 'Paybill mismatch',
+  MPESA_REFUND_FAILED: 'M-Pesa refund failed'
+};
+
+export const ALERT_TYPES = Object.keys(ALERT_TYPE);
+
+export const alertType = (code: string | null | undefined) => (code ? ALERT_TYPE[code] ?? sentence(code) : '—');
+
+// the figures an alert carries, by their key in its details
+const ALERT_DETAIL: Record<string, string> = {
+  quoteId: 'Quote',
+  guaranteeId: 'Guarantee',
+  paymentId: 'Payment ID',
+  txHash: 'Transaction',
+  reason: 'Why it was refused',
+  amountAsked: 'Amount asked',
+  paymentReference: 'Payment reference',
+  rateSource: 'Rate from',
+  rateUpdatedAt: 'Rate last updated',
+  maxAgeHours: 'Oldest allowed, hours',
+  usdtPerBlocks: 'Last BLOCKS price, USDT',
+  blocksReadAt: 'BLOCKS price read',
+  error: 'Error',
+  lockMisses: 'Locks not read',
+  bookRatio: 'Book ratio',
+  target: 'Target',
+  totalPremiumUsdt: 'Premiums, USDT',
+  totalExpectedLossUsdt: 'Expected loss, USDT',
+  checkedAt: 'Checked',
+  previous: 'Previous wallet',
+  previousWatchedUntil: 'Previous wallet watched until',
+  proposedBy: 'Proposed by',
+  approvedBy: 'Approved by',
+  threshold: 'Threshold',
+  wallet: 'Wallet',
+  reference: 'Reference',
+  arrivedAt: 'Arrived',
+  watchedUntil: 'Watched until',
+  refunds: 'Refunds',
+  windowHours: 'Within, hours',
+  heldHours: 'Owed for more than, hours',
+  oldestRefundId: 'Oldest refund',
+  oldestSince: 'Oldest owed since',
+  reader: 'Reader',
+  failedMembers: 'Members failed last run',
+  runsInARow: 'Runs failed in a row'
+};
+
+/** A detail's name: `amountAsked` → "Amount asked", for one the table doesn't know too. */
+export const alertDetail = (key: string) => ALERT_DETAIL[key] ?? sentence(key.replace(/([a-z0-9])([A-Z])/g, '$1_$2'));

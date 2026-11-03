@@ -1,4 +1,4 @@
-import { connectionType, guaranteeStatus, kycStatus, lipaStatus, memberStatus, metricName, paymentMethod, paymentStatus, percent, proofOfAddress, quoteStatus, refundStatus, refundWhy, sentence } from './labels';
+import { alertDetail, alertLevel, alertStatus, alertType, connectionType, guaranteeStatus, kycStatus, lipaStatus, memberStatus, metricName, paymentMethod, paymentStatus, percent, proofOfAddress, quoteStatus, refundStatus, refundWhy, sentence } from './labels';
 import { fullName } from './names';
 
 describe('status labels', () => {
@@ -15,6 +15,15 @@ describe('status labels', () => {
     expect(paymentMethod('lipa')).toBe('Lipa API');
     expect(refundStatus('entered')).toEqual({ text: 'Entered', tone: 'warn' });
     expect(refundStatus('paid').tone).toBe('ok');
+    expect(alertLevel('CRITICAL')).toEqual({ text: 'Critical', tone: 'bad' });
+    expect(alertStatus('ACKNOWLEDGED')).toEqual({ text: 'Acknowledged', tone: 'warn' });
+  });
+
+  it("names an alert's trigger and figures, ones it doesn't know too", () => {
+    expect(alertType('LIPA_PAYMENT_REFUSED')).toBe('Lipa payment refused');
+    expect(alertType('NEW_KIND')).toBe('New kind');
+    expect(alertDetail('quoteId')).toBe('Quote');
+    expect(alertDetail('poolShortfallUsdt')).toBe('Pool shortfall usdt');
   });
 
   it('shows a code it does not know yet readably, and a missing one as a dash', () => {

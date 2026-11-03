@@ -1,15 +1,24 @@
 import * as React from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { Bell, ChevronDown, LogOut, Menu, Moon, Sun, User, X } from 'lucide-react';
+import { listAlerts } from '@/api/alerts';
+import { errorMessage } from '@/api/errors';
 import { Avatar, initials } from '@/components/ui/avatar';
+import { StatusPill } from '@/components/ui/parts';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { env } from '@/lib/env';
+import { formatDateTime } from '@/lib/format';
+import { alertLevel, alertType } from '@/lib/labels';
+import { can } from '@/lib/permissions';
 import { useCompact } from '@/lib/useMedia';
 import { cn } from '@/lib/utils';
 import { useGrants, useSession } from '@/session/SessionProvider';
 import * as store from '@/session/store';
 import { useTheme } from '@/theme/theme';
 import { findScreen, isUnder, visibleNav, type NavGroup } from './nav';
+
+const BELL_SIZE = 5;
 
 const iconButton =
   'relative flex size-9 shrink-0 items-center justify-center rounded-ctl border border-ctl bg-surface text-ink-strong hover:bg-chip [&_svg]:size-5';
@@ -104,18 +113,52 @@ function ThemeButton() {
   );
 }
 
+/** The open alerts, newest first, each opening on the Alerts screen. Approvals join them with the inbox (Phase B). */
 function BellButton() {
-  // Open alerts show here from slice 10, and approvals from Phase B.
+  const navigate = useNavigate();
+  const readable = can(useGrants(), 'ALERTS.READ');
+  const q = { page: 1, size: BELL_SIZE, status: 'open' };
+  const open = useQuery({ queryKey: ['alerts', 'list', q], queryFn: () => listAlerts(q), enabled: readable, refetchInterval: 60_000 });
+  const count = open.data?.totalResults ?? 0;
+  const label = count ? `Notifications, ${count} open alert${count === 1 ? '' : 's'}` : 'Notifications';
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className={iconButton} aria-label="Notifications">
+      <DropdownMenuTrigger className={iconButton} aria-label={label} title={label}>
         <Bell aria-hidden="true" />
+        {count ? (
+          <span aria-hidden="true" className="absolute -right-1.5 -top-1.5 min-w-5 rounded-full bg-bad-fg px-1 text-center text-[11px] font-bold leading-5 text-surface">
+            {count > 99 ? '99+' : count}
+          </span>
+        ) : null}
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-[360px]">
+      <DropdownMenuContent className="w-[360px] max-w-[calc(100vw-32px)]">
         <DropdownMenuLabel>
           <span className="font-heading text-base font-bold text-ink-strong">Notifications</span>
         </DropdownMenuLabel>
-        <p className="m-0 px-4 py-3 text-muted">Open alerts show here once the Alerts screen is built (slice 10), and approvals once the inbox exists.</p>
+        {!readable ? null : open.isPending ? (
+          <p className="m-0 px-4 py-3 text-muted">Loading the open alerts…</p>
+        ) : open.isError ? (
+          <p className="m-0 px-4 py-3 text-bad-fg">{errorMessage(open.error)}</p>
+        ) : !count ? (
+          <p className="m-0 px-4 py-3 text-muted">No open alerts.</p>
+        ) : (
+          <>
+            {open.data.results?.map((a) => (
+              <DropdownMenuItem key={a.id} onSelect={() => navigate(`/alerts/${a.id}`)} className="flex-col items-start gap-0.5">
+                <span className="flex items-center gap-2">
+                  <StatusPill label={alertLevel(a.severity)} />
+                  <span className="font-semibold text-ink">{alertType(a.type)}</span>
+                </span>
+                <span className="line-clamp-2 text-muted">{a.summary}</span>
+                <span className="text-xs text-muted">Last seen {formatDateTime(a.lastSeenAt)}</span>
+              </DropdownMenuItem>
+            ))}
+            <DropdownMenuItem onSelect={() => navigate('/alerts')} className="font-semibold text-ink-strong">
+              {count > BELL_SIZE ? `See all ${count} open alerts` : 'See the alerts'}
+            </DropdownMenuItem>
+          </>
+        )}
+        <p className="m-0 border-t border-line px-4 py-3 text-[13px] text-muted">Approvals waiting for you show here once the approvals inbox exists.</p>
       </DropdownMenuContent>
     </DropdownMenu>
   );
