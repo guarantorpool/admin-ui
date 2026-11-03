@@ -264,6 +264,35 @@ export function seedRefund(on: { paymentId: string } | { quote: SeededQuote }, o
   return id;
 }
 
+/**
+ * A lender's document on a loan. Attaching one stores the file in Cloudflare R2, which a local run doesn't reach,
+ * so its record goes straight into the throwaway database, as seedUpload's does. Returns its id.
+ */
+export function seedLoanDocument(loanId: string, memberId: string, label: string): string {
+  const id = randomUUID();
+  const by = `(SELECT id FROM accounts WHERE lower(email) = lower('${stack().admin.email}'))`;
+  sql(`INSERT INTO uploads (id, owner_id, category, label, type, visibility, content_type, size_bytes, storage_key, created_by_id, created_at)
+    VALUES ('${id}', '${memberId}', 'claim-document', '${label}', 'DOCUMENT', 'PRIVATE', 'application/pdf', 52114, 'e2e/${id}.pdf', ${by}, now())`);
+  sql(`INSERT INTO loan_documents (loan_record_id, upload_id, added_by, added_at) VALUES ('${loanId}', '${id}', ${by}, now())`);
+  return id;
+}
+
+/** Moves a loan's default back `days` days, so its claim's waiting period (claim_waiting_days, 14 by default) is over. */
+export function backdateDefault(loanId: string, days: number) {
+  sql(`UPDATE loan_records SET defaulted_at = defaulted_at - interval '${days} days' WHERE id = '${loanId}'`);
+}
+
+/**
+ * Makes a recorded loan's default approved, for screenshots: its guarantee goes into claim, with the claim owed and,
+ * if `verified`, checked against its documents by an earlier admin. Two admins do this through the API in the tests.
+ */
+export function seedDefault(loanId: string, guaranteeId: string, opts: { owed: string; daysAgo: number; verified?: boolean }) {
+  sql(`UPDATE loan_records SET status = 'DEFAULTED', defaulted_at = now() - interval '${opts.daysAgo} days', claim_owed = ${opts.owed},
+    default_note = 'Missed three payments'${opts.verified ? `, default_verified_at = now() - interval '${opts.daysAgo - 1} days', default_verified_by_email = 'earlier-admin@test.local'` : ''}
+    WHERE id = '${loanId}'`);
+  sql(`UPDATE guarantees SET status = 'IN_CLAIM' WHERE guarantee_number = '${guaranteeId}'`);
+}
+
 export const randomIdNumber = () =>String(10_000_000 + Math.floor(Math.random() * 89_999_999));
 
 /**

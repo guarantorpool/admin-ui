@@ -1,5 +1,5 @@
 import { test, type Page } from '@playwright/test';
-import { connect, newMember, randomIdNumber, seedGuarantee, seedQuote, seedRefund, signIn, stack, submitAddress, submitKyc, type Member, type SeededGuarantee, type SeededQuote } from './helpers';
+import { apiToken, connect, newMember, post, randomIdNumber, seedDefault, seedGuarantee, seedLoanDocument, seedQuote, seedRefund, signIn, stack, submitAddress, submitKyc, type Member, type SeededGuarantee, type SeededQuote } from './helpers';
 
 // Not a check: screenshots for review, only when SHOTS_DIR is set.
 const dir = process.env.SHOTS_DIR;
@@ -9,6 +9,7 @@ test.skip(!dir, 'SHOTS_DIR not set');
 let members: Member[] | null = null;
 let guarantees: SeededGuarantee[] = [];
 let quotes: SeededQuote[] = [];
+let loans: string[] = [];
 
 async function sampleMembers(): Promise<Member[]> {
   if (members) return members;
@@ -27,6 +28,22 @@ async function sampleMembers(): Promise<Member[]> {
   seedRefund({ paymentId: guarantees[1]!.paymentId }, { type: 'stray_payment', status: 'PAID', amount: '95.04', daysAgo: 3 });
   seedRefund({ quote: quotes[2]! }, { type: 'window_lapsed', amount: '158.4', daysAgo: 2 });
   seedRefund({ paymentId: guarantees[2]!.paymentId }, { type: 'capacity_changed', amount: '158.4' });
+  // loans on each guarantee: one with a default waiting for a second admin, one whose claim waits, one open
+  const { apiBase, admin } = stack();
+  const token = await apiToken(admin.email, admin.password);
+  const days = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString();
+  const lenders = ['Kopa Lenders', 'Mavuno Credit', 'Jamii Finance'];
+  loans = [];
+  for (const [i, g] of guarantees.entries()) {
+    const d = await post<{ loan: { loanId: string } }>(`${apiBase}/loans`, { guaranteeId: g.guaranteeId, lender: lenders[i], reference: `LN-${48210 + i}-${Date.now().toString(36)}`, amount: [5000, 4500, 3000][i], openedAt: days(-40 + i * 5), dueAt: days(140 - i * 10) }, token);
+    loans.push(d.loan.loanId);
+  }
+  const [aminaLoan, graceLoan] = loans as [string, string, string];
+  seedLoanDocument(aminaLoan, made[0]!.id, 'Default notice from Kopa Lenders');
+  await post(`${apiBase}/loans/${aminaLoan}/default`, { claimOwed: 4200.5, note: 'Missed three payments; notice attached' }, token);
+  seedLoanDocument(graceLoan, made[2]!.id, 'Default notice from Mavuno Credit');
+  seedLoanDocument(graceLoan, made[2]!.id, 'Statement of account');
+  seedDefault(graceLoan, guarantees[1]!.guaranteeId, { owed: '3875.25', daysAgo: 16, verified: true });
   members = made;
   return made;
 }
@@ -144,5 +161,33 @@ for (const scheme of ['light', 'dark'] as const) {
     await payout.getByRole('button', { name: 'Enter the payout' }).click();
     await panel.getByText(/Payout entered by you/).waitFor();
     await page.screenshot({ path: `${dir}/${tag}-29-payout-entered.png` });
+
+    await page.goto('/loans');
+    await page.getByRole('table', { name: 'Loans' }).or(page.getByRole('list', { name: 'Loans' })).waitFor();
+    await settle(page);
+    await page.screenshot({ path: `${dir}/${tag}-30-loans.png` });
+    await page.goto(`/loans/${loans[0]}`);
+    const loan = page.getByRole('dialog', { name: 'Loan details' });
+    await loan.getByText(/Waiting for approval: default reported/).waitFor();
+    await settle(page);
+    await page.screenshot({ path: `${dir}/${tag}-31-loan-waiting.png` });
+    await loan.getByRole('tab', { name: 'Lender reports' }).click();
+    await page.screenshot({ path: `${dir}/${tag}-32-loan-reports.png` });
+    await page.goto('/claims');
+    await page.getByRole('heading', { name: 'Waiting claims against Liquid Funds' }).waitFor();
+    await settle(page);
+    await page.screenshot({ path: `${dir}/${tag}-33-claims.png` });
+    await page.goto(`/claims/${loans[1]}`);
+    const claim = page.getByRole('dialog', { name: 'Claim details' });
+    await claim.getByText(/up to the guarantee amount/).waitFor();
+    await settle(page);
+    await page.screenshot({ path: `${dir}/${tag}-34-claim.png` });
+    await claim.getByRole('button', { name: 'Enter the payout' }).click();
+    const claimPayout = page.getByRole('dialog', { name: "Enter this claim's payout" });
+    await claimPayout.getByLabel('Paid in').selectOption('KES');
+    await claimPayout.getByLabel('Amount, in KES').fill('499908.25');
+    await claimPayout.getByLabel('KES per USD that day').fill('129');
+    await claimPayout.getByText(/Comes to/).waitFor();
+    await page.screenshot({ path: `${dir}/${tag}-35-claim-payout.png` });
   });
 }

@@ -205,3 +205,43 @@ const REFUND_WHY: Record<string, string> = {
 };
 
 export const refundWhy = (code: string | null | undefined) => (code ? REFUND_WHY[code] ?? sentence(code) : '—');
+
+// A guaranteed loan is open until the lender reports it repaid or defaulted. A default's claim is verified against
+// its documents, paid once claim_waiting_days have passed, then recovered or written off (3.5).
+interface LoanState {
+  status?: string;
+  claimPaid?: string;
+  defaultVerifiedAt?: string;
+  recoveryClosedAt?: string;
+  writtenOff?: boolean;
+}
+
+export function loanStatus(l: LoanState): Label {
+  if (l.status === 'open') return { text: 'Open', tone: 'ok' };
+  if (l.status === 'repaid') return { text: 'Repaid', tone: 'neutral' };
+  if (l.status !== 'defaulted') return pick({}, l.status);
+  if (!l.claimPaid) return l.defaultVerifiedAt ? { text: 'Claim waiting', tone: 'bad' } : { text: 'Default, not verified', tone: 'bad' };
+  if (l.writtenOff) return { text: 'Written off', tone: 'neutral' };
+  return l.recoveryClosedAt ? { text: 'Recovered', tone: 'ok' } : { text: 'Claim paid, recovering', tone: 'warn' };
+}
+
+// what each step waiting on a loan, or done on it, is called
+const STEP: Record<string, string> = {
+  repayment: 'Repaid in full',
+  default: 'Default reported',
+  reversal: 'Default reversed',
+  payout: 'Claim paid',
+  write_off: 'Written off'
+};
+
+export const stepName = (code: string | null | undefined) => (code ? STEP[code] ?? sentence(code) : '—');
+
+const STEP_STATUS: Record<string, Label> = {
+  pending: { text: 'Waiting for approval', tone: 'warn' },
+  approved: { text: 'Approved', tone: 'ok' },
+  rejected: { text: 'Rejected', tone: 'bad' }
+};
+
+export const stepStatus = (code: string | null | undefined) => pick(STEP_STATUS, code);
+
+export const loanSource = (code: string | null | undefined) => (code === 'guaranteed' ? 'Guaranteed' : code === 'lipa_onchain' ? 'Lipa API' : sentence(code ?? '—'));

@@ -6,6 +6,8 @@ import { ForgotPassword, ResetPassword, SetPassword } from '@/pages/auth/Passwor
 import { SignIn } from '@/pages/auth/SignIn';
 import { GuaranteesPage } from '@/pages/guarantees/GuaranteesPage';
 import { KycPage } from '@/pages/kyc/KycPage';
+import { ClaimsPage } from '@/pages/loans/ClaimsPage';
+import { LoansPage } from '@/pages/loans/LoansPage';
 import { MembersPage } from '@/pages/members/MembersPage';
 import { ComingSoon, NotFound } from '@/pages/Placeholders';
 import { RefundsPage } from '@/pages/refunds/RefundsPage';
@@ -65,6 +67,10 @@ export function App() {
           <Route path="/guarantees/quotes" element={<GuaranteesPage />} />
           <Route path="/guarantees/quotes/:quoteId" element={<GuaranteesPage />} />
           <Route path="/guarantees/:guaranteeId" element={<GuaranteesPage />} />
+          <Route path="/loans" element={<LoansPage />} />
+          <Route path="/loans/:loanId" element={<LoansPage />} />
+          <Route path="/claims" element={<ClaimsPage />} />
+          <Route path="/claims/:loanId" element={<ClaimsPage />} />
           <Route path="/refunds" element={<RefundsPage />} />
           <Route path="/refunds/:refundId" element={<RefundsPage />} />
           {allScreens()
