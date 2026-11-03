@@ -168,10 +168,12 @@ function RoleDetail({ role, byModule, canChange, onEdit, onDelete }: { role: Rol
 /** Creating a role (`role` left out), or renaming one and changing its permissions. */
 function RoleForm({ role, roles, byModule, onClose }: { role?: Role; roles: Role[]; byModule: Record<string, string[]>; onClose: () => void }) {
   const qc = useQueryClient();
-  const [name, setName] = React.useState(role ? roleLabel(role.name) : '');
+  // the label can lose underscores the stored name has, so an untouched name field is never a rename
+  const shown = role ? roleLabel(role.name) : '';
+  const [name, setName] = React.useState(shown);
   const [granted, setGranted] = React.useState<string[]>(role?.permissions ?? []);
-  const stored = roleName(name);
-  const renamed = !!role && stored !== role.name;
+  const renamed = !!role && name.trim() !== shown && roleName(name) !== role.name;
+  const stored = role && !renamed ? role.name! : roleName(name);
 
   const check = () => {
     if (!name.trim()) return 'Enter the role name.';
