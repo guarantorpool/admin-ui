@@ -90,14 +90,15 @@ function Activity() {
     setParams(next, { replace: true });
   };
 
-  // the typed filters wait for a pause in typing, then go in the address, which can change them too (back, a link)
+  // the typed filters wait for a pause in typing, then go in the address, which can change them too (back, a link);
+  // any other change to the address while they wait starts the wait again, so they don't undo it
   const [memberText, setMemberText] = React.useState(member);
   const [sourceText, setSourceText] = React.useState(source);
   React.useEffect(() => {
     if (memberText.trim() === member && sourceText.trim() === source) return;
     const t = setTimeout(() => update({ member: memberText.trim(), source: sourceText.trim() }), 300);
     return () => clearTimeout(t);
-  }, [memberText, sourceText]);
+  }, [memberText, sourceText, params.toString()]);
   React.useEffect(() => setMemberText(member), [member]);
   React.useEffect(() => setSourceText(source), [source]);
 
@@ -121,7 +122,8 @@ function Activity() {
       columns={COLUMNS}
       grid="grid-cols-[0.8fr_1.2fr_1fr_1.2fr_1fr_1fr]"
       minWidth={900}
-      sub={(f) => `${factType(f.type)} · ${amount(f)} · ${f.source} · ${factVia(f.receivedVia)}`}
+      // with no page to open, a phone shows everything about a record here too
+      sub={(f) => `${factType(f.type)} · ${amount(f)} · ${f.source} ${f.externalId} · received ${formatDateTime(f.receivedAt)} by ${factVia(f.receivedVia)}`}
     />
   );
 
@@ -189,8 +191,12 @@ function ImportDialog({ open, onClose, onSaved }: { open: boolean; onClose: () =
       confirm="Import"
       onClose={onClose}
       check={() => (file ? '' : 'Choose the file.')}
-      send={() => importFacts(file!)}
-      saved={(r) => onSaved(file!.name, r)}
+      // the name goes with the request, as closing the dialog while it's sent clears the chosen file
+      send={() => {
+        const name = file!.name;
+        return importFacts(file!).then((r) => ({ name, r }));
+      }}
+      saved={({ name, r }) => onSaved(name, r)}
       done="File imported."
     >
       <Field

@@ -50,6 +50,15 @@ test.describe('activity (slice 11)', () => {
     await expect(page).toHaveURL(new RegExp(`source=${source}`));
     await expect(records(page)).toHaveCount(2);
 
+    // a type chosen while the typed filter waits is kept when it lands
+    await page.getByLabel('Source').fill('');
+    await page.getByLabel('Member number').fill(member.number);
+    await page.getByLabel('Type').selectOption('LOAN_REPAYMENT');
+    await expect(page).toHaveURL(new RegExp(`member=${member.number}`));
+    await expect(page).toHaveURL(/type=LOAN_REPAYMENT/);
+    await expect(records(page)).toHaveCount(1);
+    await page.getByLabel('Type').selectOption('');
+
     // the same rows again are already in
     dialog = await importFile(page, file);
     await expect(dialog).toBeHidden();
