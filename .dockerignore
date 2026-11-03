@@ -1,0 +1,20 @@
+# local settings: the image gets its VITE_ values as build arguments (docker-compose.yml)
+.env
+.env.*
+
+# installed and built in the build stage itself
+node_modules/
+dist/
+
+# tests and tooling
+.git/
+.github/
+.e2e/
+test-results/
+playwright-report/
+coverage/
+.vscode/
+.claude/
+Dockerfile
+docker-compose*.yml
+.dockerignore

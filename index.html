@@ -5,13 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />
     <title>BlockCoop Guarantor Pool Admin</title>
-    <script>
-      // Set the theme before first paint so dark mode doesn't flash light.
-      try {
-        var t = localStorage.getItem('blockcoop-theme');
-        if (t === 'dark' || (t !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches)) document.documentElement.classList.add('dark');
-      } catch (e) {}
-    </script>
+    <!-- sets the theme before first paint; a file, not inline, for the Content Security Policy (D-003) -->
+    <script src="/theme.js"></script>
   </head>
   <body>
     <div id="root"></div>
