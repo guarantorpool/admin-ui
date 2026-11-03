@@ -7,7 +7,6 @@ import {
 } from "@tanstack/react-query";
 import { errorMessage } from "@/api/errors";
 import {
-  getAssetBalances,
   getMemberGuarantees,
   getNetworkValue,
   getNetworkValueHistory,
@@ -52,6 +51,7 @@ import {
   scoreTrigger,
 } from "@/lib/labels";
 import { fullName } from "@/lib/names";
+import { BackingPanel } from "@/pages/backing/BackingPanel";
 import { can } from "@/lib/permissions";
 import { useOpenFile } from "@/lib/useOpenFile";
 import { useGrants } from "@/session/SessionProvider";
@@ -185,94 +185,7 @@ export function OverviewTab({ member }: { member: Account }) {
 }
 
 export function BackingTab({ member }: { member: Account }) {
-  const id = member.id!;
-  const query = useQuery({
-    queryKey: ["members", id, "backing"],
-    queryFn: () => getAssetBalances(id),
-  });
-  return (
-    <Loaded query={query} what="backing">
-      {(b) => {
-        const v = b.valuation;
-        return (
-          <div className="flex flex-col gap-3.5">
-            {b.pending ? (
-              <Banner tone="warn">
-                Waiting for a second admin: KES deposits{" "}
-                {formatAmount(b.pending.kesDeposits, "KES", { full: true })} and
-                vault savings {usdt(b.pending.usdtVaultSavings)}, entered by{" "}
-                {b.pending.enteredBy ?? "an admin"} on{" "}
-                {formatDateTime(b.pending.enteredAt, { zone: true })}.
-                {b.pending.note ? ` Note: ${b.pending.note}` : ""}
-              </Banner>
-            ) : null}
-            <StatTiles
-              tiles={[
-                {
-                  label: "Backing",
-                  value: usdtFigure(b.backingUsdt),
-                  unit: "USDT",
-                  note: "What the three assets count for, after their haircuts",
-                },
-              ]}
-            />
-            <Lines
-              rows={[
-                {
-                  k: "Locked BLOCKS (read on-chain)",
-                  v: `${formatAmount(b.lockedBlocks?.amount, "BLOCKS", { full: true })} → ${usdt(b.lockedBlocks?.valueUsdt)}`,
-                },
-                {
-                  k: "KES non-withdrawable deposits",
-                  v: `${formatAmount(b.kesDeposits?.amount, "KES", { full: true })} → ${usdt(b.kesDeposits?.valueUsdt)}`,
-                },
-                {
-                  k: "USDT vault savings",
-                  v: `${usdt(b.usdtVaultSavings?.amount)} → ${usdt(b.usdtVaultSavings?.valueUsdt)}`,
-                },
-                {
-                  k: "KES deposits and vault savings last set",
-                  v: b.updatedAt
-                    ? `${formatDateTime(b.updatedAt, { zone: true })}${b.updatedBy ? `, entered by ${b.updatedBy}` : ""}`
-                    : "Never set",
-                },
-              ]}
-            />
-            <SectionTitle>Prices and haircuts used</SectionTitle>
-            <Lines
-              rows={[
-                {
-                  k: "BLOCKS price",
-                  v: v?.usdtPerBlocks
-                    ? `${formatNumber(v.usdtPerBlocks)} USDT per BLOCKS`
-                    : "Not read yet, so locked BLOCKS count for 0",
-                },
-                {
-                  k: "KES rate",
-                  v: v?.kesPerUsd
-                    ? `${formatNumber(v.kesPerUsd)} KES per USD`
-                    : "Not read yet, so KES deposits count for 0",
-                },
-                { k: "Locked BLOCKS count at", v: percent(v?.blocksHaircut) },
-                {
-                  k: "KES deposits count at",
-                  v: percent(v?.kesDepositHaircut),
-                },
-                {
-                  k: "Vault savings count at",
-                  v: percent(v?.vaultSavingsHaircut),
-                },
-                {
-                  k: "Prices stored",
-                  v: formatDateTime(v?.readAt, { zone: true }),
-                },
-              ]}
-            />
-          </div>
-        );
-      }}
-    </Loaded>
-  );
+  return <BackingPanel memberId={member.id!} />;
 }
 
 export function TrustTab({ member }: { member: Account }) {

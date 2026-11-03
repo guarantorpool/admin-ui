@@ -73,6 +73,22 @@ async function seedSettingSamples(browser: Browser) {
   await post(`${apiBase}/parameter-change-sets`, { changes: [{ key: 'pillar_weight_identity', value: 0.2 }, { key: 'pillar_weight_activity', value: 0.2 }], reason: 'Identity counts for more once KYC is required' }, theirs);
 }
 
+/** Amina's backing for screenshots, made once a run: amounts set and approved, and a change waiting from a second admin. */
+async function seedBackingSamples(browser: Browser, member: Member) {
+  const { apiBase, admin } = stack();
+  const token = await apiToken(admin.email, admin.password);
+  const now = await call<{ pending?: unknown }>('GET', `${apiBase}/members/${member.id}/asset-balances`, undefined, token);
+  if (now.pending) return;
+  const page = await browser.newPage();
+  const ops = await newAdmin(page, ['MEMBERS.READ', 'MEMBERS.UPDATE'], 'Backing');
+  await page.close();
+  const theirs = await apiToken(ops.email, ops.password);
+  const at = `${apiBase}/members/${member.id}/asset-balances`;
+  await call('PUT', at, { kesDeposits: 120000, usdtVaultSavings: 350.5, note: 'From the March sacco statement' }, token);
+  await call('PATCH', `${at}/approve`, { note: 'Matches the statement' }, theirs);
+  await call('PUT', at, { kesDeposits: 135250.75, usdtVaultSavings: 410.125, note: 'April statement: deposits and savings up' }, theirs);
+}
+
 const settle = (page: Page) => page.waitForLoadState('networkidle');
 
 for (const scheme of ['light', 'dark'] as const) {
@@ -82,6 +98,7 @@ for (const scheme of ['light', 'dark'] as const) {
     await page.emulateMedia({ colorScheme: scheme });
     const [amina, brian] = await sampleMembers();
     await seedSettingSamples(browser);
+    await seedBackingSamples(browser, amina!);
     await page.goto('/sign-in');
     await page.screenshot({ path: `${dir}/${tag}-1-sign-in.png` });
     const { admin } = stack();
@@ -286,5 +303,26 @@ for (const scheme of ['light', 'dark'] as const) {
     await page.getByRole('list', { name: 'Setting changes' }).waitFor();
     await settle(page);
     await page.screenshot({ path: `${dir}/${tag}-49-settings-history.png` });
+
+    await page.goto('/backing');
+    await page.getByRole('region', { name: 'Prices and haircuts' }).getByText('Locked BLOCKS count at').waitFor();
+    await settle(page);
+    await page.screenshot({ path: `${dir}/${tag}-50-backing.png` });
+    await page.goto(`/backing/${amina!.id}`);
+    const backing = page.getByRole('region', { name: "Member's backing" });
+    await backing.getByRole('region', { name: 'Waiting for approval' }).waitFor();
+    await settle(page);
+    await page.screenshot({ path: `${dir}/${tag}-51-backing-waiting.png`, fullPage: true });
+    await backing.getByRole('button', { name: 'Approve' }).click();
+    await page.getByRole('dialog', { name: 'Approve this backing change?' }).waitFor();
+    await page.screenshot({ path: `${dir}/${tag}-52-backing-approve.png` });
+    await page.keyboard.press('Escape');
+    await page.goto(`/backing/${brian!.id}`);
+    await backing.getByRole('button', { name: 'Enter new amounts' }).click();
+    const enter = page.getByRole('dialog', { name: 'Enter new KES deposits and vault savings' });
+    await enter.getByLabel('KES non-withdrawable deposits').fill('48000');
+    await enter.getByLabel('Note (optional)').fill('From the sacco statement');
+    await page.screenshot({ path: `${dir}/${tag}-53-backing-enter.png` });
+    await page.keyboard.press('Escape');
   });
 }
