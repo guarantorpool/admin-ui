@@ -49,7 +49,7 @@ export const NAV: NavEntry[] = [
     { path: '/backing', label: 'Backing assets and prices', about: "Set members' KES deposits and vault savings, and see the prices backing is valued at.", access: 'MEMBERS.READ' }
   ]),
   group('admin', 'Administration', [
-    { path: '/admins', label: 'Admins and roles', about: 'Manage who can do what.', access: 'ADMINS.READ', comingIn: 'slice 12' },
+    { path: '/admins', label: 'Admins and roles', about: 'Manage who can do what.', access: 'ADMINS.READ' },
     { path: '/service-keys', label: 'Service keys', about: 'Manage the keys other systems use to call the GP API.', access: 'SERVICE_KEYS.READ', comingIn: 'slice 13' },
     { path: '/kyc-key', label: 'KYC encryption key', about: "Keep members' private KYC details readable and safe.", access: 'SYSTEM_ADMIN', comingIn: 'slice 13' },
     { path: '/audit', label: 'Audit log', about: 'See every admin action.', access: 'AUDIT.READ', comingIn: 'slice 13' }

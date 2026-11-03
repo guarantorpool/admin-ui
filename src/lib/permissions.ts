@@ -35,9 +35,3 @@ export function can(grants: Grants | null | undefined, access: Access): boolean 
 export function canAny(grants: Grants | null | undefined, access: readonly Access[]): boolean {
   return access.some((a) => can(grants, a));
 }
-
-/** A role's name as admins read it: the built-in role is "System admin". */
-export function roleLabel(role: string | null | undefined): string {
-  if (!role) return '—';
-  return role === SYSTEM_ADMIN_ROLE ? 'System admin' : role;
-}

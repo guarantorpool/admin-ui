@@ -377,16 +377,23 @@ export function seedPoolSamples() {
 
 export const randomIdNumber = () =>String(10_000_000 + Math.floor(Math.random() * 89_999_999));
 
+/** A role of this run's own, made by the system admin. Returns its id and stored name (ROLE_TEST_…). */
+export async function newRole(permissions: string[], label: string, token?: string) {
+  const { apiBase, admin } = stack();
+  seq += 1;
+  const tag = `${label}${Date.now().toString(36)}${seq}`;
+  return post<{ id: string; name: string }>(`${apiBase}/roles`, { name: `Test ${tag}`, permissions }, token ?? (await apiToken(admin.email, admin.password)));
+}
+
 /**
  * Invites an admin with a new role holding `permissions`, and sets their password through the portal's
- * /set-password page from the invitation email. Returns their email and password.
+ * /set-password page from the invitation email. Returns their email, password and role.
  */
 export async function newAdmin(page: Page, permissions: string[], label: string) {
   const { apiBase, admin } = stack();
   const token = await apiToken(admin.email, admin.password);
-  seq += 1;
-  const tag = `${label}${Date.now().toString(36)}${seq}`;
-  const role = await post<{ id: string }>(`${apiBase}/roles`, { name: `Test ${tag}`, permissions }, token);
+  const role = await newRole(permissions, label, token);
+  const tag = role.name.replace(/^ROLE_TEST_/, '');
   const email = `admin-${tag.toLowerCase()}@test.local`;
   const skip = mailCount();
   await post(`${apiBase}/admins`, { firstName: 'Test', lastName: label, email, phoneNumber: randomPhone(), roleId: role.id }, token);
@@ -398,5 +405,5 @@ export async function newAdmin(page: Page, permissions: string[], label: string)
   await page.getByLabel('New password again').fill(password);
   await page.getByRole('button', { name: 'Set the password' }).click();
   await expect(page.getByText('Your password is set. Sign in to finish.')).toBeVisible();
-  return { email, password };
+  return { email, password, roleId: role.id };
 }

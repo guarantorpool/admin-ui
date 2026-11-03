@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { TabPanel, Tabs } from '@/components/ui/tabs';
 import { formatDateTime } from '@/lib/format';
 import { fullName } from '@/lib/names';
-import { roleLabel } from '@/lib/permissions';
+import { roleLabel } from '@/lib/roles';
 import { checkNewPassword, PASSWORD_RULES } from '@/lib/password';
 import { useSession } from '@/session/SessionProvider';
 import * as store from '@/session/store';
