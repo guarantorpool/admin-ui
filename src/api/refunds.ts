@@ -1,6 +1,7 @@
 import { api } from './client';
 import type { Page } from './members';
 import type { Schemas } from './types';
+import { fullName } from '@/lib/names';
 
 export type Refund = Schemas['RefundResponse'];
 export type RefundStatus = NonNullable<Refund['status']>;
@@ -20,7 +21,12 @@ export interface RefundQuery {
 /** What a refund is owed on: its guarantee, or the quote when no guarantee was created. */
 export const owedOn = (r: Refund) => r.guaranteeId ?? r.quoteId ?? '—';
 
+/** Its member's name and number, as the refund carries them. */
+export const refundMember = (r: Refund) => `${fullName(r) || 'Unnamed member'}, ${r.memberNumber ?? '—'}`;
+
 export const listRefunds = (q: RefundQuery) => api.get<Page<Refund>>('/refunds', { query: { ...q } });
+
+export const getRefund = (id: string) => api.get<Refund>(`/refunds/${encodeURIComponent(id)}`);
 
 /** Records how an owed refund was paid back, by USDT transfer, for a second admin to approve. */
 export const enterPayout = (id: string, payout: { reference: string; paidAt: string; note?: string }) =>

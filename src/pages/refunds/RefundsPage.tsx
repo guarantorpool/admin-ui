@@ -2,7 +2,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { X } from 'lucide-react';
 import { errorMessage } from '@/api/errors';
-import { listRefunds, owedOn, type Refund, type RefundQuery } from '@/api/refunds';
+import { listRefunds, owedOn, refundMember, type Refund, type RefundQuery } from '@/api/refunds';
 import { PageHeader } from '@/components/shell/AppShell';
 import { Badge, Banner } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -21,7 +21,7 @@ import { useGrants } from '@/session/SessionProvider';
 import { RefundDetail } from './RefundDetail';
 
 // Screen 11. Money owed back, newest first. A refund has no business ID, so a row is named by the guarantee or
-// quote it's owed on; it carries its member's ID only, so the member's name is shown in the detail.
+// quote it's owed on, and by its member.
 
 const STATUS_FILTERS = [
   { value: '', label: 'All' },
@@ -44,6 +44,7 @@ function RefundStatusCell({ r }: { r: Refund }) {
 
 const COLUMNS: Column<Refund>[] = [
   { header: 'Owed on', cell: owedOn },
+  { header: 'Member', cell: refundMember },
   { header: 'Type', cell: (r) => <span className="font-mono text-[13px]">{r.type}</span> },
   { header: 'Amount', cell: (r) => formatIn(r.amount, r.currency), figure: true },
   { header: 'Owed since', cell: (r) => formatDate(r.refundedAt) },
@@ -99,10 +100,10 @@ function Refunds() {
       rows={query.data.results}
       rowKey={(r) => r.id!}
       columns={COLUMNS}
-      grid="grid-cols-[1.1fr_1fr_0.9fr_0.8fr_1.1fr]"
-      minWidth={760}
+      grid="grid-cols-[1.1fr_1.3fr_1fr_0.9fr_0.8fr_1.1fr]"
+      minWidth={900}
       linkFor={(r) => `/refunds/${r.id}${search}`}
-      sub={(r) => `${r.type} · ${formatIn(r.amount, r.currency)} · since ${formatDate(r.refundedAt)}`}
+      sub={(r) => `${refundMember(r)} · ${r.type} · ${formatIn(r.amount, r.currency)} · since ${formatDate(r.refundedAt)}`}
     />
   );
 
@@ -143,7 +144,7 @@ function Refunds() {
       </div>
 
       <Sheet open={!!refundId} onClose={() => navigate(`/refunds${search}`)} title="Refund details" wide={wide}>
-        {refundId ? <RefundDetail refundId={refundId} listed={query.data?.results?.find((r) => r.id === refundId)} listedAt={query.dataUpdatedAt} loading={query.isPending} /> : null}
+        {refundId ? <RefundDetail refundId={refundId} listed={query.data?.results?.find((r) => r.id === refundId)} /> : null}
       </Sheet>
     </>
   );

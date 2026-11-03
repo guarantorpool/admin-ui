@@ -1778,6 +1778,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/refunds/{refundId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * One refund
+         * @description 404 if there is no such refund.
+         *
+         *     **Requires:** `hasAuthority('REFUNDS.READ')`
+         */
+        get: operations["get_3"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/pool/wallet": {
         parameters: {
             query?: never;
@@ -1957,7 +1979,7 @@ export interface paths {
          * Get a member (that member, or an admin with MEMBERS.READ)
          * @description **Requires:** `hasAuthority('MEMBERS.READ') or (hasAuthority('ACCOUNT_MEMBER') and #memberId == principal.id)`
          */
-        get: operations["get_3"];
+        get: operations["get_4"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2158,6 +2180,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/members/asset-balances/pending": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Changes to KES deposits and vault savings waiting for a second admin, across members (admins)
+         * @description Each shows the member's ID and member number, the amounts in force and the change entered. It is approved or rejected on the member (PATCH /members/{memberId}/asset-balances/{approval}).
+         *
+         *     **Requires:** `hasAuthority('MEMBERS.READ')`
+         */
+        get: operations["pendingAssetBalances"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/members/address-documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Proof-of-address documents across every member, for one review queue (admins)
+         * @description status is pending (the default), approved or rejected. Each shows the member's ID and member number, never the pin or the file, so the list isn't audited; the member's Proof of Address is, and the document is approved or rejected from there.
+         *
+         *     **Requires:** `hasAuthority('MEMBERS.KYC')`
+         */
+        get: operations["addressDocumentQueue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/loans/{loanId}": {
         parameters: {
             query?: never;
@@ -2350,6 +2416,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/guarantees/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Every premium payment across guarantees (admins)
+         * @description Filters: status (pending, confirmed, failed, refunded or needs_confirmation), method (lipa, or wallet and mobile_money from before D-039), memberId, search (part of the guarantee ID, GPG-…, ignoring case), and from and to, the days it started (both included). Each payment is shown as an admin sees it on its guarantee, with the member's ID and number. A Lipa transfer refused before a payment was made isn't here: it raised LIPA_PAYMENT_REFUSED under /alerts, and its attempt is under /guarantees/quotes/{quoteId}/lipa-events.
+         *
+         *     **Requires:** `hasAuthority('GUARANTEES.READ')`
+         */
+        get: operations["allPayments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/facts/kes-activities": {
         parameters: {
             query?: never;
@@ -2458,6 +2546,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/approvals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Everything waiting for a second admin (admins)
+         * @description Kinds: guarantee_close, loan_step, default_verification, loan_recovery, refund_payout, liquidity_adjustment, pool_wallet, parameter_change and parameter_change_set. You see a kind if you can read it on its own screen. yours is true for what you entered, which a different admin has to decide; canDecide is true when you hold its deciding permission and didn't enter it. approve and reject give the method and the route, relative to /api, that decide it. Filter by kind, and forYou=true for only what you can decide. Backing changes on a member aren't listed yet.
+         *
+         *     **Requires:** `hasAuthority('ACCOUNT_ADMIN')`
+         */
+        get: operations["list_8"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/approvals/count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * How many items wait for a second admin (admins)
+         * @description waiting counts every item of the kinds you can see, yours included; forYou, the ones you can decide, for the menu badge; byKind, waiting per kind.
+         *
+         *     **Requires:** `hasAuthority('ACCOUNT_ADMIN')`
+         */
+        get: operations["count"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/alerts": {
         parameters: {
             query?: never;
@@ -2471,7 +2603,7 @@ export interface paths {
          *
          *     **Requires:** `hasAuthority('ALERTS.READ')`
          */
-        get: operations["list_8"];
+        get: operations["list_9"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2746,6 +2878,9 @@ export interface components {
             quoteId?: string;
             /** Format: uuid */
             memberId?: string;
+            memberNumber?: string;
+            firstName?: string;
+            lastName?: string;
             /** @enum {string} */
             type?: "overpayment" | "window_lapsed" | "payment_failed" | "capacity_changed" | "stray_payment" | "amount_mismatch" | "blocks_payment";
             /** @enum {string} */
@@ -3713,6 +3848,42 @@ export interface components {
             /** Format: int64 */
             timeout?: number;
         };
+        BackingChangeResponse: {
+            /** Format: uuid */
+            memberId?: string;
+            memberNumber?: string;
+            kesDeposits?: string;
+            usdtVaultSavings?: string;
+            pending?: components["schemas"]["Pending"];
+        };
+        PageResponseBackingChangeResponse: {
+            results?: components["schemas"]["BackingChangeResponse"][];
+            /** Format: int32 */
+            page?: number;
+            /** Format: int32 */
+            size?: number;
+            /** Format: int32 */
+            totalPages?: number;
+            /** Format: int64 */
+            totalResults?: number;
+        };
+        AddressDocumentResponse: {
+            /** Format: uuid */
+            memberId?: string;
+            memberNumber?: string;
+            document?: components["schemas"]["Document"];
+        };
+        PageResponseAddressDocumentResponse: {
+            results?: components["schemas"]["AddressDocumentResponse"][];
+            /** Format: int32 */
+            page?: number;
+            /** Format: int32 */
+            size?: number;
+            /** Format: int32 */
+            totalPages?: number;
+            /** Format: int64 */
+            totalResults?: number;
+        };
         PageResponseLoanRecordResponse: {
             results?: components["schemas"]["LoanRecordResponse"][];
             /** Format: int32 */
@@ -3863,6 +4034,23 @@ export interface components {
             /** Format: date-time */
             receivedAt?: string;
         };
+        MemberPaymentResponse: {
+            /** Format: uuid */
+            memberId?: string;
+            memberNumber?: string;
+            payment?: components["schemas"]["PaymentResponse"];
+        };
+        PageResponseMemberPaymentResponse: {
+            results?: components["schemas"]["MemberPaymentResponse"][];
+            /** Format: int32 */
+            page?: number;
+            /** Format: int32 */
+            size?: number;
+            /** Format: int32 */
+            totalPages?: number;
+            /** Format: int64 */
+            totalResults?: number;
+        };
         FactResponse: {
             /** Format: uuid */
             id?: string;
@@ -3994,6 +4182,52 @@ export interface components {
             totalPages?: number;
             /** Format: int64 */
             totalResults?: number;
+        };
+        ApprovalResponse: {
+            /** @enum {string} */
+            kind?: "guarantee_close" | "loan_step" | "default_verification" | "loan_recovery" | "refund_payout" | "liquidity_adjustment" | "pool_wallet" | "parameter_change" | "parameter_change_set" | "backing_change";
+            id?: string;
+            summary?: string;
+            action?: string;
+            amount?: string;
+            currency?: string;
+            note?: string;
+            /** Format: uuid */
+            enteredBy?: string;
+            enteredByEmail?: string;
+            /** Format: date-time */
+            enteredAt?: string;
+            yours?: boolean;
+            canDecide?: boolean;
+            guaranteeId?: string;
+            /** Format: uuid */
+            loanId?: string;
+            approve?: components["schemas"]["Route"];
+            reject?: components["schemas"]["Route"];
+        };
+        PageResponseApprovalResponse: {
+            results?: components["schemas"]["ApprovalResponse"][];
+            /** Format: int32 */
+            page?: number;
+            /** Format: int32 */
+            size?: number;
+            /** Format: int32 */
+            totalPages?: number;
+            /** Format: int64 */
+            totalResults?: number;
+        };
+        Route: {
+            method?: string;
+            path?: string;
+        };
+        ApprovalCountResponse: {
+            /** Format: int64 */
+            waiting?: number;
+            /** Format: int64 */
+            forYou?: number;
+            byKind?: {
+                [key: string]: number;
+            };
         };
         PageResponseAlertResponse: {
             results?: components["schemas"]["AlertResponse"][];
@@ -10118,6 +10352,64 @@ export interface operations {
             };
         };
     };
+    get_3: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                refundId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RefundResponse"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not logged in, or the token or key is invalid */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Logged in, but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     current: {
         parameters: {
             query?: never;
@@ -10581,7 +10873,7 @@ export interface operations {
             };
         };
     };
-    get_3: {
+    get_4: {
         parameters: {
             query?: never;
             header?: never;
@@ -11167,6 +11459,127 @@ export interface operations {
             };
         };
     };
+    pendingAssetBalances: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+                sortBy?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PageResponseBackingChangeResponse"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not logged in, or the token or key is invalid */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Logged in, but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    addressDocumentQueue: {
+        parameters: {
+            query?: {
+                status?: string | null;
+                page?: number;
+                size?: number;
+                sortBy?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PageResponseAddressDocumentResponse"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not logged in, or the token or key is invalid */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Logged in, but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     view: {
         parameters: {
             query?: never;
@@ -11700,6 +12113,72 @@ export interface operations {
             };
         };
     };
+    allPayments: {
+        parameters: {
+            query?: {
+                status?: string | null;
+                method?: string | null;
+                memberId?: string | null;
+                search?: string | null;
+                from?: string | null;
+                to?: string | null;
+                page?: number;
+                size?: number;
+                sortBy?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PageResponseMemberPaymentResponse"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not logged in, or the token or key is invalid */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Logged in, but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     kesActivities: {
         parameters: {
             query?: {
@@ -12007,6 +12486,124 @@ export interface operations {
         };
     };
     list_8: {
+        parameters: {
+            query?: {
+                kind?: string | null;
+                forYou?: boolean;
+                page?: number;
+                size?: number;
+                sortBy?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PageResponseApprovalResponse"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not logged in, or the token or key is invalid */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Logged in, but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    count: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApprovalCountResponse"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not logged in, or the token or key is invalid */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Logged in, but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    list_9: {
         parameters: {
             query?: {
                 status?: string | null;

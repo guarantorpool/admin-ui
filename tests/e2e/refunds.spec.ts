@@ -40,6 +40,7 @@ test.describe('Refunds (slice 5)', () => {
     await expect(rows).toHaveCount(2);
     await expect(rows.first()).toContainText(g.guaranteeId);
     await expect(rows.first()).toContainText('12.35 USDT');
+    await expect(rows.first()).toContainText(`${mary.name}, ${mary.number}`);
     await page.getByRole('group', { name: 'Status' }).getByRole('button', { name: 'Paid', exact: true }).click();
     await expect(rows).toHaveCount(1);
     await expect(rows).toContainText('stray_payment');
@@ -62,7 +63,7 @@ test.describe('Refunds (slice 5)', () => {
     const panel = details(page);
     await expect(panel.getByRole('heading', { name: `Owed on ${g.guaranteeId}` })).toBeVisible();
     await expect(panel.getByText('More than the amount due arrived. The extra is owed back.')).toBeVisible();
-    await expect(panel.getByRole('link', { name: new RegExp(mary.name) })).toBeVisible();
+    await expect(panel.getByRole('link', { name: `${mary.name}, ${mary.number}` })).toBeVisible();
     await expect(panel.getByText('12.345678 USDT')).toBeVisible();
 
     await panel.getByRole('button', { name: 'Record the payout' }).click();
@@ -101,7 +102,8 @@ test.describe('Refunds (slice 5)', () => {
     const refund = seedRefund({ paymentId: g.paymentId }, { type: 'capacity_changed', amount: '158.4' });
     const first = await newAdmin(page, MANAGER, 'PayEnter');
     await signIn(page, first.email, first.password);
-    await page.goto(`/refunds/${refund}`);
+    // a link to a refund opens it, though it isn't on the list as filtered
+    await page.goto(`/refunds/${refund}?status=paid`);
     await expect(details(page).getByText('The USDT arrived, but the pool had no capacity left for the guarantee.')).toBeVisible();
     await enterPayout(page, 'wrong-wallet-ref');
 
@@ -127,10 +129,13 @@ test.describe('Refunds (slice 5)', () => {
     await signIn(page, reader.email, reader.password);
     await page.goto(`/refunds/${refund}?payment=${g.paymentId}`);
     await expect(details(page).getByRole('heading', { name: `Owed on ${g.guaranteeId}` })).toBeVisible();
-    // without MEMBERS.READ the member is shown by ID, and without GUARANTEES.READ the guarantee isn't a link
-    await expect(details(page).getByText(ann.id)).toBeVisible();
+    // without MEMBERS.READ the member is named but isn't a link, and without GUARANTEES.READ nor is the guarantee
+    await expect(details(page).getByText(`${ann.name}, ${ann.number}`)).toBeVisible();
+    await expect(details(page).getByRole('link', { name: ann.name })).toHaveCount(0);
     await expect(details(page).getByRole('link', { name: g.guaranteeId })).toHaveCount(0);
     await expect(details(page).getByRole('button', { name: 'Record the payout' })).toHaveCount(0);
+    await page.goto('/refunds/00000000-0000-4000-8000-000000000000');
+    await expect(details(page).getByText("There's no such refund.")).toBeVisible();
 
     const other = await browser.newPage();
     const user = await newAdmin(other, ['MEMBERS.READ'], 'NoRefunds');

@@ -2,7 +2,8 @@ import * as React from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { decidePayout, owedOn, type Refund } from '@/api/refunds';
+import { ApiError, errorMessage } from '@/api/errors';
+import { decidePayout, getRefund, owedOn, refundMember, type Refund } from '@/api/refunds';
 import { Banner } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DecisionDialog, NOTE_HINT, type Decision } from '@/components/ui/decision-dialog';
@@ -10,7 +11,6 @@ import { Fields, Muted, StatusPill } from '@/components/ui/parts';
 import { formatDate, formatDateTime, formatIn, formatUsdt } from '@/lib/format';
 import { refundStatus, refundWhy } from '@/lib/labels';
 import { can } from '@/lib/permissions';
-import { useMemberName } from '@/pages/members/useMemberName';
 import { useGrants, useSession } from '@/session/SessionProvider';
 import { PayoutDialog } from './PayoutDialog';
 
@@ -19,16 +19,18 @@ const mono = (v: string | undefined) => <span className="font-mono text-[13px] [
 
 const METHOD: Record<string, string> = { transfer: 'USDT transfer', swap: 'BLOCKS sold for the refund' };
 
-/**
- * One refund. There's no way to read a single refund by itself, so it's the one on the list's page, or the copy
- * an action here returned, whichever is newer.
- */
-export function RefundDetail({ refundId, listed, listedAt, loading }: { refundId: string; listed?: Refund; listedAt: number; loading: boolean }) {
-  const saved = useQuery<Refund>({ queryKey: ['refunds', 'one', refundId], queryFn: () => Promise.reject(new Error('not read')), enabled: false });
-  const refund = saved.data && (!listed || saved.dataUpdatedAt > listedAt) ? saved.data : listed;
-  const member = useMemberName(refund?.memberId);
+/** One refund, read by its ID; its row on the list shows while it loads. */
+export function RefundDetail({ refundId, listed }: { refundId: string; listed?: Refund }) {
+  const query = useQuery({ queryKey: ['refunds', 'one', refundId], queryFn: () => getRefund(refundId), placeholderData: listed });
+  const memberLink = can(useGrants(), 'MEMBERS.READ') && query.data?.memberId ? `/members/${query.data.memberId}` : null;
 
-  if (!refund) return loading ? <Muted>Loading the refund…</Muted> : <Banner tone="warn">This refund isn't on the list as it's filtered now. Change the filters or the page, then open it from the list.</Banner>;
+  if (query.isPending) return <Muted>Loading the refund…</Muted>;
+  if (query.isError) {
+    const gone = query.error instanceof ApiError && query.error.status === 404;
+    return <Banner tone="bad">{gone ? "There's no such refund." : errorMessage(query.error)}</Banner>;
+  }
+  const refund = query.data;
+  const member = refundMember(refund);
 
   return (
     <>
@@ -40,7 +42,7 @@ export function RefundDetail({ refundId, listed, listedAt, loading }: { refundId
         <p className="m-0">{refundWhy(refund.type)}</p>
         <Fields
           rows={[
-            { k: 'Member', v: member.link ? <Link to={member.link} className={link}>{member.text}</Link> : member.text },
+            { k: 'Member', v: memberLink ? <Link to={memberLink} className={link}>{member}</Link> : member },
             { k: 'Type', v: mono(refund.type) },
             { k: 'Amount', v: formatIn(refund.amount, refund.currency, { full: true }) },
             { k: 'Owed since', v: formatDateTime(refund.refundedAt, { zone: true }) },
@@ -61,7 +63,7 @@ export function RefundDetail({ refundId, listed, listedAt, loading }: { refundId
           ]}
         />
       </section>
-      <Payout refund={refund} memberName={member.text} />
+      <Payout refund={refund} memberName={member} />
     </>
   );
 }
