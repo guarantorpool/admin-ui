@@ -148,7 +148,10 @@ function Current({ settings, loading }: { settings: Parameter[]; loading: boolea
   );
 }
 
-/** One group's card, a page of settings at a time so no card grows past the rest; it opens on the setting open. */
+/**
+ * One group's card, a page of settings at a time; it opens on the setting open. Every card is one height whatever it
+ * holds, and a page of long descriptions scrolls inside it.
+ */
 function SettingGroup({ title, settings, search }: { title: string; settings: Parameter[]; search: string }) {
   const { key } = useParams();
   const [page, setPage] = React.useState(() => Math.floor(Math.max(0, settings.findIndex((p) => p.key === key)) / GROUP_SIZE) + 1);
@@ -156,18 +159,20 @@ function SettingGroup({ title, settings, search }: { title: string; settings: Pa
   // a group can shrink under the page shown, when a setting moves to "Applies at once"
   const shown = Math.min(page, Math.max(1, pages));
   return (
-    <section aria-label={title} className="flex min-w-0 flex-col overflow-hidden rounded-card border border-line bg-surface">
+    <section aria-label={title} className="flex h-[30rem] min-w-0 flex-col overflow-hidden rounded-card border border-line bg-surface">
       <h2 className="m-0 px-4 pb-1 pt-3.5 text-base font-bold">{title}</h2>
-      <Rows<Parameter>
-        label={title}
-        rows={settings.slice((shown - 1) * GROUP_SIZE, shown * GROUP_SIZE)}
-        rowKey={(p) => p.key!}
-        columns={COLUMNS}
-        grid="grid-cols-[minmax(0,1fr)_5.5rem_10rem]"
-        minWidth={480}
-        linkFor={(p) => `/pool/settings/${encodeURIComponent(p.key!)}${search ? `?${search}` : ''}`}
-        sub={(p) => `Value ${settingValue(p.key, p.value)}`}
-      />
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <Rows<Parameter>
+          label={title}
+          rows={settings.slice((shown - 1) * GROUP_SIZE, shown * GROUP_SIZE)}
+          rowKey={(p) => p.key!}
+          columns={COLUMNS}
+          grid="grid-cols-[minmax(0,1fr)_5.5rem_10rem]"
+          minWidth={480}
+          linkFor={(p) => `/pool/settings/${encodeURIComponent(p.key!)}${search ? `?${search}` : ''}`}
+          sub={(p) => `Value ${settingValue(p.key, p.value)}`}
+        />
+      </div>
       {pages > 1 ? <Pager page={shown} size={GROUP_SIZE} total={settings.length} onPage={setPage} /> : null}
     </section>
   );

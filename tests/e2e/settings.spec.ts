@@ -28,6 +28,9 @@ test.describe('Pool settings (slice 8)', () => {
     // the other cards keep their own page, and a small group has no pager
     await expect(group(page, 'Trust Score activity').getByText('Page 1 of 2')).toBeVisible();
     await expect(group(page, 'Haircuts').getByRole('button', { name: 'Next page' })).toHaveCount(0);
+    // every card is one height, however many settings it holds
+    const heights = await Promise.all(['Trust Score benchmarks', 'Haircuts', 'Claims'].map(async (t) => (await group(page, t).boundingBox())?.height));
+    expect(new Set(heights).size).toBe(1);
 
     await page.goto('/pool/settings/benchmark_loans_taken');
     await expect(sheet(page)).toBeVisible();
