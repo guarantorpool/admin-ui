@@ -1,4 +1,4 @@
-import { alertDetail, alertLevel, alertStatus, alertType, connectionType, guaranteeStatus, kycStatus, lipaStatus, memberStatus, metricName, paymentMethod, paymentStatus, percent, proofOfAddress, quoteStatus, refundStatus, refundWhy, sentence } from './labels';
+import { alertDetail, alertLevel, alertStatus, alertType, connectionType, factType, factVia, IMPORTABLE_FACT_TYPES, guaranteeStatus, kycStatus, lipaStatus, memberStatus, metricName, paymentMethod, paymentStatus, percent, proofOfAddress, quoteStatus, refundStatus, refundWhy, sentence } from './labels';
 import { fullName } from './names';
 
 describe('status labels', () => {
@@ -17,6 +17,13 @@ describe('status labels', () => {
     expect(refundStatus('paid').tone).toBe('ok');
     expect(alertLevel('CRITICAL')).toEqual({ text: 'Critical', tone: 'bad' });
     expect(alertStatus('ACKNOWLEDGED')).toEqual({ text: 'Acknowledged', tone: 'warn' });
+  });
+
+  it('reads activity records, and imports only what is not read on-chain', () => {
+    expect(factType('LOAN_DISBURSED')).toBe('Loan paid out');
+    expect(factType('SOMETHING_NEW')).toBe('Something new');
+    expect(factVia('CSV')).toBe('CSV import');
+    expect(IMPORTABLE_FACT_TYPES).toEqual(['DEPOSIT', 'WITHDRAWAL', 'LOAN_DISBURSED', 'LOAN_REPAYMENT', 'BLOCKS_STAKED', 'BLOCKS_UNSTAKED']);
   });
 
   it("names an alert's trigger and figures, ones it doesn't know too", () => {

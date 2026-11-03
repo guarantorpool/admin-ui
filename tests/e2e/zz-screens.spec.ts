@@ -349,5 +349,23 @@ for (const scheme of ['light', 'dark'] as const) {
     await page.getByRole('menu').getByRole('menuitem').first().waitFor();
     await page.screenshot({ path: `${dir}/${tag}-56-bell.png` });
     await page.keyboard.press('Escape');
+
+    // the same file each run: the first run adds its records, the second finds them already in
+    await page.goto('/activity');
+    await page.getByRole('button', { name: 'Import a CSV file' }).click();
+    const importing = page.getByRole('dialog', { name: 'Import activity records' });
+    const at = (daysAgo: number) => new Date(Date.now() - daysAgo * 86_400_000).toISOString().slice(0, 19) + 'Z';
+    const rows = [
+      [amina!, 'DEPOSIT', '12000', 1], [brian!, 'LOAN_REPAYMENT', '4500', 1], [amina!, 'BLOCKS_STAKED', '2000', 2],
+      [brian!, 'WITHDRAWAL', '3000', 3], [amina!, 'LOAN_DISBURSED', '20000', 5]
+    ] as const;
+    const lines = rows.map(([m, type, amount, days], i) => `sacco-ledger,SHOT-${i},${m.number},${type},${amount},${at(days)}`);
+    const csv = ['source,externalId,memberNumber,type,amount,occurredAt', ...lines].join('\n') + '\n';
+    await importing.getByLabel('CSV file').setInputFiles({ name: 'october-deposits.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) });
+    await page.screenshot({ path: `${dir}/${tag}-57-activity-import.png` });
+    await importing.getByRole('button', { name: 'Import' }).click();
+    await page.getByText(/^october-deposits\.csv: /).waitFor();
+    await settle(page);
+    await page.screenshot({ path: `${dir}/${tag}-58-activity.png`, fullPage: true });
   });
 }
