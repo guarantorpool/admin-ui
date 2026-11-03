@@ -1,7 +1,6 @@
 import * as React from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { keepPreviousData, useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
-import { MoreVertical } from 'lucide-react';
 import { toast } from 'sonner';
 import { deleteAdmin, disableAdmin, enableAdmin, listAdmins, listRoles, type AdminStatus, type Role } from '@/api/admins';
 import { errorMessage } from '@/api/errors';
@@ -11,9 +10,9 @@ import { Banner } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
 import { DecisionDialog, NOTE_HINT, type Decision } from '@/components/ui/decision-dialog';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Pager, PAGE_SIZES } from '@/components/ui/pager';
+import { RowMenu, type RowAction } from '@/components/ui/row-menu';
 import { StatusPill } from '@/components/ui/parts';
 import { TabPanel, Tabs } from '@/components/ui/tabs';
 import { formatDateTime } from '@/lib/format';
@@ -76,18 +75,11 @@ function AdminsAndRoles() {
   );
 }
 
-/** One thing to do to an admin, and why it can't be done, if it can't. */
-interface Action {
-  label: string;
-  why: string;
-  run: () => void;
-}
-
 /** What the signed-in admin can do to `a`, as the backend's rules allow (see AdminService). */
-function actionsFor(a: Account, grants: Grants | null, me: string | undefined, roles: Role[], on: { update: () => void; status: () => void; remove: () => void }): Action[] {
+function actionsFor(a: Account, grants: Grants | null, me: string | undefined, roles: Role[], on: { update: () => void; status: () => void; remove: () => void }): RowAction[] {
   const self = a.id === me;
   const blocked = cantManage(grants, a, roles.find((r) => r.id === a.role?.id)?.effectivePermissions);
-  const out: Action[] = [];
+  const out: RowAction[] = [];
   if (can(grants, 'ADMINS.UPDATE')) {
     out.push({ label: 'Update details', why: self ? '' : blocked, run: on.update });
     const disabled = a.status === 'disabled';
@@ -97,29 +89,10 @@ function actionsFor(a: Account, grants: Grants | null, me: string | undefined, r
   return out;
 }
 
-function RowMenu({ name, actions }: { name: string; actions: Action[] }) {
-  if (!actions.length) return null;
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger aria-label={`Options for ${name}`} title="Options" className="mr-2 flex size-9 shrink-0 items-center justify-center rounded-ctl text-ink-2 hover:bg-chip">
-        <MoreVertical className="size-[18px]" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent>
-        {actions.map((x) => (
-          <DropdownMenuItem key={x.label} disabled={!!x.why} onSelect={x.run} className={cn(x.why && 'flex-col items-start justify-center gap-0.5 py-2')}>
-            {x.label}
-            {x.why ? <span className="text-[12px] font-normal">{x.why}</span> : null}
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-
 const lastSignIn = (a: Account) => (a.lastLogin ? formatDateTime(a.lastLogin) : 'Never');
 const COLUMNS = 'grid-cols-[1.1fr_1.4fr_0.9fr_0.6fr_0.9fr]';
 
-function AdminRows({ rows, menuFor, me }: { rows: Account[]; menuFor: (a: Account) => Action[]; me: string | undefined }) {
+function AdminRows({ rows, menuFor, me }: { rows: Account[]; menuFor: (a: Account) => RowAction[]; me: string | undefined }) {
   const compact = useCompact();
   const anyMenu = rows.some((a) => menuFor(a).length > 0);
   const name = (a: Account) => fullName(a) || a.email || '—';

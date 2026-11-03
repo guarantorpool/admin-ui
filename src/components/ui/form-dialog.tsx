@@ -15,7 +15,7 @@ export const selectClass = 'min-h-10 w-full rounded-ctl border border-ctl bg-sur
  * One entry form: what it acts on, its fields and the backend's answer. `check` returns a message to stop on,
  * or '' to send it.
  */
-export function FormDialog<T>({ open, title, description, rows, confirm, onClose, check, send, saved, done, wide, children }: {
+export function FormDialog<T>({ open, title, description, rows, confirm, danger, onClose, check, send, saved, done, wide, children }: {
   open: boolean;
   /** room for a longer form, such as a role's permissions */
   wide?: boolean;
@@ -23,6 +23,8 @@ export function FormDialog<T>({ open, title, description, rows, confirm, onClose
   description: string;
   rows?: Rows;
   confirm: string;
+  /** a red button, for a form that deletes */
+  danger?: boolean;
   onClose: () => void;
   check: () => string;
   send: () => Promise<T>;
@@ -60,7 +62,7 @@ export function FormDialog<T>({ open, title, description, rows, confirm, onClose
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" disabled={save.isPending}>
+            <Button type="submit" variant={danger ? 'danger' : 'primary'} disabled={save.isPending}>
               {save.isPending ? 'Saving…' : confirm}
             </Button>
           </div>

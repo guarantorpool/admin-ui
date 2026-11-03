@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
-import { apiToken, call, connect, newAdmin, newMember, post, randomIdNumber, seedDefault, seedGuarantee, seedLoanDocument, seedAlert, seedPoolSamples, seedQuote, seedRefund, signIn, stack, submitAddress, submitKyc, type Member, type SeededGuarantee, type SeededQuote } from './helpers';
+import { apiToken, call, connect, loseKycKey, newAdmin, newMember, post, randomIdNumber, seedDefault, seedGuarantee, seedLoanDocument, seedAlert, seedPoolSamples, seedQuote, seedRefund, signIn, stack, submitAddress, submitKyc, type Member, type SeededGuarantee, type SeededQuote } from './helpers';
 
 // Not a check: screenshots for review, only when SHOTS_DIR is set.
 const dir = process.env.SHOTS_DIR;
@@ -120,6 +120,23 @@ async function seedAdminSamples() {
       if (!/409/.test(e.message)) throw e;
     });
   }
+}
+
+/** Service keys for screenshots, made once a run: two in use (one used), one rotated and one revoked. */
+let keysSeeded = false;
+async function seedKeySamples() {
+  if (keysSeeded) return;
+  const { apiBase, admin } = stack();
+  const token = await apiToken(admin.email, admin.password);
+  type Made = { key: string; details: { id: string } };
+  const make = (name: string, scopes: string[]) => post<Made>(`${apiBase}/service-keys`, { name, scopes }, token);
+  const ledger = await make('Ledger sync', ['facts:write']);
+  await post(`${apiBase}/service-keys/${ledger.details.id}/rotate`, undefined, token);
+  const reports = await make('Lender reports', ['facts:read']);
+  for (let i = 0; i < 3; i++) await fetch(`${apiBase}/facts?page=1&size=1`, { headers: { 'X-API-Key': reports.key } });
+  const old = await make('Old importer', ['facts:write', 'facts:read']);
+  await call('PATCH', `${apiBase}/service-keys/${old.details.id}/revoke`, undefined, token);
+  keysSeeded = true;
 }
 
 const settle = (page: Page) => page.waitForLoadState('networkidle');
@@ -428,5 +445,56 @@ for (const scheme of ['light', 'dark'] as const) {
     await page.getByRole('dialog', { name: 'Change Operations' }).waitFor();
     await page.screenshot({ path: `${dir}/${tag}-65-role-change.png` });
     await page.keyboard.press('Escape');
+
+    await seedKeySamples();
+    await page.goto('/service-keys?show=all');
+    await page.getByRole('heading', { name: 'Service keys' }).waitFor();
+    await settle(page);
+    await page.screenshot({ path: `${dir}/${tag}-66-service-keys.png` });
+    await page.getByRole('button', { name: 'Create a key' }).click();
+    const create = page.getByRole('dialog', { name: 'Create a key' });
+    await create.getByLabel('Name').fill('Partner sync');
+    await create.getByLabel('Send activity records').check();
+    await page.screenshot({ path: `${dir}/${tag}-67-key-create.png` });
+    await create.getByRole('button', { name: 'Create the key' }).click();
+    const secret = page.getByRole('dialog', { name: 'The key for Partner sync' });
+    await secret.waitFor();
+    await page.screenshot({ path: `${dir}/${tag}-68-key-secret.png` });
+    await secret.getByRole('button', { name: 'Done' }).click();
+    // the next run makes its own, so revoke this one
+    const partner = page.getByRole(phone ? 'listitem' : 'row').filter({ hasText: 'Partner sync' }).filter({ hasText: /In use/ });
+    await partner.getByRole('button', { name: 'Options for Partner sync' }).click();
+    await page.getByRole('menuitem', { name: 'Revoke' }).click();
+    await page.getByRole('dialog', { name: 'Revoke Partner sync?' }).getByRole('button', { name: 'Revoke' }).click();
+    await page.getByRole('dialog').waitFor({ state: 'hidden' });
+
+    // Grace's details on a lost key, put back once the screens are taken
+    const restore = loseKycKey((await sampleMembers())[2]!);
+    try {
+      await page.goto('/kyc-key');
+      await page.getByRole('heading', { name: 'KYC encryption key' }).waitFor();
+      await settle(page);
+      await page.screenshot({ path: `${dir}/${tag}-69-kyc-key.png`, fullPage: true });
+      await page.getByRole('button', { name: 'Preview the reset' }).click();
+      await page.getByRole('list', { name: 'Members the reset would affect' }).waitFor();
+      await page.screenshot({ path: `${dir}/${tag}-70-key-loss-preview.png`, fullPage: true });
+      await page.getByRole('button', { name: 'Run the reset' }).click();
+      await page.getByRole('dialog', { name: 'Run the key-loss reset?' }).getByLabel(/^Type/).fill('reset 1 member');
+      await page.screenshot({ path: `${dir}/${tag}-71-key-loss-confirm.png` });
+      await page.keyboard.press('Escape');
+    } finally {
+      restore();
+    }
+
+    await page.goto('/audit');
+    await page.getByRole('heading', { name: 'Audit log' }).waitFor();
+    await settle(page);
+    await page.screenshot({ path: `${dir}/${tag}-72-audit.png` });
+    await page.goto('/audit?action=SERVICE_KEY_CREATED');
+    await settle(page);
+    await page.getByRole(phone ? 'listitem' : 'row').filter({ hasText: 'Service key created' }).first().getByRole('button', { name: stack().admin.email }).click();
+    await page.waitForURL(/admin=/);
+    await settle(page);
+    await page.screenshot({ path: `${dir}/${tag}-73-audit-filtered.png` });
   });
 }
