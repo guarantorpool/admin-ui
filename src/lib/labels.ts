@@ -249,6 +249,9 @@ export const loanSource = (code: string | null | undefined) => (code === 'guaran
 // extra liquidity: a movement counts toward Liquid Funds only once a second admin approves it (3.4.3)
 export const movementStatus = stepStatus;
 
+// an admin's account has a member's statuses
+export const adminStatus = memberStatus;
+
 export const movementType = (code: string | null | undefined) => (code === 'top_up' ? 'Into Liquid Funds' : code === 'withdrawal' ? 'Out of Liquid Funds' : sentence(code ?? '—'));
 
 // a pool wallet is proposed, then current once approved, and retired when the next one is approved (BlockCoop #68)

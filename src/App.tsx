@@ -3,6 +3,7 @@ import { AppShell } from '@/components/shell/AppShell';
 import { allScreens, homePath, safeNext } from '@/components/shell/nav';
 import { Account } from '@/pages/Account';
 import { ActivityPage } from '@/pages/activity/ActivityPage';
+import { AdminsPage } from '@/pages/admins/AdminsPage';
 import { AlertsPage } from '@/pages/alerts/AlertsPage';
 import { BackingPage } from '@/pages/backing/BackingPage';
 import { ForgotPassword, ResetPassword, SetPassword } from '@/pages/auth/PasswordPages';
@@ -88,6 +89,8 @@ export function App() {
           <Route path="/pool/settings/:key?" element={<PoolSettingsPage />} />
           <Route path="/backing" element={<BackingPage />} />
           <Route path="/backing/:memberId" element={<BackingPage />} />
+          <Route path="/admins" element={<AdminsPage />} />
+          <Route path="/admins/roles/:roleId?" element={<AdminsPage />} />
           {allScreens()
             .filter((s) => s.comingIn)
             .map((s) => (

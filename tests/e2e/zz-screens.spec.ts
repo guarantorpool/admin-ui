@@ -98,6 +98,30 @@ function seedAlertSamples(): string {
   return seedAlert({ type: 'LIPA_PAYMENT_REFUSED', summary: 'A Lipa payment for quote GPQ-7KD2QX was refused: the amount sent was less than the amount due', minutesAgo: 0, details: { quoteId: 'GPQ-7KD2QX', paymentId: 'lipa-pay-81273', txHash: '0x5f2c9a41e7b3d8f06a1c4e92b7d35f8a0c6e1b49d27f3a85c0e64b1d9f72a3c8', reason: 'the amount sent was less than the amount due' } });
 }
 
+/** The roles and admins of a small team, made once per stack; a second run finds them there. */
+async function seedAdminSamples() {
+  const { apiBase, admin } = stack();
+  const token = await apiToken(admin.email, admin.password);
+  const roles = await call<{ id: string; name: string }[]>('GET', `${apiBase}/roles`, undefined, token);
+  const role = async (name: string, permissions: string[]) =>
+    roles.find((r) => r.name === name)?.id ?? (await post<{ id: string }>(`${apiBase}/roles`, { name, permissions }, token)).id;
+  const operations = await role('ROLE_OPERATIONS', ['MEMBERS', 'GUARANTEES', 'REFUNDS', 'ALERTS', 'LEDGER', 'POOL.READ', 'PARAMETERS.READ', 'PARAMETERS.PROPOSE', 'ADMINS.READ']);
+  const reader = await role('ROLE_READ_ONLY', ['MEMBERS.READ', 'GUARANTEES.READ', 'REFUNDS.READ', 'ALERTS.READ', 'POOL.READ', 'PARAMETERS.READ', 'LEDGER.READ']);
+  await role('ROLE_AUDITOR', ['AUDIT.READ', 'MEMBERS.READ', 'GUARANTEES.READ']);
+  const people = [
+    ['Brian', 'Kamau', operations],
+    ['Ruth', 'Njeri', reader],
+    ['Kevin', 'Mwangi', operations]
+  ] as const;
+  for (const [first, last, roleId] of people) {
+    const email = `${first.toLowerCase()}.${last.toLowerCase()}@blockcoop.test`;
+    const phoneNumber = `07${String(Math.floor(Math.random() * 1e8)).padStart(8, '0')}`;
+    await post(`${apiBase}/admins`, { firstName: first, lastName: last, email, phoneNumber, roleId }, token).catch((e: Error) => {
+      if (!/409/.test(e.message)) throw e;
+    });
+  }
+}
+
 const settle = (page: Page) => page.waitForLoadState('networkidle');
 
 for (const scheme of ['light', 'dark'] as const) {
@@ -370,5 +394,39 @@ for (const scheme of ['light', 'dark'] as const) {
     await page.getByText(/^october-deposits\.csv: /).waitFor();
     await settle(page);
     await page.screenshot({ path: `${dir}/${tag}-58-activity.png`, fullPage: true });
+
+    await seedAdminSamples();
+    await page.goto('/admins');
+    await page.getByRole('heading', { name: 'Admins and roles' }).waitFor();
+    await settle(page);
+    await page.screenshot({ path: `${dir}/${tag}-59-admins.png` });
+    const brianAdmin = page.getByRole(phone ? 'listitem' : 'row').filter({ hasText: 'brian.kamau@blockcoop.test' });
+    await brianAdmin.getByRole('button', { name: 'Options for Brian Kamau' }).click();
+    await page.getByRole('menu').waitFor();
+    await page.screenshot({ path: `${dir}/${tag}-60-admin-options.png` });
+    await page.getByRole('menuitem', { name: 'Disable' }).click();
+    await page.getByRole('dialog', { name: 'Disable Brian Kamau?' }).getByLabel('Reason (optional)').fill('On leave until December');
+    await page.screenshot({ path: `${dir}/${tag}-61-admin-disable.png` });
+    await page.keyboard.press('Escape');
+    await page.getByRole('button', { name: 'Invite an admin' }).click();
+    const invite = page.getByRole('dialog', { name: 'Invite an admin' });
+    await invite.getByLabel('First name').fill('Lydia');
+    await invite.getByLabel('Last name').fill('Achieng');
+    await invite.getByLabel('Email').fill('lydia.achieng@blockcoop.test');
+    await invite.getByLabel('Phone number').fill('0712345678');
+    await invite.getByLabel('Role').selectOption({ label: 'Operations' });
+    await page.screenshot({ path: `${dir}/${tag}-62-admin-invite.png` });
+    await page.keyboard.press('Escape');
+
+    await page.getByRole('tab', { name: 'Roles' }).click();
+    await settle(page);
+    await page.screenshot({ path: `${dir}/${tag}-63-roles.png` });
+    await page.getByRole(phone ? 'listitem' : 'row').filter({ hasText: /^Operations/ }).getByRole('link').click();
+    await page.getByRole('dialog', { name: 'Role details' }).getByRole('heading', { name: 'Operations' }).waitFor();
+    await page.screenshot({ path: `${dir}/${tag}-64-role.png` });
+    await page.getByRole('button', { name: 'Rename or change permissions' }).click();
+    await page.getByRole('dialog', { name: 'Change Operations' }).waitFor();
+    await page.screenshot({ path: `${dir}/${tag}-65-role-change.png` });
+    await page.keyboard.press('Escape');
   });
 }

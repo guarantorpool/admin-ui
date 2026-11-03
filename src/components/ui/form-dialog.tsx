@@ -15,8 +15,10 @@ export const selectClass = 'min-h-10 w-full rounded-ctl border border-ctl bg-sur
  * One entry form: what it acts on, its fields and the backend's answer. `check` returns a message to stop on,
  * or '' to send it.
  */
-export function FormDialog<T>({ open, title, description, rows, confirm, onClose, check, send, saved, done, children }: {
+export function FormDialog<T>({ open, title, description, rows, confirm, onClose, check, send, saved, done, wide, children }: {
   open: boolean;
+  /** room for a longer form, such as a role's permissions */
+  wide?: boolean;
   title: string;
   description: string;
   rows?: Rows;
@@ -47,7 +49,7 @@ export function FormDialog<T>({ open, title, description, rows, confirm, onClose
   };
   return (
     <Dialog open={open} onOpenChange={(o) => (o ? undefined : onClose())}>
-      <DialogContent>
+      <DialogContent className={wide ? 'max-w-[680px]' : undefined}>
         <form className="flex flex-col gap-3.5" onSubmit={submit} noValidate>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
