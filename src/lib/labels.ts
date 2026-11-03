@@ -270,3 +270,11 @@ const FACTOR_TRIGGER: Record<string, string> = {
 };
 
 export const factorTrigger = (code: string | null | undefined) => (code ? FACTOR_TRIGGER[code] ?? sentence(code) : '—');
+
+// a pool setting's change: one that applies at once is applied as it's made; any other waits for a second admin
+const CHANGE_STATUS: Record<string, Label> = {
+  ...STEP_STATUS,
+  applied: { text: 'Applied at once', tone: 'ok' }
+};
+
+export const changeStatus = (code: string | null | undefined) => pick(CHANGE_STATUS, code);

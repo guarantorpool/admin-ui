@@ -11,6 +11,7 @@ import { LoansPage } from '@/pages/loans/LoansPage';
 import { MembersPage } from '@/pages/members/MembersPage';
 import { ComingSoon, NotFound } from '@/pages/Placeholders';
 import { PoolHealthPage } from '@/pages/pool/PoolHealthPage';
+import { PoolSettingsPage } from '@/pages/pool/PoolSettingsPage';
 import { PoolWalletsPage } from '@/pages/pool/PoolWalletsPage';
 import { RefundsPage } from '@/pages/refunds/RefundsPage';
 import { useGrants, useSession } from '@/session/SessionProvider';
@@ -78,6 +79,8 @@ export function App() {
           <Route path="/pool/health" element={<PoolHealthPage />} />
           <Route path="/pool/wallets" element={<PoolWalletsPage />} />
           <Route path="/pool/wallets/:walletId" element={<PoolWalletsPage />} />
+          <Route path="/pool/settings" element={<PoolSettingsPage />} />
+          <Route path="/pool/settings/:key" element={<PoolSettingsPage />} />
           {allScreens()
             .filter((s) => s.comingIn)
             .map((s) => (

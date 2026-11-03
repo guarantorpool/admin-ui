@@ -4,6 +4,8 @@ import { cn } from '@/lib/utils';
 export interface TabOption {
   value: string;
   label: string;
+  /** how many it holds, shown beside the label when more than 0 */
+  count?: number;
 }
 
 /**
@@ -39,11 +41,12 @@ export function Tabs({ label, idPrefix, tabs, value, onChange }: { label: string
           tabIndex={value === t.value ? 0 : -1}
           onClick={() => onChange(t.value)}
           className={cn(
-            '-mb-px min-h-9 shrink-0 whitespace-nowrap border-b-[3px] px-3.5',
+            '-mb-px flex min-h-9 shrink-0 items-center gap-1.5 whitespace-nowrap border-b-[3px] px-3.5',
             value === t.value ? 'border-primary font-bold text-ink-strong' : 'border-transparent font-medium text-muted hover:text-ink'
           )}
         >
           {t.label}
+          {t.count ? <span className="rounded-full bg-chip px-[7px] py-px text-xs font-semibold text-ink-2">{t.count}</span> : null}
         </button>
       ))}
     </div>
