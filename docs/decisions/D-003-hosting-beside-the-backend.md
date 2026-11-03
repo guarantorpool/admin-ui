@@ -8,6 +8,8 @@
 
 The portal runs on the backend's server, on its own domain (`admin-blockcoop.duckdns.org` on the dev server), and is deployed the way the backend is: every push to `main` is tested, then GitHub Actions logs in over SSH with a key that can only run `deploy/deploy.sh`, which pulls `main` and rebuilds the container.
 
+Until this repository has the deploy secrets, which only its owner can add, a systemd timer on the server deploys instead: every minute it looks for a new commit on `main` whose tests passed on GitHub, and runs the same `deploy/deploy.sh` (`deploy/poll.sh`). A tested commit goes live within about a minute either way.
+
 The container is Caddy serving the built files. The backend's Caddy handles HTTPS for both domains and passes the portal's requests to it over a shared Docker network (`blockcoop-edge`).
 
 Every response carries a Content Security Policy that allows scripts from the portal itself only, and API calls to the API's origin only (taken from `VITE_API_BASE_URL` when the image is built). The theme script that ran inline in `index.html` is now a file (`public/theme.js`) so the policy needs no exception for it.
