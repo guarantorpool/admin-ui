@@ -10,6 +10,7 @@ export type Movement = Schemas['LiquidityAdjustmentResponse'];
 export type MovementType = NonNullable<Movement['type']>;
 export type PoolWallet = Schemas['PoolWalletResponse'];
 export type Prices = Schemas['Prices'];
+export type PoolCharts = Schemas['PoolChartsResponse'];
 
 export interface MovementQuery {
   page: number;
@@ -51,3 +52,6 @@ export const proposeWallet = (address: string, note?: string) =>
 /** Approves or rejects a proposed wallet; only an admin who didn't propose it can. */
 export const decideWallet = (id: string, approval: 'approve' | 'reject', note?: string) =>
   api.patch<PoolWallet>(`/pool/wallets/${encodeURIComponent(id)}/${approval}`, (note ? { note } : {}) satisfies Schemas['DecisionRequest']);
+
+/** The dashboard's charts over the last 12 months, in Nairobi days and months, oldest first. */
+export const getPoolCharts = () => api.get<PoolCharts>('/pool/charts');

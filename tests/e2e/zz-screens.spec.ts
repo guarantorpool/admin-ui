@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
-import { apiToken, call, connect, loseKycKey, newAdmin, newMember, post, randomIdNumber, seedDefault, seedGuarantee, seedLoanDocument, seedAlert, seedPoolSamples, seedQuote, seedPayment, seedRefund, signIn, stack, submitAddress, submitKyc, type Member, type SeededGuarantee, type SeededQuote } from './helpers';
+import { apiToken, call, connect, loseKycKey, newAdmin, newMember, post, randomIdNumber, seedDefault, seedGuarantee, seedLoanDocument, seedAlert, seedChartHistory, seedPoolSamples, seedQuote, seedPayment, seedRefund, signIn, stack, submitAddress, submitKyc, type Member, type SeededGuarantee, type SeededQuote } from './helpers';
 
 // Not a check: screenshots for review, only when SHOTS_DIR is set.
 const dir = process.env.SHOTS_DIR;
@@ -547,5 +547,21 @@ for (const scheme of ['light', 'dark'] as const) {
     await expect(reread).toHaveText('Read again now');
     await settle(page);
     await page.screenshot({ path: `${dir}/${tag}-83-blocks-reread.png` });
+
+    // D: the dashboard, with a few months of chart history
+    seedChartHistory();
+    await page.goto('/dashboard');
+    await page.getByRole('img', { name: /^Liquid Funds each night/ }).waitFor();
+    await page.getByRole('img', { name: /^Backing by asset each day/ }).waitFor();
+    await settle(page);
+    await page.screenshot({ path: `${dir}/${tag}-85-dashboard.png`, fullPage: true });
+    const chart = page.getByRole('img', { name: /^Liquid Funds each night/ });
+    await chart.scrollIntoViewIfNeeded();
+    const box = (await chart.boundingBox())!;
+    // a phone taps the point; a desktop hovers over it
+    if (tag.startsWith('phone')) await page.touchscreen.tap(box.x + box.width * 0.6, box.y + box.height / 2);
+    else await page.mouse.move(box.x + box.width * 0.6, box.y + box.height / 2);
+    await page.getByRole('region', { name: 'Liquid Funds' }).getByRole('status').waitFor();
+    await page.getByRole('region', { name: 'Liquid Funds' }).screenshot({ path: `${dir}/${tag}-86-dashboard-hover.png` });
   });
 }

@@ -430,3 +430,34 @@ export async function newAdmin(page: Page, permissions: string[], label: string)
   await expect(page.getByText('Your password is set. Sign in to finish.')).toBeVisible();
   return { email, password, roleId: role.id };
 }
+
+/**
+ * A few months of the dashboard's chart history for screenshots, made once: a nightly Liquid Funds figure for 120
+ * nights and a pool calculation with backing split by asset for 60 days, both ending three days ago, before the stack's
+ * own calculations. Only the screenshot run seeds it, after every flow has run.
+ */
+export function seedChartHistory() {
+  if (sql("SELECT count(*) FROM underwriting_inputs WHERE calculated_at < now() - interval '2 days'") === '0') {
+    sql(`INSERT INTO underwriting_inputs (base_default_rate, base_default_rate_fallback, loans_defaulted, loans_repaid_on_time,
+      average_strength_tenure, recovery_rate, recovery_rate_fallback, recovered_closed, claims_paid_closed, liquidity_ratio,
+      liquidity_ratio_fallback, pool_size, liquid_funds, premiums_received, refunds_paid, claims_paid, recovered, extra_liquidity, calculated_at)
+      SELECT 0.04, true, 0, 0, NULL, 0.35, true, 0, 0, 0.3, true, 120000,
+        round((18000 + (120 - d) * 230 + 1800 * sin(d / 6.0) - CASE WHEN d < 40 THEN 4200 ELSE 0 END)::numeric, 2), 0, 0, 0, 0, 0,
+        date_trunc('day', now() - make_interval(days => d)) + interval '3 hours 5 minutes'
+      FROM generate_series(3, 120) AS d`);
+  }
+  if (sql("SELECT count(*) FROM pool_snapshots WHERE backing_blocks_usdt IS NOT NULL AND calculated_at < now() - interval '2 days'") === '0') {
+    sql(`INSERT INTO pool_snapshots (total_backing_usdt, total_outstanding, total_network_value, utilization_threshold, expected_utilization,
+      correction_factor, members_counted, trigger_reason, calculated_at, backing_blocks_usdt, backing_kes_usdt, backing_vault_usdt)
+      SELECT b + k + v, 9000, b + k + v - 9000, 0.75, 0.5, 1, 4, 'SCHEDULED', now() - make_interval(days => d), b, k, v
+      FROM (SELECT d, round((52000 + (60 - d) * 310 + 900 * sin(d / 4.0))::numeric, 2) AS b,
+              round((14000 + (60 - d) * 95)::numeric, 2) AS k, round((8000 + CASE WHEN d < 25 THEN 6000 ELSE 0 END)::numeric, 2) AS v
+            FROM generate_series(3, 60) AS d) s`);
+  }
+  // the backend reads the latest calculation by id, so the newest by time is copied to the top again
+  for (const table of ['underwriting_inputs', 'pool_snapshots']) {
+    const cols = sql(`SELECT string_agg(column_name, ', ') FROM information_schema.columns WHERE table_name = '${table}' AND column_name <> 'id'`);
+    sql(`INSERT INTO ${table} (${cols}) SELECT ${cols} FROM ${table} WHERE id = (SELECT id FROM ${table} ORDER BY calculated_at DESC, id DESC LIMIT 1)
+      AND id <> (SELECT max(id) FROM ${table})`);
+  }
+}

@@ -11,6 +11,8 @@
     --chip: #EDEEF1; --selected: #E3E9F5; --danger: #B91C1C;
     --ok-bg: #DDF3E0; --ok-fg: #0B5D1E; --warn-bg: #FDF3D7; --warn-fg: #5F4000;
     --bad-bg: #FBE3E3; --bad-fg: #8F1414; --plan-bg: #E6E3FA; --plan-fg: #3F2BA6;
+    /* chart series, checked for colour-blind separation and contrast on the surface */
+    --chart1: #2F5FB3; --chart2: #D9772B; --chart3: #8A55C7;
     color-scheme: light;
   }
   .dark {
@@ -20,6 +22,7 @@
     --chip: #263244; --selected: #24344F; --danger: #F87171;
     --ok-bg: #123A22; --ok-fg: #8FE0A6; --warn-bg: #3D2F0B; --warn-fg: #F2D27A;
     --bad-bg: #451A1A; --bad-fg: #F9B4B4; --plan-bg: #2C2660; --plan-fg: #C9C2FA;
+    --chart1: #5B8AE0; --chart2: #D9772B; --chart3: #A57BE0;
     color-scheme: dark;
   }
   body {
