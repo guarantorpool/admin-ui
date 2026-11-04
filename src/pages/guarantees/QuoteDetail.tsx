@@ -1,13 +1,14 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import type { LipaEvent } from '@/api/audit';
 import { ApiError, errorMessage } from '@/api/errors';
-import { getQuote } from '@/api/guarantees';
+import { getQuote, getQuoteLipaEvents } from '@/api/guarantees';
 import { listMembers } from '@/api/members';
 import { Badge, Banner } from '@/components/ui/badge';
-import { Fields, Muted, SectionTitle, StatusPill } from '@/components/ui/parts';
+import { Fields, Item, Items, Muted, SectionTitle, StatusPill } from '@/components/ui/parts';
 import { TabPanel, Tabs } from '@/components/ui/tabs';
 import { formatDateTime, formatNumber, formatUsdt } from '@/lib/format';
-import { lipaStatus, quoteStatus } from '@/lib/labels';
+import { lipaSource, lipaStatus, quoteStatus } from '@/lib/labels';
 import { fullName } from '@/lib/names';
 import { can } from '@/lib/permissions';
 import { useGrants } from '@/session/SessionProvider';
@@ -16,7 +17,7 @@ import { PricingTrail } from './PricingTrail';
 export const QUOTE_TABS = [
   { value: 'overview', label: 'Overview' },
   { value: 'pricing', label: 'Pricing trail and invoice' },
-  { value: 'lipa', label: 'Latest Lipa API payment' }
+  { value: 'lipa', label: 'Lipa API payments' }
 ] as const;
 
 const usdt = (v: string | undefined) => formatUsdt(v, { full: true });
@@ -41,6 +42,59 @@ function QuoteLink({ id }: { id: string }) {
     <Link to={`/guarantees/quotes/${id}${rest ? `?${rest}` : ''}`} className={`font-mono text-[13px] ${link}`}>
       {id}
     </Link>
+  );
+}
+
+/** Each attempt (a Lipa payment ID) with every status it reached, oldest first, as the backend lists them. */
+function attempts(events: LipaEvent[]): [string, LipaEvent[]][] {
+  const byPayment = new Map<string, LipaEvent[]>();
+  for (const e of events) {
+    const id = e.paymentId ?? '—';
+    byPayment.set(id, [...(byPayment.get(id) ?? []), e]);
+  }
+  return [...byPayment];
+}
+
+function EventDetails({ e }: { e: LipaEvent }) {
+  return (
+    <span className="flex flex-col gap-0.5">
+      {e.amount ? <span>{usdt(e.amount)}</span> : null}
+      {e.txHash ? <span className="font-mono text-[12px] [overflow-wrap:anywhere]">{e.txHash}</span> : null}
+      {e.status === 'FAILED' ? (
+        <>
+          <span>
+            failureReason: <span className="font-mono text-[12px] text-ink">{e.failureReason ?? 'none given'}</span>
+          </span>
+          {e.failureMessage ? <span>Member told: {e.failureMessage}</span> : null}
+        </>
+      ) : null}
+    </span>
+  );
+}
+
+/** Every Lipa API attempt to pay the quote (C3), each with the statuses its callbacks and our status checks reported. */
+function LipaAttempts({ quoteId }: { quoteId: string }) {
+  const query = useQuery({ queryKey: ['quotes', quoteId, 'lipa-events'], queryFn: () => getQuoteLipaEvents(quoteId) });
+  if (query.isPending) return <Muted>Loading the attempts…</Muted>;
+  if (query.isError) return <Banner tone="bad">{errorMessage(query.error)}</Banner>;
+  const all = attempts(query.data);
+  return (
+    <>
+      <SectionTitle>{all.length > 1 ? `Every attempt (${all.length}, oldest first)` : 'Every attempt'}</SectionTitle>
+      {!all.length ? <Muted>The Lipa API hasn't reported an attempt to pay this quote.</Muted> : null}
+      {all.map(([paymentId, events], i) => (
+        <div key={paymentId} className="flex flex-col gap-1">
+          <span className="font-semibold">
+            Attempt {i + 1} <span className="font-mono text-[13px] font-normal text-muted">{paymentId}</span>
+          </span>
+          <Items label={`Attempt ${i + 1}`}>
+            {events.map((e) => (
+              <Item key={e.id} title={`${lipaSource(e.source)}, ${formatDateTime(e.receivedAt, { zone: true })}`} sub={<EventDetails e={e} />} status={<StatusPill label={lipaStatus(e.status)} />} />
+            ))}
+          </Items>
+        </div>
+      ))}
+    </>
   );
 }
 
@@ -85,17 +139,21 @@ export function QuoteDetail({ quoteId, tab, onTab }: { quoteId: string; tab: str
               <PricingTrail priced={{ underwriting: q.underwriting, premium: invoice.amount, premiumRate: q.premiumRate, coverageRatio: q.coverageRatio, memberBacking: q.memberBacking, guaranteeToSavingsRatio: q.guaranteeToSavingsRatio }} />
             </>
           ) : current === 'lipa' ? (
-            payment ? (
-              <Fields
-                rows={[
-                  { k: 'Lipa payment ID', v: <span className="font-mono text-[13px]">{payment.paymentId ?? '—'}</span> },
-                  { k: 'Status', v: <StatusPill label={lipaStatus(payment.status)} /> },
-                  ...(payment.status === 'FAILED' ? [{ k: 'What the member was told (failureMessage)', v: payment.failureMessage ?? '—' }] : [])
-                ]}
-              />
-            ) : (
-              <Muted>No Lipa API payment on this quote.</Muted>
-            )
+            <>
+              <SectionTitle>Latest payment</SectionTitle>
+              {payment ? (
+                <Fields
+                  rows={[
+                    { k: 'Lipa payment ID', v: <span className="font-mono text-[13px]">{payment.paymentId ?? '—'}</span> },
+                    { k: 'Status', v: <StatusPill label={lipaStatus(payment.status)} /> },
+                    ...(payment.status === 'FAILED' ? [{ k: 'What the member was told (failureMessage)', v: payment.failureMessage ?? '—' }] : [])
+                  ]}
+                />
+              ) : (
+                <Muted>No Lipa API payment on this quote.</Muted>
+              )}
+              <LipaAttempts quoteId={quoteId} />
+            </>
           ) : (
             <Fields
               rows={[
@@ -140,7 +198,6 @@ export function QuoteDetail({ quoteId, tab, onTab }: { quoteId: string; tab: str
           Open the guarantee it created
         </Link>
       ) : null}
-      <Banner tone="plan">Planned: every Lipa API payment attempt with its transaction hash and failureReason.</Banner>
     </>
   );
 }

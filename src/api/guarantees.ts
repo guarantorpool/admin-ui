@@ -1,6 +1,7 @@
 import { api } from './client';
 import type { Page } from './members';
 import type { Schemas } from './types';
+import type { LipaEvent } from './audit';
 
 export type Guarantee = Schemas['GuaranteeResponse'];
 export type GuaranteeStatus = NonNullable<Guarantee['status']>;
@@ -32,6 +33,12 @@ export const getPayments = (id: string) => api.get<Payment[]>(`/guarantees/${enc
 export const listQuotes = (q: GuaranteeQuery) => api.get<Page<Quote>>('/guarantees/quotes', { query: { ...q } });
 
 export const getQuote = (id: string) => api.get<Quote>(`/guarantees/quotes/${encodeURIComponent(id)}`);
+
+/**
+ * Every status of every Lipa API attempt to pay the quote, oldest first, from its callback or our status check (C3).
+ * A failed one has failureReason, which only admins see, beside failureMessage, what the member was shown.
+ */
+export const getQuoteLipaEvents = (id: string) => api.get<LipaEvent[]>(`/guarantees/quotes/${encodeURIComponent(id)}/lipa-events`);
 
 /** Enters a manual close of an active guarantee, for a second admin to approve. */
 export const enterClose = (id: string, reason: string) =>
