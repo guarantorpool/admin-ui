@@ -9,6 +9,7 @@ export type Utilization = Schemas['PoolUtilizationResponse'];
 export type Movement = Schemas['LiquidityAdjustmentResponse'];
 export type MovementType = NonNullable<Movement['type']>;
 export type PoolWallet = Schemas['PoolWalletResponse'];
+export type Prices = Schemas['Prices'];
 
 export interface MovementQuery {
   page: number;
@@ -18,6 +19,10 @@ export interface MovementQuery {
 
 /** BDR, RR and LR, each calculated value beside its setting, and the Liquid Funds behind LR. */
 export const getUnderwritingInputs = () => api.get<UnderwritingInputs>('/pool/underwriting-inputs');
+
+/** The prices and haircuts every member's backing is valued at: the latest stored valuation, or before one, the haircuts in force. */
+export const getPoolPrices = () => api.get<Prices>('/pool/prices');
+export const poolPricesKey = ['pool', 'prices'];
 
 /** The book-wide solvency check. */
 export const getBookRatio = () => api.get<BookRatio>('/pool/book-ratio');

@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { errorMessage } from '@/api/errors';
 import { decideAssetBalances, getAssetBalances, pendingBackingKey, setAssetBalances, type AssetBalances } from '@/api/members';
-import type { Schemas } from '@/api/types';
+import type { Prices } from '@/api/pool';
 import { Banner } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Lines } from '@/components/ui/card';
@@ -20,8 +20,6 @@ import { useGrants, useSession } from '@/session/SessionProvider';
 
 // A member's backing (screen 15, and the member's Backing tab): locked BLOCKS read on-chain, and KES deposits and
 // vault savings, which an admin enters until the Lipa API sends them and a different admin approves.
-
-export type Prices = Schemas['Prices'];
 
 // the backend's limit on a note
 const NOTE_MAX = 500;
@@ -44,7 +42,7 @@ export function PriceLines({ prices: v }: { prices: Prices | undefined }) {
         { k: 'BLOCKS price', v: v?.usdtPerBlocks ? `${formatNumber(v.usdtPerBlocks)} USDT per BLOCKS` : 'Not read yet, so locked BLOCKS count for 0' },
         ...(v?.blocksReadAt ? [{ k: 'BLOCKS price read', v: formatDateTime(v.blocksReadAt, { zone: true }) }] : []),
         { k: 'KES rate', v: v?.kesPerUsd ? `${formatNumber(v.kesPerUsd)} KES per USD` : 'Not read yet, so KES deposits count for 0' },
-        { k: 'Prices stored', v: formatDateTime(v?.readAt, { zone: true }) },
+        { k: 'Prices stored', v: v?.readAt ? formatDateTime(v.readAt, { zone: true }) : 'None stored yet' },
         { k: 'Locked BLOCKS count at', v: percent(v?.blocksHaircut) },
         { k: 'KES deposits count at', v: percent(v?.kesDepositHaircut) },
         { k: 'Vault savings count at', v: percent(v?.vaultSavingsHaircut) }
