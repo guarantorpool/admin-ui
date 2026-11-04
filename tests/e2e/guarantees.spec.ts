@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { newAdmin, newMember, seedGuarantee, seedQuote, signIn } from './helpers';
+import { newAdmin, newMember, seedGuarantee, seedLipaEvent, seedQuote, signIn } from './helpers';
 
 // Guarantees and quotes are seeded into the throwaway database (see seedQuote): a local run reaches neither
 // the Lipa API nor the chain that a real one goes through.
@@ -154,6 +154,10 @@ test.describe('Guarantees and quotes (slice 4)', () => {
     const paid = seedGuarantee(peter);
     const failed = seedQuote(peter, { flagged: true, lipa: { status: 'FAILED', message: 'Payment failed, please try again.' } });
     seedQuote(peter, { status: 'EXPIRED', quotedDaysAgo: 5 });
+    // two attempts on the failed quote: one refused, then one that failed
+    seedLipaEvent(failed.quoteId, { paymentId: `lipa-1-${failed.quoteId}`, status: 'PROCESSING', amount: '95.04', minutesAgo: 20 });
+    seedLipaEvent(failed.quoteId, { paymentId: `lipa-1-${failed.quoteId}`, status: 'FAILED', amount: '95.04', reason: 'AMOUNT_MISMATCH', source: 'STATUS_CHECK', minutesAgo: 18 });
+    seedLipaEvent(failed.quoteId, { paymentId: `lipa-2-${failed.quoteId}`, status: 'FAILED', amount: '95.04', reason: 'INSUFFICIENT_FUNDS', message: 'Payment failed, please try again.', minutesAgo: 4 });
     const user = await newAdmin(page, ['GUARANTEES.READ', 'MEMBERS.READ'], 'Quotes');
     await signIn(page, user.email, user.password);
 
@@ -182,9 +186,20 @@ test.describe('Guarantees and quotes (slice 4)', () => {
     const panel = page.getByRole('dialog', { name: 'Quote details' });
     await expect(panel.getByRole('heading', { name: failed.quoteId })).toBeVisible();
     await expect(panel.getByText('Yes, premium below expected loss')).toBeVisible();
-    await panel.getByRole('tab', { name: 'Latest Lipa API payment' }).click();
-    await expect(panel.getByText('Failed', { exact: true })).toBeVisible();
-    await expect(panel.getByText('Payment failed, please try again.')).toBeVisible();
+    await panel.getByRole('tab', { name: 'Lipa API payments' }).click();
+    await expect(panel.getByText('What the member was told (failureMessage)')).toBeVisible();
+    await expect(panel.getByText('Payment failed, please try again.').first()).toBeVisible();
+    // every attempt, oldest first, with each status it reached (C3)
+    await expect(panel.getByText('Every attempt (2, oldest first)')).toBeVisible();
+    const first = panel.getByRole('list', { name: 'Attempt 1' }).getByRole('listitem');
+    await expect(first).toHaveCount(2);
+    await expect(first.nth(0)).toContainText('Callback');
+    await expect(first.nth(0)).toContainText('Processing');
+    await expect(first.nth(1)).toContainText('Status check');
+    await expect(first.nth(1)).toContainText('AMOUNT_MISMATCH');
+    const second = panel.getByRole('list', { name: 'Attempt 2' }).getByRole('listitem');
+    await expect(second).toContainText('INSUFFICIENT_FUNDS');
+    await expect(second).toContainText('Member told: Payment failed, please try again.');
     await panel.getByRole('tab', { name: 'Pricing trail and invoice' }).click();
     await expect(panel.getByText('95.04 USDT')).toBeVisible();
     await expect(panel.getByText('8.64 USDT')).toBeVisible();

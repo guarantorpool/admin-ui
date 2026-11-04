@@ -252,7 +252,7 @@ for (const scheme of ['light', 'dark'] as const) {
     await page.goto(`/guarantees/quotes/${q}?tab=lipa`);
     await page.getByRole('dialog', { name: 'Quote details' }).getByText('Payment failed, please try again.').waitFor();
     await settle(page);
-    await page.screenshot({ path: `${dir}/${tag}-25-quote-lipa.png` });
+    await page.screenshot({ path: `${dir}/${tag}-25-quote-lipa.png`, fullPage: true });
 
     // a refund of its own for each run, since a payout is entered on it
     const refund = seedRefund({ paymentId: guarantees[0]!.paymentId }, { type: 'overpayment', amount: '12.345678', daysAgo: 0 });
