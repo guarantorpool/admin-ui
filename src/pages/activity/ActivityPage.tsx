@@ -12,15 +12,23 @@ import { Input } from '@/components/ui/input';
 import { Pager, PAGE_SIZES } from '@/components/ui/pager';
 import { Muted } from '@/components/ui/parts';
 import { Rows, type Column } from '@/components/ui/rows';
+import { TabPanel, Tabs } from '@/components/ui/tabs';
 import { formatDateTime, formatIn } from '@/lib/format';
 import { FACT_TYPES, factType, factVia, IMPORTABLE_FACT_TYPES } from '@/lib/labels';
 import { can } from '@/lib/permissions';
 import { cn } from '@/lib/utils';
 import { NoAccess } from '@/pages/Placeholders';
 import { useGrants } from '@/session/SessionProvider';
+import { KesActivityList } from './KesActivityList';
 
 // Screen 17. The activity records outside systems send about members (the ledger's fact inbox), which feed the
-// Trust Score. A record has no page of its own, so its row shows everything about it.
+// Trust Score. A record has no page of its own, so its row shows everything about it. A second tab lists the KES
+// activity read from the Lipa API (C4).
+
+const VIEWS = [
+  { value: 'records', label: 'Activity records' },
+  { value: 'kes', label: 'KES activity from the Lipa API' }
+] as const;
 
 const SORTS = [
   { value: '', label: 'Latest to happen first' },
@@ -70,6 +78,33 @@ function Activity() {
   const [params, setParams] = useSearchParams();
   const [importing, setImporting] = React.useState(false);
   const [imported, setImported] = React.useState('');
+  const view = params.get('view') === 'kes' ? 'kes' : 'records';
+
+  return (
+    <>
+      <PageHeader actions={can(grants, 'LEDGER.IMPORT') ? <Button onClick={() => setImporting(true)}>Import a CSV file</Button> : undefined} />
+      {imported ? <Banner tone="ok">{imported}</Banner> : null}
+      {/* each tab has its own filters, so switching starts afresh */}
+      <Tabs label="Activity" idPrefix="activity" tabs={VIEWS} value={view} onChange={(v) => setParams(v === 'kes' ? { view: 'kes' } : {}, { replace: true })} />
+      <TabPanel key={view} idPrefix="activity" value={view} className="flex flex-col gap-3.5">
+        {view === 'kes' ? <KesActivityList /> : <Records />}
+      </TabPanel>
+
+      <ImportDialog
+        open={importing}
+        onClose={() => setImporting(false)}
+        onSaved={(name, r) => {
+          setImported(importedLine(name, r));
+          void qc.invalidateQueries({ queryKey: ['facts'] });
+          if (view === 'kes') setParams({}, { replace: true });
+        }}
+      />
+    </>
+  );
+}
+
+function Records() {
+  const [params, setParams] = useSearchParams();
 
   const member = params.get('member') ?? '';
   const source = params.get('source') ?? '';
@@ -129,11 +164,8 @@ function Activity() {
 
   return (
     <>
-      <PageHeader actions={can(grants, 'LEDGER.IMPORT') ? <Button onClick={() => setImporting(true)}>Import a CSV file</Button> : undefined} />
       <div className="flex flex-col gap-3.5">
         <Muted>What outside systems tell the GP API about members: deposits, loans and BLOCKS. Each record counts toward the member's Trust Score.</Muted>
-        <Banner tone="plan">Planned: KES activity read from the Lipa API for each wallet, with its status.</Banner>
-        {imported ? <Banner tone="ok">{imported}</Banner> : null}
         <div className="flex flex-wrap items-center gap-2">
           <Input type="search" aria-label="Member number" placeholder="Member number" value={memberText} onChange={(e) => setMemberText(e.target.value)} className="max-w-[200px] flex-[1_1_160px]" />
           <select aria-label="Type" value={type} onChange={(e) => update({ type: e.target.value })} className="min-h-9 rounded-ctl border border-ctl bg-surface px-2 text-ink">
@@ -158,15 +190,6 @@ function Activity() {
           {total > 0 ? <Pager page={page} size={size} total={total} onPage={(p) => update({ page: p })} onSize={(s) => update({ size: s })} /> : null}
         </section>
       </div>
-
-      <ImportDialog
-        open={importing}
-        onClose={() => setImporting(false)}
-        onSaved={(name, r) => {
-          setImported(importedLine(name, r));
-          void qc.invalidateQueries({ queryKey: ['facts'] });
-        }}
-      />
     </>
   );
 }
