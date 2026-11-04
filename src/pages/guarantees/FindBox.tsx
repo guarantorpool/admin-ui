@@ -40,18 +40,21 @@ export function FindBox({ kind, memberId, search, listKey, onMember, onSearch, o
   const otherKind = id.startsWith(PREFIX[other]);
   const wanted = isId && !otherKind ? id : undefined;
   const sent = React.useRef(search);
+  // the latest callback, so a search that fires after a record opened (its link changes the path, not the list's
+  // address) goes to the page now open instead of back to the list
+  const latestOnSearch = React.useRef(onSearch);
+  latestOnSearch.current = onSearch;
 
   React.useEffect(() => {
     const t = setTimeout(() => {
       setMemberSearch(isId ? '' : text.trim());
       if (wanted !== search) {
         sent.current = wanted;
-        onSearch(wanted);
+        latestOnSearch.current(wanted);
       }
     }, 300);
     return () => clearTimeout(t);
-    // onSearch changes on every render; what's typed and the list's address are what matter
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // what's typed and the list's address are what matter; onSearch is read when the timer fires
   }, [text, isId, wanted, search, listKey]);
 
   // a search changed from outside (the menu link, back or forward) replaces what's in the box; the one this box sent

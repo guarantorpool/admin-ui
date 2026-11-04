@@ -50,6 +50,15 @@ test.describe('Guarantees and quotes (slice 4)', () => {
     await expect.poll(() => new URL(page.url()).searchParams.get('search')).toBe(active.guaranteeId.slice(0, 13));
     expect(new URL(page.url()).searchParams.get('status')).toBe('flagged');
     await page.getByRole('button', { name: 'All', exact: true }).click();
+    // a record opened while the search waits keeps open when the search comes
+    await expect(rows.filter({ hasText: active.guaranteeId })).toHaveCount(1);
+    await find.fill(active.guaranteeId.slice(0, 12).toLowerCase());
+    await rows.filter({ hasText: active.guaranteeId }).click();
+    await expect.poll(() => new URL(page.url()).searchParams.get('search')).toBe(active.guaranteeId.slice(0, 12));
+    await expect(page).toHaveURL(new RegExp(`/guarantees/${active.guaranteeId}\\?`));
+    await expect(details(page).getByRole('heading', { name: active.guaranteeId })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(details(page)).toHaveCount(0);
     await find.fill(active.guaranteeId.toLowerCase());
     await expect(rows).toHaveCount(1);
     await expect(rows).toContainText(active.guaranteeId);
