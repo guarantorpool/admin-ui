@@ -203,7 +203,7 @@ export interface SeededQuote {
  * neither Lipa nor the chain, and a quote needs the member's backing and network for headroom, so the
  * records go straight into the throwaway database, as the backend would write them.
  */
-export function seedQuote(member: Member, opts: { status?: 'OPEN' | 'PAID' | 'REPLACED' | 'EXPIRED'; flagged?: boolean; lipa?: { status: 'PROCESSING' | 'SUCCESS' | 'FAILED'; message?: string }; guaranteeId?: string; quotedDaysAgo?: number } = {}): SeededQuote {
+export function seedQuote(member: Member, opts: { status?: 'OPEN' | 'PAID' | 'REPLACED' | 'EXPIRED'; flagged?: boolean; lipa?: { status: 'PROCESSING' | 'SUCCESS' | 'FAILED'; message?: string }; guaranteeId?: string; quotedDaysAgo?: number; replacedBy?: string } = {}): SeededQuote {
   const quoteId = `GPQ-${randomOf('ABCDEFGHJKLMNPQRSTUVWXYZ23456789', 6)}`;
   const flagged = opts.flagged ?? false;
   const fee = flagged ? '8.64' : '14.4';
@@ -215,12 +215,12 @@ export function seedQuote(member: Member, opts: { status?: 'OPEN' | 'PAID' | 'RE
   sql(`INSERT INTO guarantee_quotes (id, quote_number, member_id, amount_requested, tenure_months, status, quoted_at, valid_until,
     guarantee_number, ${PRICING}, base_default_rate_calculated, recovery_rate_calculated, liquidity_ratio_calculated,
     operating_fee, amount_due, operating_fee_rate, operating_fee_min_usd, operating_fee_max_usd, lipa_payment_id,
-    payment_status, failure_reason, failure_message, check_anchor_at)
+    payment_status, failure_reason, failure_message, check_anchor_at, replaced_by)
     VALUES ('${id}', '${quoteId}', '${member.id}', 5000, 6, '${opts.status ?? 'OPEN'}', ${quotedAt}, ${quotedAt} + interval '30 minutes',
     ${opts.guaranteeId ? `'${opts.guaranteeId}'` : 'NULL'}, ${pricing(flagged)}, false, false, false,
     ${fee}, ${amountDue}, 0.1, 1, 50, ${lipa ? `'lipa-${randomOf('0123456789abcdef', 12)}'` : 'NULL'},
     ${lipa ? `'${lipa.status}'` : 'NULL'}, ${lipa?.status === 'FAILED' ? "'INSUFFICIENT_FUNDS'" : 'NULL'},
-    ${lipa?.message ? `'${lipa.message}'` : 'NULL'}, ${quotedAt})`);
+    ${lipa?.message ? `'${lipa.message}'` : 'NULL'}, ${quotedAt}, ${opts.replacedBy ? `'${opts.replacedBy}'` : 'NULL'})`);
   return { quoteId, amountDue, id };
 }
 
