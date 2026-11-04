@@ -1888,6 +1888,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/pool/charts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The admin dashboard's charts over the last 12 months (#142)
+         * @description Days and months are counted in app.time-zone (Africa/Nairobi), oldest first, from the first day of the month 11 months ago. liquidFunds: Liquid Funds as each nightly underwriting calculation stored them, one point per day it ran. backing: each day's last pool calculation, its Total Backing split into locked BLOCKS, KES deposits and USDT vault savings, each in USDT after its haircut; kept from this release on, so earlier days have no point. months: all 12 months, this one last: premiumsReceived (less the operating fee on a confirmed payment, converted as Liquid Funds converts them, by when each was confirmed, or started if never confirmed) and claimsPaid, by when each claim was paid, with how many of each. guaranteesByStatus: every status with how many guarantees have it now. Amounts are USDT.
+         *
+         *     **Requires:** `hasAuthority('POOL.READ')`
+         */
+        get: operations["charts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/pool/book-ratio": {
         parameters: {
             query?: never;
@@ -3664,6 +3686,45 @@ export interface components {
             totalPages?: number;
             /** Format: int64 */
             totalResults?: number;
+        };
+        BackingDay: {
+            /** Format: date */
+            day?: string;
+            lockedBlocks?: string;
+            kesDeposits?: string;
+            vaultSavings?: string;
+            total?: string;
+            /** Format: date-time */
+            calculatedAt?: string;
+        };
+        LiquidFundsDay: {
+            /** Format: date */
+            day?: string;
+            liquidFunds?: string;
+            /** Format: date-time */
+            calculatedAt?: string;
+        };
+        Month: {
+            month?: string;
+            premiumsReceived?: string;
+            /** Format: int32 */
+            payments?: number;
+            claimsPaid?: string;
+            /** Format: int32 */
+            claims?: number;
+        };
+        PoolChartsResponse: {
+            timeZone?: string;
+            liquidFunds?: components["schemas"]["LiquidFundsDay"][];
+            backing?: components["schemas"]["BackingDay"][];
+            months?: components["schemas"]["Month"][];
+            guaranteesByStatus?: components["schemas"]["StatusCount"][];
+        };
+        StatusCount: {
+            /** @enum {string} */
+            status?: "pending_payment" | "active" | "in_claim" | "closed" | "expired";
+            /** Format: int64 */
+            count?: number;
         };
         BookRatioResponse: {
             totalPremium?: string;
@@ -10616,6 +10677,62 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["Prices"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not logged in, or the token or key is invalid */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Logged in, but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    charts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PoolChartsResponse"];
                 };
             };
             /** @description Invalid request */

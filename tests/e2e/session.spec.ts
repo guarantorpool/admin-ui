@@ -13,7 +13,7 @@ test.describe('session (D-001)', () => {
   test('locks every tab after the idle time, and signing in returns each tab to its page', async ({ page, context }) => {
     const user = await newAdmin(page, ['MEMBERS.READ', 'POOL.READ'], 'Idle');
     await signIn(page, user.email, user.password);
-    await expect(page).toHaveURL(/\/approvals$/);
+    await expect(page).toHaveURL(/\/dashboard$/);
     await page.goto('/members');
 
     // a second tab shares the session without signing in
@@ -36,7 +36,7 @@ test.describe('session (D-001)', () => {
   test('a tab opened after the idle time starts locked', async ({ page }) => {
     const user = await newAdmin(page, ['REFUNDS.READ'], 'Late');
     await signIn(page, user.email, user.password);
-    await expect(page).toHaveURL(/\/approvals$/);
+    await expect(page).toHaveURL(/\/dashboard$/);
     await page.evaluate(() => localStorage.setItem('blockcoop-admin.activity', String(Date.now() - 6 * 60_000)));
     await page.reload();
     await expect(page.getByRole('heading', { name: 'Your session was locked' })).toBeVisible();
@@ -48,7 +48,7 @@ test.describe('session (D-001)', () => {
   test('two tabs refreshing an expired token together stay signed in', async ({ page, context }) => {
     const user = await newAdmin(page, ['ALERTS.READ'], 'Refresh');
     await signIn(page, user.email, user.password);
-    await expect(page).toHaveURL(/\/approvals$/);
+    await expect(page).toHaveURL(/\/dashboard$/);
     const other = await context.newPage();
     await other.goto('/account');
     await expect(other.getByText(user.email).first()).toBeVisible();
