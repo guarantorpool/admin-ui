@@ -48,4 +48,16 @@ test.describe('dashboard (Phase D)', () => {
     }
     for (const hidden of [/^Claims waiting/, /^Refused Lipa payments/, /^Active guarantees/]) await expect(page.getByRole('link', { name: hidden })).toHaveCount(0);
   });
+
+  test("shows a figure without its link when the role can't open the screen behind it", async ({ page }) => {
+    const pool = await newAdmin(page, ['POOL.READ'], 'PoolOnly');
+    await signIn(page, pool.email, pool.password);
+    await expect(page).toHaveURL(/\/dashboard$/);
+    await expect(page.getByRole('link', { name: /^Liquid Funds/ })).toBeVisible();
+    // payments and guarantees need GUARANTEES.READ, backing needs MEMBERS.READ
+    for (const label of ['Premiums this month', 'Outstanding guarantees', 'Total backing']) {
+      await expect(page.getByText(label, { exact: true })).toBeVisible();
+      await expect(page.getByRole('link', { name: new RegExp(`^${label}`) })).toHaveCount(0);
+    }
+  });
 });

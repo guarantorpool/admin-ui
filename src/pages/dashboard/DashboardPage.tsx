@@ -10,6 +10,7 @@ import { listPayments } from '@/api/payments';
 import { getBookRatio, getPoolCharts, getUnderwritingInputs, getUtilization, type Figure, type PoolCharts } from '@/api/pool';
 import { listRefunds } from '@/api/refunds';
 import { PageHeader } from '@/components/shell/AppShell';
+import { findScreen } from '@/components/shell/nav';
 import { Banner } from '@/components/ui/badge';
 import { Muted } from '@/components/ui/parts';
 import { dayInZone, formatDateTime, formatNumber, formatUsdt } from '@/lib/format';
@@ -72,30 +73,38 @@ interface Metric {
   tone?: 'bad' | 'warn';
 }
 
-/** A figure that opens its screen. */
-function MetricLink({ m }: { m: Metric }) {
-  return (
-    <Link
-      to={m.to}
-      title={m.note}
-      className="flex min-w-0 flex-col gap-0.5 rounded-ctl border border-line px-3 py-2.5 text-inherit no-underline hover:border-line-2 hover:bg-chip focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-    >
+/** A figure that opens its screen, or just the figure when the role can't open that screen. */
+function MetricLink({ m, linked }: { m: Metric; linked: boolean }) {
+  const tile = 'flex min-w-0 flex-col gap-0.5 rounded-ctl border border-line px-3 py-2.5';
+  const inner = (
+    <>
       <span className={smallCaps}>{m.label}</span>
       <span className="flex flex-wrap items-baseline gap-1.5">
         <span className={cn('font-heading text-[22px] font-semibold text-ink-strong', m.tone === 'bad' && 'text-bad-fg', m.tone === 'warn' && 'text-warn-fg')}>{m.value}</span>
         {m.unit ? <span className="text-xs text-muted">{m.unit}</span> : null}
       </span>
       {m.note ? <span className="text-xs text-muted">{m.note}</span> : null}
+    </>
+  );
+  if (!linked) return <div className={tile}>{inner}</div>;
+  return (
+    <Link to={m.to} title={m.note} className={cn(tile, 'text-inherit no-underline hover:border-line-2 hover:bg-chip focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary')}>
+      {inner}
     </Link>
   );
 }
 
 function Metrics({ items, columns = 'grid-cols-[repeat(auto-fit,minmax(160px,1fr))]' }: { items: (Metric | null)[]; columns?: string }) {
+  const grants = useGrants();
   const shown = items.filter((m): m is Metric => !!m);
+  const opens = (to: string) => {
+    const screen = findScreen(to.split('?')[0]!)?.screen;
+    return !!screen && can(grants, screen.access);
+  };
   return (
     <div className={cn('grid gap-2.5', columns)}>
       {shown.map((m) => (
-        <MetricLink key={m.label} m={m} />
+        <MetricLink key={m.label} m={m} linked={opens(m.to)} />
       ))}
     </div>
   );
