@@ -16,11 +16,13 @@ const PREFIX = { guarantee: 'GPG', quote: 'GPQ' } as const;
  * list. Text starting GPG or GPQ narrows the list to IDs containing it (C1), and an exact GPG- or GPQ- ID opens that record
  * on Enter. Without MEMBERS.READ every text is part of an ID.
  */
-export function FindBox({ kind, memberId, search, onMember, onSearch, onOpen }: {
+export function FindBox({ kind, memberId, search, listKey, onMember, onSearch, onOpen }: {
   kind: 'guarantee' | 'quote';
   memberId?: string;
   /** the ID search the list is narrowed by */
   search?: string;
+  /** the list's whole address; a change to it restarts a search waiting for a pause, so the search can't undo it */
+  listKey: string;
   onMember: (id: string | undefined) => void;
   onSearch: (search: string | undefined) => void;
   /** opens a record, with the search the list behind it should have */
@@ -37,16 +39,28 @@ export function FindBox({ kind, memberId, search, onMember, onSearch, onOpen }: 
   // the other kind's IDs aren't in this list, so its prefix opens one but searches nothing
   const otherKind = id.startsWith(PREFIX[other]);
   const wanted = isId && !otherKind ? id : undefined;
+  const sent = React.useRef(search);
 
   React.useEffect(() => {
     const t = setTimeout(() => {
       setMemberSearch(isId ? '' : text.trim());
-      if (wanted !== search) onSearch(wanted);
+      if (wanted !== search) {
+        sent.current = wanted;
+        onSearch(wanted);
+      }
     }, 300);
     return () => clearTimeout(t);
-    // onSearch changes on every render; what's typed and the list's search are what matter
+    // onSearch changes on every render; what's typed and the list's address are what matter
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [text, isId, wanted, search]);
+  }, [text, isId, wanted, search, listKey]);
+
+  // a search changed from outside (the menu link, back or forward) replaces what's in the box; the one this box sent
+  // doesn't, as more may have been typed since
+  React.useEffect(() => {
+    if (search !== sent.current && search !== wanted) setText(search ?? '');
+    sent.current = search;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search]);
 
   const chosen = useQuery({ queryKey: ['members', memberId], queryFn: () => getMember(memberId!), enabled: members && !!memberId });
 

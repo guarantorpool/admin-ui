@@ -204,7 +204,7 @@ function Guarantees() {
       <Tabs label="Guarantees and quotes" idPrefix="guarantees-page" tabs={PAGE_TABS} value={pageTab} onChange={switchTab} />
       <TabPanel idPrefix="guarantees-page" value={pageTab} className="flex flex-col gap-3.5">
         <div className="flex flex-wrap items-start gap-2">
-          <FindBox key={pageTab} kind={pageTab === 'quotes' ? 'quote' : 'guarantee'} memberId={memberId} search={search} onMember={(id) => update({ member: id })} onSearch={(s) => update({ search: s })} onOpen={(path, s) => navigate(`${path}${listSearch(withSearch(s))}`)} />
+          <FindBox key={pageTab} kind={pageTab === 'quotes' ? 'quote' : 'guarantee'} memberId={memberId} search={search} listKey={params.toString()} onMember={(id) => update({ member: id })} onSearch={(s) => update({ search: s })} onOpen={(path, s) => navigate(`${path}${listSearch(withSearch(s))}`)} />
           <div role="group" aria-label="Status" className="flex flex-wrap gap-2">
             {filters.map((f) => (
               <Chip key={f.label} on={filter === f.value} onClick={() => update({ status: f.value })}>

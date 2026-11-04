@@ -44,6 +44,12 @@ test.describe('Guarantees and quotes (slice 4)', () => {
     await expect(page.getByText(`Showing guarantees whose ID contains “${active.guaranteeId.slice(0, 14)}”.`)).toBeVisible();
     await expect(page).toHaveURL(/search=/);
     await expect(rows.filter({ hasText: active.guaranteeId })).toHaveCount(1);
+    // a filter chosen while the search waits for a pause in typing stays chosen
+    await find.fill(active.guaranteeId.slice(0, 13).toLowerCase());
+    await page.getByRole('button', { name: 'Flagged', exact: true }).click();
+    await expect.poll(() => new URL(page.url()).searchParams.get('search')).toBe(active.guaranteeId.slice(0, 13));
+    expect(new URL(page.url()).searchParams.get('status')).toBe('flagged');
+    await page.getByRole('button', { name: 'All', exact: true }).click();
     await find.fill(active.guaranteeId.toLowerCase());
     await expect(rows).toHaveCount(1);
     await expect(rows).toContainText(active.guaranteeId);
@@ -105,6 +111,15 @@ test.describe('Guarantees and quotes (slice 4)', () => {
     const g = seedGuarantee(sam);
     const first = await newAdmin(page, MANAGER, 'Enter');
     await signIn(page, first.email, first.password);
+    // a search from the address is in the box, and the menu link clears both
+    await page.goto(`/guarantees?search=${g.guaranteeId}`);
+    const find = page.getByRole('searchbox', { name: /Find a member/ });
+    await expect(find).toHaveValue(g.guaranteeId);
+    await page.getByRole('navigation', { name: 'Admin screens' }).getByRole('link', { name: 'Guarantees and quotes' }).click();
+    await expect(page).toHaveURL(/\/guarantees$/);
+    await expect(find).toHaveValue('');
+    await page.waitForTimeout(500);
+    await expect(page).toHaveURL(/\/guarantees$/);
     await page.goto(`/guarantees/${g.guaranteeId}`);
     await details(page).getByRole('button', { name: 'Enter a manual close' }).click();
     const enter = page.getByRole('dialog', { name: 'Enter a manual close' });
