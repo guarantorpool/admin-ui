@@ -35,7 +35,7 @@ describe('menu', () => {
 });
 
 describe('where sign-in lands', () => {
-  it('is the first screen the role allows, skipping the dashboard and inbox until they exist', () => {
+  it('is the first screen the role allows, skipping the dashboard and inbox', () => {
     expect(homePath({ role: 'x', permissions: ['ALERTS.READ', 'MEMBERS.READ'] })).toBe('/alerts');
     expect(homePath({ role: 'x', permissions: ['REFUNDS.READ'] })).toBe('/refunds');
     expect(homePath({ role: 'x', permissions: [] })).toBe('/account');

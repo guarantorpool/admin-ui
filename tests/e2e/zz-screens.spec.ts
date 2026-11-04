@@ -514,5 +514,21 @@ for (const scheme of ['light', 'dark'] as const) {
     await page.getByRole('table', { name: 'Documents' }).or(page.getByRole('list', { name: 'Documents' })).waitFor();
     await settle(page);
     await page.screenshot({ path: `${dir}/${tag}-76-address-queue.png` });
+
+    // the inbox: Amina's backing change (from seedBackingSamples) and whatever else waits
+    await page.goto('/approvals');
+    const inbox = page.getByRole('table', { name: 'Waiting for a second admin' }).or(page.getByRole('list', { name: 'Waiting for a second admin' }));
+    await inbox.getByRole('link', { name: new RegExp(amina!.number) }).waitFor();
+    await settle(page);
+    await page.screenshot({ path: `${dir}/${tag}-77-approvals.png`, fullPage: true });
+    await inbox.getByRole('link', { name: new RegExp(amina!.number) }).click();
+    const item = page.getByRole('dialog', { name: 'Waiting item' });
+    await item.getByRole('button', { name: 'Approve' }).waitFor();
+    await settle(page);
+    await page.screenshot({ path: `${dir}/${tag}-78-approval-item.png` });
+    await item.getByRole('button', { name: 'Approve' }).click();
+    await page.getByRole('dialog', { name: 'Approve this backing change?' }).waitFor();
+    await page.screenshot({ path: `${dir}/${tag}-79-approval-approve.png` });
+    await page.keyboard.press('Escape');
   });
 }
