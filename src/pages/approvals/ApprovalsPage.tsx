@@ -183,14 +183,23 @@ export function ApprovalsPage() {
   );
 }
 
+/** Looks for one waiting item among its kind, a page at a time, so an item past the first page is still found. */
+async function findApproval(kind: string, id: string): Promise<Approval | null> {
+  for (let page = 1; ; page++) {
+    const found = await listApprovals({ page, size: LOOKUP_SIZE, kind });
+    const item = found.results?.find((a) => a.id === id);
+    if (item) return item;
+    if (!found.results?.length || page >= (found.totalPages ?? 1)) return null;
+  }
+}
+
 /** One waiting item, with approving or rejecting it, or why you can't. */
 function ApprovalDetail({ kind, id, listed, onDecided }: { kind: string; id: string; listed?: Approval; onDecided: () => void }) {
   const qc = useQueryClient();
   const [decision, setDecision] = React.useState<Decision | null>(null);
   const known = APPROVAL_KINDS.includes(kind);
-  const lookupQuery: ApprovalQuery = { page: 1, size: LOOKUP_SIZE, kind };
-  const lookup = useQuery({ queryKey: ['approvals', 'list', lookupQuery], queryFn: () => listApprovals(lookupQuery), enabled: !listed && known });
-  const item = listed ?? lookup.data?.results?.find((a) => a.id === id);
+  const lookup = useQuery({ queryKey: ['approvals', 'item', kind, id], queryFn: () => findApproval(kind, id), enabled: !listed && known });
+  const item = listed ?? lookup.data ?? undefined;
 
   if (!item) {
     if (known && lookup.isPending) return <Muted>Loading the item…</Muted>;
