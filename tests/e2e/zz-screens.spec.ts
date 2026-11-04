@@ -28,6 +28,9 @@ async function sampleMembers(): Promise<Member[]> {
   guarantees = [seedGuarantee(a), seedGuarantee(c, { flagged: true }), seedGuarantee(d)];
   seedPayment(guarantees[2]!, { status: 'FAILED', hoursAgo: 75 });
   quotes = [seedQuote(b, { flagged: true, lipa: { status: 'FAILED', message: 'Payment failed, please try again.' } }), seedQuote(d, { lipa: { status: 'PROCESSING' } }), seedQuote(c, { status: 'EXPIRED', quotedDaysAgo: 4 })];
+  // Brian asked twice before his open quote, which replaced both
+  seedQuote(b, { status: 'REPLACED', quotedDaysAgo: 2, replacedBy: quotes[0]!.quoteId });
+  seedQuote(b, { status: 'REPLACED', quotedDaysAgo: 1, replacedBy: quotes[0]!.quoteId });
   seedRefund({ paymentId: guarantees[1]!.paymentId }, { type: 'stray_payment', status: 'PAID', amount: '95.04', daysAgo: 3 });
   seedRefund({ quote: quotes[2]! }, { type: 'window_lapsed', amount: '158.4', daysAgo: 2 });
   seedRefund({ paymentId: guarantees[2]!.paymentId }, { type: 'capacity_changed', amount: '158.4' });
@@ -530,5 +533,11 @@ for (const scheme of ['light', 'dark'] as const) {
     await page.getByRole('dialog', { name: 'Approve this backing change?' }).waitFor();
     await page.screenshot({ path: `${dir}/${tag}-79-approval-approve.png` });
     await page.keyboard.press('Escape');
+
+    // C2: the quotes an open quote replaced
+    await page.goto(`/guarantees/quotes/${q}`);
+    await page.getByRole('dialog', { name: 'Quote details' }).getByText(/^Replaces/).waitFor();
+    await settle(page);
+    await page.screenshot({ path: `${dir}/${tag}-81-quote-links.png` });
   });
 }
