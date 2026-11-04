@@ -25,7 +25,7 @@ const direct = (screen: Screen): NavEntry => ({ kind: 'direct', screen });
 const group = (id: string, label: string, items: Screen[]): NavEntry => ({ kind: 'group', group: { id, label, items } });
 
 export const NAV: NavEntry[] = [
-  direct({ path: '/dashboard', label: 'Dashboard', about: 'What needs attention, and the pool at a glance.', access: 'ANY', comingIn: 'Phase E' }),
+  direct({ path: '/dashboard', label: 'Dashboard', about: 'What needs attention, and the pool at a glance.', access: 'ANY', comingIn: 'Phase D' }),
   direct({ path: '/approvals', label: 'Approvals inbox', about: 'Everything waiting for a second admin, in one list.', access: 'ANY', comingIn: 'Phase B' }),
   direct({ path: '/alerts', label: 'Alerts', about: "Pool alerts, and acknowledging them with a note.", access: 'ALERTS.READ' }),
   group('members', 'Members', [
@@ -39,7 +39,7 @@ export const NAV: NavEntry[] = [
     { path: '/claims', label: 'Claims', about: 'Pay lenders when a guaranteed loan defaults.', access: 'GUARANTEES.READ' }
   ]),
   group('money', 'Money', [
-    { path: '/payments', label: 'Payments', about: 'Every premium payment, across guarantees.', access: 'GUARANTEES.READ', comingIn: 'Phase B' },
+    { path: '/payments', label: 'Payments', about: 'Every premium payment, across guarantees.', access: 'GUARANTEES.READ' },
     { path: '/refunds', label: 'Refunds', about: 'Money owed back to members, and recording payouts.', access: 'REFUNDS.READ' }
   ]),
   group('pool', 'Pool', [
@@ -90,7 +90,7 @@ export function findScreen(path: string): { screen: Screen; group: NavGroup | nu
 }
 
 /**
- * Where signing in lands. Until the dashboard (Phase E) and the approvals inbox (Phase B) exist, it's the
+ * Where signing in lands. Until the dashboard (Phase D) and the approvals inbox (Phase B) exist, it's the
  * first other screen the admin's role allows; an admin with none of those lands on their account.
  */
 export function homePath(grants: Grants | null): string {
