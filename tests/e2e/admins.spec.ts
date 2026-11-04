@@ -15,7 +15,7 @@ async function choose(page: Page, row: ReturnType<Page['getByRole']>, item: stri
   await page.getByRole('menuitem', { name: item }).click();
 }
 
-const roleRow = (page: Page, label: string) => page.getByRole('table', { name: 'Roles' }).getByRole('row').filter({ hasText: label });
+const roleRow = (page: Page, label: string | RegExp) => page.getByRole('table', { name: 'Roles' }).getByRole('row').filter({ hasText: label });
 
 test.describe('admins and roles (slice 12)', () => {
   test('the system admin invites an admin, changes them, disables, enables and deletes them', async ({ page }) => {
@@ -83,12 +83,9 @@ test.describe('admins and roles (slice 12)', () => {
     await page.getByRole('dialog', { name: 'Delete Grace Wairimu?' }).getByRole('button', { name: 'Delete' }).click();
     await expect(page.getByText('No admins match.')).toBeVisible();
 
-    // nobody disables or deletes their own account
-    row = await find(page, admin.email);
-    await row.getByRole('button', { name: /^Options for / }).click();
-    await expect(page.getByRole('menuitem', { name: /Disable/ })).toBeDisabled();
-    await expect(page.getByRole('menuitem', { name: /Disable/ })).toContainText("You can't disable your own account.");
-    await expect(page.getByRole('menuitem', { name: /Delete/ })).toBeDisabled();
+    // the one system admin is kept out of the list, even for themselves
+    await find(page, admin.email);
+    await expect(page.getByText('No admins match.')).toBeVisible();
   });
 
   test('the system admin creates a role, changes it and deletes it', async ({ page }) => {
@@ -136,12 +133,10 @@ test.describe('admins and roles (slice 12)', () => {
     await expect(sheet.getByRole('button', { name: 'Delete the role' })).toBeDisabled();
     await expect(sheet).toContainText('Held by 1 admin. Give them another role first.');
 
-    // the system admin role keeps every permission
+    // the system admin role is kept out of the list
     await page.goto('/admins/roles');
-    await roleRow(page, 'System admin').getByRole('link').click();
-    await expect(sheet.getByRole('button', { name: 'Change permissions' })).toBeDisabled();
-    await expect(sheet).toContainText('The system admin role always has every permission.');
-    await expect(sheet).toContainText("Built-in roles can't be deleted.");
+    await expect(roleRow(page, /Test held/i).first()).toBeVisible();
+    await expect(roleRow(page, 'System admin')).toHaveCount(0);
   });
 
   test('an admin who can only update admins reaches no one above them', async ({ page }) => {
@@ -153,10 +148,15 @@ test.describe('admins and roles (slice 12)', () => {
     await expect(page.getByRole('heading', { name: 'Admins and roles' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Invite an admin' })).toHaveCount(0);
 
-    let row = await find(page, admin.email);
+    // the system admin isn't listed
+    await find(page, admin.email);
+    await expect(page.getByText('No admins match.')).toBeVisible();
+
+    // nobody disables their own account
+    let row = await find(page, user.email);
     await row.getByRole('button', { name: /^Options for / }).click();
     await expect(page.getByRole('menuitem', { name: /Disable/ })).toBeDisabled();
-    await expect(page.getByRole('menuitem', { name: /Disable/ })).toContainText('Only a system admin can manage a system admin.');
+    await expect(page.getByRole('menuitem', { name: /Disable/ })).toContainText("You can't disable your own account.");
     // without ADMINS.DELETE there's no delete at all
     await expect(page.getByRole('menuitem', { name: /Delete/ })).toHaveCount(0);
     await page.keyboard.press('Escape');
@@ -173,7 +173,7 @@ test.describe('admins and roles (slice 12)', () => {
     await page.getByRole('tab', { name: 'Roles' }).click();
     await expect(page).toHaveURL(/\/admins\/roles$/);
     await expect(page.getByRole('button', { name: 'Create a role' })).toHaveCount(0);
-    await roleRow(page, 'System admin').getByRole('link').click();
+    await roleRow(page, /Test lesser/i).first().getByRole('link').click();
     await expect(page.getByRole('dialog', { name: 'Role details' }).getByRole('button', { name: 'Delete the role' })).toHaveCount(0);
   });
 });
