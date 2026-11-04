@@ -1866,6 +1866,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/pool/prices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The prices and haircuts every member's backing is valued at (#138)
+         * @description The latest stored valuation, the same as the valuation in each member's asset balances: usdtPerBlocks and kesPerUsd, null before one was read (that asset then counts for 0); readAt, when they were stored; blocksReadAt, when the BLOCKS price was read; and blocks_haircut, kes_deposit_haircut and vault_savings_haircut. Before any valuation is stored, the haircuts in force and no prices.
+         *
+         *     **Requires:** `hasAnyAuthority('POOL.READ', 'MEMBERS.READ', 'PARAMETERS.READ')`
+         */
+        get: operations["prices"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/pool/book-ratio": {
         parameters: {
             query?: never;
@@ -10538,6 +10560,62 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["UnderwritingInputsResponse"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not logged in, or the token or key is invalid */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Logged in, but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    prices: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Prices"];
                 };
             };
             /** @description Invalid request */

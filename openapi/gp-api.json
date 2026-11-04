@@ -8365,6 +8365,68 @@
         }
       }
     },
+    "/api/pool/prices": {
+      "get": {
+        "tags": [
+          "Pool"
+        ],
+        "summary": "The prices and haircuts every member's backing is valued at (#138)",
+        "description": "The latest stored valuation, the same as the valuation in each member's asset balances: usdtPerBlocks and kesPerUsd, null before one was read (that asset then counts for 0); readAt, when they were stored; blocksReadAt, when the BLOCKS price was read; and blocks_haircut, kes_deposit_haircut and vault_savings_haircut. Before any valuation is stored, the haircuts in force and no prices.\n\n**Requires:** `hasAnyAuthority('POOL.READ', 'MEMBERS.READ', 'PARAMETERS.READ')`",
+        "operationId": "prices",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Prices"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in, or the token or key is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/pool/book-ratio": {
       "get": {
         "tags": [
@@ -13867,7 +13929,7 @@
             "type": "string",
             "maxLength": 100,
             "minLength": 0,
-            "pattern": "^[\\p{L} .'-]+$"
+            "pattern": "^[\\p{L} .'-]*$"
           },
           "lastName": {
             "type": "string",
@@ -14242,7 +14304,7 @@
             "type": "string",
             "maxLength": 100,
             "minLength": 0,
-            "pattern": "^[\\p{L} .'-]+$"
+            "pattern": "^[\\p{L} .'-]*$"
           },
           "lastName": {
             "type": "string",
@@ -14496,7 +14558,7 @@
             "type": "string",
             "maxLength": 100,
             "minLength": 0,
-            "pattern": "^[\\p{L} .'-]+$"
+            "pattern": "^[\\p{L} .'-]*$"
           },
           "lastName": {
             "type": "string",
@@ -14523,7 +14585,7 @@
             "type": "string",
             "maxLength": 100,
             "minLength": 0,
-            "pattern": "^[\\p{L} .'-]+$"
+            "pattern": "^[\\p{L} .'-]*$"
           },
           "lastName": {
             "type": "string",

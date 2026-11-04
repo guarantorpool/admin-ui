@@ -19,9 +19,11 @@ test.describe('Backing assets and prices (slice 9)', () => {
     await signIn(page, first.email, first.password);
     await page.goto('/backing');
     await expect(page.getByRole('heading', { name: 'Backing assets and prices', level: 1 })).toBeVisible();
-    // no member open: the haircuts from the pool settings, and the prices once a member is open
+    // no member open: the prices and haircuts still show, from the pool
+    await expect(prices(page).getByText('BLOCKS price', { exact: true })).toBeVisible();
+    await expect(prices(page).getByText('KES rate', { exact: true })).toBeVisible();
     await expect(prices(page).getByText('Locked BLOCKS count at')).toBeVisible();
-    await expect(prices(page).getByText(/The BLOCKS price and KES rate show once a member is open/)).toBeVisible();
+    await expect(prices(page).getByText(/once a member is open/)).toHaveCount(0);
     await expect(page.getByText(/^Planned:/)).toHaveCount(0);
     await expect(changes(page)).toBeVisible();
 
@@ -106,6 +108,10 @@ test.describe('Backing assets and prices (slice 9)', () => {
     const member = await newMember('Otieno', surname());
     const reader = await newAdmin(page, ['MEMBERS.READ'], 'BackingReader');
     await signIn(page, reader.email, reader.password);
+    // a role that can't read the pool settings still sees the prices and haircuts with no member open
+    await page.goto('/backing');
+    await expect(prices(page).getByText('Vault savings count at')).toBeVisible();
+    await expect(prices(page).getByText('KES rate', { exact: true })).toBeVisible();
     await page.goto(`/backing/${member.id}`);
     await expect(backing(page).getByText('Never set')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Enter new amounts' })).toHaveCount(0);

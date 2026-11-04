@@ -2,34 +2,27 @@ import * as React from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { errorMessage } from '@/api/errors';
-import { getAssetBalances, listPendingBacking, pendingBackingKey, type BackingChange } from '@/api/members';
-import { listParameters } from '@/api/parameters';
+import { listPendingBacking, pendingBackingKey, type BackingChange } from '@/api/members';
+import { getPoolPrices, poolPricesKey } from '@/api/pool';
 import { PageHeader } from '@/components/shell/AppShell';
 import { Banner } from '@/components/ui/badge';
-import { Card, CardHeader, Lines } from '@/components/ui/card';
+import { Card, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Pager, PAGE_SIZES } from '@/components/ui/pager';
 import { Muted } from '@/components/ui/parts';
 import { Rows, type Column } from '@/components/ui/rows';
 import { formatAmount, formatDateTime, formatUsdt } from '@/lib/format';
-import { percent } from '@/lib/labels';
 import { can } from '@/lib/permissions';
 import { MemberMatches } from '@/pages/members/MemberMatches';
 import { cn } from '@/lib/utils';
 import { useMemberName } from '@/pages/members/useMemberName';
 import { NoAccess } from '@/pages/Placeholders';
 import { useGrants } from '@/session/SessionProvider';
-import { backingKey, BackingPanel, PriceLines } from './BackingPanel';
+import { BackingPanel, PriceLines } from './BackingPanel';
 
 // Screen 15. A member's backing, found by searching, with entering their KES deposits and vault savings and deciding
-// a waiting change; the changes waiting for approval across members; and the prices and haircuts backing is valued at. The GP API gives the prices only with a member's
-// backing, so they show once a member is open; the haircuts are pool settings.
-
-const HAIRCUTS = [
-  { key: 'blocks_haircut', label: 'Locked BLOCKS count at' },
-  { key: 'kes_deposit_haircut', label: 'KES deposits count at' },
-  { key: 'vault_savings_haircut', label: 'Vault savings count at' }
-];
+// a waiting change; the changes waiting for approval across members; and the prices and haircuts backing is valued at,
+// the same for every member, so they show whether or not a member is open.
 
 export function BackingPage() {
   const grants = useGrants();
@@ -72,7 +65,7 @@ function BackingScreen() {
               <Muted>Find a member above to see their backing, enter new KES deposits and vault savings, or approve a change waiting for them.</Muted>
             </Card>
           )}
-          <PoolPrices memberId={memberId} />
+          <PoolPrices />
         </div>
         <WaitingChanges />
       </div>
@@ -190,12 +183,10 @@ function MemberSearch({ onPick }: { onPick: (id: string) => void }) {
   );
 }
 
-/** The prices come with a member's backing; with no member open, only the haircuts show, from the pool settings. */
-function PoolPrices({ memberId }: { memberId: string | undefined }) {
+/** The prices and haircuts every member's backing is valued at, from the pool. */
+function PoolPrices() {
   const settingsReadable = can(useGrants(), 'PARAMETERS.READ');
-  const backing = useQuery({ queryKey: backingKey(memberId ?? ''), queryFn: () => getAssetBalances(memberId!), enabled: !!memberId });
-  const settings = useQuery({ queryKey: ['parameters', 'list'], queryFn: listParameters, enabled: !memberId && settingsReadable });
-  const valueOf = (key: string) => settings.data?.find((s) => s.key === key)?.value;
+  const query = useQuery({ queryKey: poolPricesKey, queryFn: getPoolPrices });
 
   return (
     <Card aria-label="Prices and haircuts">
@@ -210,28 +201,7 @@ function PoolPrices({ memberId }: { memberId: string | undefined }) {
         }
       />
       <Muted>The latest stored valuation, the same for every member. A haircut change needs two admins, on Pool settings.</Muted>
-      {memberId ? (
-        backing.isPending ? (
-          <Muted>Loading the prices…</Muted>
-        ) : backing.isError ? (
-          <Banner tone="bad">{errorMessage(backing.error)}</Banner>
-        ) : (
-          <PriceLines prices={backing.data.valuation} />
-        )
-      ) : (
-        <>
-          <Muted>The BLOCKS price and KES rate show once a member is open: the GP API gives them only with a member's backing.</Muted>
-          {!settingsReadable ? (
-            <Muted>Your role can't read the pool settings, so the haircuts show once a member is open too.</Muted>
-          ) : settings.isPending ? (
-            <Muted>Loading the haircuts…</Muted>
-          ) : settings.isError ? (
-            <Banner tone="bad">{errorMessage(settings.error)}</Banner>
-          ) : (
-            <Lines rows={HAIRCUTS.map((h) => ({ k: h.label, v: percent(valueOf(h.key)) }))} />
-          )}
-        </>
-      )}
+      {query.isPending ? <Muted>Loading the prices…</Muted> : query.isError ? <Banner tone="bad">{errorMessage(query.error)}</Banner> : <PriceLines prices={query.data} />}
     </Card>
   );
 }
