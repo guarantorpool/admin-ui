@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
-import { newAdmin, newMember, signIn } from './helpers';
+import { Wallet } from 'ethers';
+import { newAdmin, newMember, seedKesActivity, signIn } from './helpers';
 
 const HEADER = 'source,externalId,memberNumber,type,amount,occurredAt';
 
@@ -78,6 +79,51 @@ test.describe('activity (slice 11)', () => {
     await expect(page.getByRole('heading', { name: 'Activity' })).toBeVisible();
     await expect(page.getByRole('table', { name: 'Activity records' }).or(page.getByText('No activity records yet.'))).toBeVisible();
     await expect(page.getByRole('button', { name: 'Import a CSV file' })).toHaveCount(0);
+  });
+
+  test('lists KES activity read from the Lipa API, filtered by member, wallet, type and status (C4)', async ({ page }) => {
+    const member = await newMember('Wairimu', 'K' + Array.from({ length: 7 }, () => String.fromCharCode(97 + Math.floor(Math.random() * 26))).join(''));
+    // stored as the backend stores wallets, in lower case; the filter takes any case
+    const wallet = Wallet.createRandom().address.toLowerCase();
+    seedKesActivity(member, { wallet, amountKes: 2580, receipt: 'TJK4H7Q2LM', hoursAgo: 3 });
+    seedKesActivity(member, { wallet, type: 'PAYMENT', status: 'REVERSED', amountKes: 645, receipt: 'TJL9P3X8RA', hoursAgo: 2 });
+    seedKesActivity(member, { wallet, status: 'FAILED', amountKes: 1000, onChain: false, hoursAgo: 1 });
+    const user = await newAdmin(page, ['LEDGER.READ'], 'KesReader');
+    await signIn(page, user.email, user.password);
+
+    await page.goto('/activity');
+    await page.getByRole('tab', { name: 'KES activity from the Lipa API' }).click();
+    await expect(page).toHaveURL(/view=kes/);
+    await expect(page.getByText('Planned: KES activity')).toHaveCount(0);
+    await page.getByLabel('Member number').fill(member.number);
+    await expect(page).toHaveURL(new RegExp(`member=${member.number}`));
+    const rows = page.getByRole('table', { name: 'KES activity' }).getByRole('row').filter({ has: page.getByRole('cell') });
+    await expect(rows).toHaveCount(3);
+    // the latest change first
+    await expect(rows.nth(0)).toContainText('Failed');
+    await expect(rows.nth(0)).toContainText('Not on-chain');
+    await expect(rows.nth(1)).toContainText('Payment');
+    await expect(rows.nth(1)).toContainText('PAYBILL · 888880');
+    await expect(rows.nth(1)).toContainText('Reversed');
+    await expect(rows.nth(2)).toContainText('2,580');
+    await expect(rows.nth(2)).toContainText('20.00 USD');
+    await expect(rows.nth(2)).toContainText('TJK4H7Q2LM');
+
+    await page.getByRole('combobox', { name: 'Status', exact: true }).selectOption('REVERSED');
+    await expect(rows).toHaveCount(1);
+    await expect(rows).toContainText('TJL9P3X8RA');
+    await page.getByRole('combobox', { name: 'Status', exact: true }).selectOption('');
+    await page.getByRole('combobox', { name: 'Type', exact: true }).selectOption('DEPOSIT');
+    await expect(rows).toHaveCount(2);
+    await page.getByLabel('Member number').fill('');
+    await page.getByLabel('Wallet address').fill(wallet.toUpperCase().replace('0X', '0x'));
+    await expect(page).toHaveURL(/wallet=0x/);
+    await expect(rows).toHaveCount(2);
+
+    // the records tab keeps its own filters
+    await page.getByRole('tab', { name: 'Activity records' }).click();
+    await expect(page).not.toHaveURL(/view=|wallet=/);
+    await expect(page.getByRole('table', { name: 'Activity records' }).or(page.getByText('No activity records yet.'))).toBeVisible();
   });
 
   test('is closed to a role without LEDGER.READ', async ({ page }) => {
