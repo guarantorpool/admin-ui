@@ -34,7 +34,7 @@ test.describe('your account (slice 1)', () => {
     await page.getByRole('button', { name: 'Change the password' }).click();
     await expect(page.getByText(/Your password was changed and every session ended/)).toBeVisible();
     await signIn(page, user.email, next);
-    await expect(page).toHaveURL(/\/approvals$/);
+    await expect(page).toHaveURL(/\/dashboard$/);
   });
 
   test('sign out everywhere signs out the other tabs too', async ({ page, context }) => {

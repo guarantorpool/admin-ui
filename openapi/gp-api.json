@@ -8427,6 +8427,68 @@
         }
       }
     },
+    "/api/pool/charts": {
+      "get": {
+        "tags": [
+          "Pool"
+        ],
+        "summary": "The admin dashboard's charts over the last 12 months (#142)",
+        "description": "Days and months are counted in app.time-zone (Africa/Nairobi), oldest first, from the first day of the month 11 months ago. liquidFunds: Liquid Funds as each nightly underwriting calculation stored them, one point per day it ran. backing: each day's last pool calculation, its Total Backing split into locked BLOCKS, KES deposits and USDT vault savings, each in USDT after its haircut; kept from this release on, so earlier days have no point. months: all 12 months, this one last: premiumsReceived (less the operating fee on a confirmed payment, converted as Liquid Funds converts them, by when each was confirmed, or started if never confirmed) and claimsPaid, by when each claim was paid, with how many of each. guaranteesByStatus: every status with how many guarantees have it now. Amounts are USDT.\n\n**Requires:** `hasAuthority('POOL.READ')`",
+        "operationId": "charts",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PoolChartsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in, or the token or key is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/pool/book-ratio": {
       "get": {
         "tags": [
@@ -14866,6 +14928,120 @@
             "format": "int32"
           },
           "totalResults": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "BackingDay": {
+        "type": "object",
+        "properties": {
+          "day": {
+            "type": "string",
+            "format": "date"
+          },
+          "lockedBlocks": {
+            "type": "string"
+          },
+          "kesDeposits": {
+            "type": "string"
+          },
+          "vaultSavings": {
+            "type": "string"
+          },
+          "total": {
+            "type": "string"
+          },
+          "calculatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "LiquidFundsDay": {
+        "type": "object",
+        "properties": {
+          "day": {
+            "type": "string",
+            "format": "date"
+          },
+          "liquidFunds": {
+            "type": "string"
+          },
+          "calculatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Month": {
+        "type": "object",
+        "properties": {
+          "month": {
+            "type": "string"
+          },
+          "premiumsReceived": {
+            "type": "string"
+          },
+          "payments": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "claimsPaid": {
+            "type": "string"
+          },
+          "claims": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "PoolChartsResponse": {
+        "type": "object",
+        "properties": {
+          "timeZone": {
+            "type": "string"
+          },
+          "liquidFunds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LiquidFundsDay"
+            }
+          },
+          "backing": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BackingDay"
+            }
+          },
+          "months": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Month"
+            }
+          },
+          "guaranteesByStatus": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StatusCount"
+            }
+          }
+        }
+      },
+      "StatusCount": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending_payment",
+              "active",
+              "in_claim",
+              "closed",
+              "expired"
+            ]
+          },
+          "count": {
             "type": "integer",
             "format": "int64"
           }

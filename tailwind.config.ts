@@ -26,6 +26,7 @@ export default {
         warn: { bg: v('warn-bg'), fg: v('warn-fg') },
         bad: { bg: v('bad-bg'), fg: v('bad-fg') },
         plan: { bg: v('plan-bg'), fg: v('plan-fg') },
+        chart: { 1: v('chart1'), 2: v('chart2'), 3: v('chart3') },
         brand: { navy: '#0B2350', green: '#00C700' }
       },
       borderColor: { DEFAULT: v('line') },
