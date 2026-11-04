@@ -541,6 +541,14 @@ for (const scheme of ['light', 'dark'] as const) {
     await page.screenshot({ path: `${dir}/${tag}-79-approval-approve.png` });
     await page.keyboard.press('Escape');
 
+    // C1: quotes narrowed to part of an ID
+    await page.goto('/guarantees/quotes');
+    await page.getByRole('searchbox', { name: /Find a member/ }).fill(q.slice(0, 7).toLowerCase());
+    await page.waitForURL(/search=/);
+    await page.getByRole('table', { name: 'Quotes' }).or(page.getByRole('list', { name: 'Quotes' })).getByRole('link', { name: new RegExp(q) }).waitFor();
+    await settle(page);
+    await page.screenshot({ path: `${dir}/${tag}-80-quote-id-search.png` });
+
     // C4: KES activity from the Lipa API
     await page.goto('/activity?view=kes');
     await page.getByRole('table', { name: 'KES activity' }).or(page.getByRole('list', { name: 'KES activity' })).waitFor();

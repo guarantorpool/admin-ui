@@ -35,10 +35,36 @@ test.describe('Guarantees and quotes (slice 4)', () => {
     await page.getByRole('button', { name: 'All', exact: true }).click();
     await expect(rows).toHaveCount(2);
 
-    // opened by its exact ID
-    await page.getByRole('searchbox', { name: /Find a member/ }).fill(active.guaranteeId.slice(0, 8));
-    await expect(page.getByText(/Planned: searching by part of an ID/)).toBeVisible();
-    await page.getByRole('searchbox', { name: /Find a member/ }).fill(active.guaranteeId.toLowerCase());
+    // part of an ID narrows the list (C1), the other kind's prefix searches nothing, and an exact ID opens it
+    const find = page.getByRole('searchbox', { name: /Find a member/ });
+    await find.fill('gpq-');
+    await expect(page.getByText("That's a quote ID.", { exact: false })).toBeVisible();
+    await expect(rows).toHaveCount(2);
+    await find.fill(active.guaranteeId.slice(0, 14).toLowerCase());
+    await expect(page.getByText(`Showing guarantees whose ID contains “${active.guaranteeId.slice(0, 14)}”.`)).toBeVisible();
+    await expect(page).toHaveURL(/search=/);
+    await expect(rows.filter({ hasText: active.guaranteeId })).toHaveCount(1);
+    // a filter chosen while the search waits for a pause in typing stays chosen
+    await find.fill(active.guaranteeId.slice(0, 13).toLowerCase());
+    await page.getByRole('button', { name: 'Flagged', exact: true }).click();
+    await expect.poll(() => new URL(page.url()).searchParams.get('search')).toBe(active.guaranteeId.slice(0, 13));
+    expect(new URL(page.url()).searchParams.get('status')).toBe('flagged');
+    await page.getByRole('button', { name: 'All', exact: true }).click();
+    // a record opened while the search waits keeps open when the search comes
+    await expect(rows.filter({ hasText: active.guaranteeId })).toHaveCount(1);
+    await find.fill(active.guaranteeId.slice(0, 12).toLowerCase());
+    await rows.filter({ hasText: active.guaranteeId }).click();
+    await expect.poll(() => new URL(page.url()).searchParams.get('search')).toBe(active.guaranteeId.slice(0, 12));
+    await expect(page).toHaveURL(new RegExp(`/guarantees/${active.guaranteeId}\\?`));
+    await expect(details(page).getByRole('heading', { name: active.guaranteeId })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(details(page)).toHaveCount(0);
+    await find.fill(active.guaranteeId.toLowerCase());
+    await expect(rows).toHaveCount(1);
+    await expect(rows).toContainText(active.guaranteeId);
+    await find.fill('GPG-0000-');
+    await expect(page.getByText('No guarantee ID contains “GPG-0000-” with these filters.')).toBeVisible();
+    await find.fill(active.guaranteeId.toLowerCase());
     await page.keyboard.press('Enter');
     const panel = details(page);
     await expect(panel.getByRole('heading', { name: active.guaranteeId })).toBeVisible();
@@ -94,6 +120,15 @@ test.describe('Guarantees and quotes (slice 4)', () => {
     const g = seedGuarantee(sam);
     const first = await newAdmin(page, MANAGER, 'Enter');
     await signIn(page, first.email, first.password);
+    // a search from the address is in the box, and the menu link clears both
+    await page.goto(`/guarantees?search=${g.guaranteeId}`);
+    const find = page.getByRole('searchbox', { name: /Find a member/ });
+    await expect(find).toHaveValue(g.guaranteeId);
+    await page.getByRole('navigation', { name: 'Admin screens' }).getByRole('link', { name: 'Guarantees and quotes' }).click();
+    await expect(page).toHaveURL(/\/guarantees$/);
+    await expect(find).toHaveValue('');
+    await page.waitForTimeout(500);
+    await expect(page).toHaveURL(/\/guarantees$/);
     await page.goto(`/guarantees/${g.guaranteeId}`);
     await details(page).getByRole('button', { name: 'Enter a manual close' }).click();
     const enter = page.getByRole('dialog', { name: 'Enter a manual close' });
@@ -133,6 +168,15 @@ test.describe('Guarantees and quotes (slice 4)', () => {
     await expect(rows).toContainText(failed.quoteId);
     await expect(rows).toContainText('95.04 USDT');
     await expect(rows).toContainText('Flagged');
+    // a quote found by part of its ID
+    await page.getByRole('button', { name: 'All', exact: true }).click();
+    await page.getByRole('searchbox', { name: /Find a member/ }).fill(failed.quoteId.slice(0, 8).toLowerCase());
+    await expect(page).toHaveURL(/search=GPQ-/);
+    await expect(rows.filter({ hasText: failed.quoteId })).toHaveCount(1);
+    await page.getByRole('searchbox', { name: /Find a member/ }).fill('');
+    await expect(rows).toHaveCount(3);
+    await page.getByRole('button', { name: 'Open', exact: true }).click();
+    await expect(rows).toHaveCount(1);
 
     await rows.click();
     const panel = page.getByRole('dialog', { name: 'Quote details' });

@@ -23,7 +23,8 @@ import { GuaranteeDetail } from './GuaranteeDetail';
 import { QuoteDetail } from './QuoteDetail';
 
 // Screens 6 and 7. Both lists come newest first. Rows are named by business ID (GPG-…, GPQ-…); a guarantee
-// row carries its member's ID only, so the member is chosen in the find box rather than shown per row.
+// row carries its member's ID only, so the member is chosen in the find box rather than shown per row. The same box
+// narrows the list to IDs containing what's typed (C1).
 
 const PAGE_TABS = [
   { value: 'guarantees', label: 'Guarantees' },
@@ -111,6 +112,7 @@ function Guarantees() {
 
   const filter = filters.find((f) => f.value && f.value === params.get('status'))?.value ?? '';
   const memberId = params.get('member') ?? undefined;
+  const search = params.get('search')?.trim() || undefined;
   const page = Math.max(1, Number(params.get('page')) || 1);
   const sizeParam = Number(params.get('size'));
   const size = (PAGE_SIZES as readonly number[]).includes(sizeParam) ? sizeParam : DEFAULT_SIZE;
@@ -135,12 +137,21 @@ function Guarantees() {
     return s ? `?${s}` : '';
   };
 
-  const q: GuaranteeQuery = { page, size, memberId, status: filter === 'flagged' ? undefined : filter || undefined, flagged: filter === 'flagged' || undefined };
+  const q: GuaranteeQuery = { page, size, memberId, search, status: filter === 'flagged' ? undefined : filter || undefined, flagged: filter === 'flagged' || undefined };
   const query = useQuery<Page<Guarantee | Quote>>({
     queryKey: [pageTab, 'list', q],
     queryFn: () => (pageTab === 'quotes' ? listQuotes(q) : listGuarantees(q)),
     placeholderData: keepPreviousData
   });
+
+  /** The list's values with another ID search, back on page 1 if it changed. */
+  const withSearch = (s: string | undefined) => {
+    const next = new URLSearchParams(params);
+    if (s !== search) next.delete('page');
+    if (s) next.set('search', s);
+    else next.delete('search');
+    return next;
+  };
 
   // switching between guarantees and quotes keeps the member, but not the status or the page
   const switchTab = (t: string) => {
@@ -150,7 +161,9 @@ function Guarantees() {
   };
 
   const total = query.data?.totalResults ?? 0;
-  const empty = pageTab === 'quotes' ? 'No quotes match.' : 'No guarantees match.';
+  const empty = search
+    ? `No ${pageTab === 'quotes' ? 'quote' : 'guarantee'} ID contains “${search}”${filter || memberId ? ' with these filters' : ''}.`
+    : pageTab === 'quotes' ? 'No quotes match.' : 'No guarantees match.';
   const list = query.isPending ? (
     <p className="m-0 px-4 py-5 text-muted">Loading…</p>
   ) : query.isError ? (
@@ -191,7 +204,7 @@ function Guarantees() {
       <Tabs label="Guarantees and quotes" idPrefix="guarantees-page" tabs={PAGE_TABS} value={pageTab} onChange={switchTab} />
       <TabPanel idPrefix="guarantees-page" value={pageTab} className="flex flex-col gap-3.5">
         <div className="flex flex-wrap items-start gap-2">
-          <FindBox key={pageTab} kind={pageTab === 'quotes' ? 'quote' : 'guarantee'} memberId={memberId} onMember={(id) => update({ member: id })} onOpen={(path) => navigate(path)} />
+          <FindBox key={pageTab} kind={pageTab === 'quotes' ? 'quote' : 'guarantee'} memberId={memberId} search={search} listKey={params.toString()} onMember={(id) => update({ member: id })} onSearch={(s) => update({ search: s })} onOpen={(path, s) => navigate(`${path}${listSearch(withSearch(s))}`)} />
           <div role="group" aria-label="Status" className="flex flex-wrap gap-2">
             {filters.map((f) => (
               <Chip key={f.label} on={filter === f.value} onClick={() => update({ status: f.value })}>
