@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
-import { apiToken, call, connect, loseKycKey, newAdmin, newMember, post, randomIdNumber, seedDefault, seedGuarantee, seedLoanDocument, seedAlert, seedPoolSamples, seedQuote, seedPayment, seedRefund, signIn, stack, submitAddress, submitKyc, type Member, type SeededGuarantee, type SeededQuote } from './helpers';
+import { apiToken, call, connect, loseKycKey, newAdmin, newMember, post, randomIdNumber, seedDefault, seedGuarantee, seedLoanDocument, seedAlert, seedPoolSamples, seedQuote, seedPayment, seedKesActivity, seedRefund, signIn, stack, submitAddress, submitKyc, type Member, type SeededGuarantee, type SeededQuote } from './helpers';
 
 // Not a check: screenshots for review, only when SHOTS_DIR is set.
 const dir = process.env.SHOTS_DIR;
@@ -47,6 +47,13 @@ async function sampleMembers(): Promise<Member[]> {
   seedLoanDocument(graceLoan, made[2]!.id, 'Default notice from Mavuno Credit');
   seedLoanDocument(graceLoan, made[2]!.id, 'Statement of account');
   seedDefault(graceLoan, guarantees[1]!.guaranteeId, { owed: '3875.25', daysAgo: 16, verified: true });
+  // M-Pesa activity as the Lipa API's feed would report it for two wallets
+  const wallets = ['0x5a3c9e1f27b84d06a1c4e92b7d35f8a0c6e1b493', '0x91d27f3a85c0e64b1d9f72a3c85f2c9a41e7b3d8'];
+  seedKesActivity(a, { wallet: wallets[0]!, amountKes: 12900, receipt: 'TJK4H7Q2LM', hoursAgo: 30 });
+  seedKesActivity(b, { wallet: wallets[1]!, amountKes: 2580, receipt: 'TJL2M8R4XC', hoursAgo: 20 });
+  seedKesActivity(a, { wallet: wallets[0]!, type: 'PAYMENT', amountKes: 645, receipt: 'TJM7Q2LX9P', hoursAgo: 8 });
+  seedKesActivity(b, { wallet: wallets[1]!, type: 'PAYMENT', status: 'REVERSED', amountKes: 1290, receipt: 'TJN3X8RA5K', hoursAgo: 4 });
+  seedKesActivity(a, { wallet: wallets[0]!, status: 'FAILED', amountKes: 5000, onChain: false, hoursAgo: 1 });
   members = made;
   return made;
 }
@@ -530,5 +537,11 @@ for (const scheme of ['light', 'dark'] as const) {
     await page.getByRole('dialog', { name: 'Approve this backing change?' }).waitFor();
     await page.screenshot({ path: `${dir}/${tag}-79-approval-approve.png` });
     await page.keyboard.press('Escape');
+
+    // C4: KES activity from the Lipa API
+    await page.goto('/activity?view=kes');
+    await page.getByRole('table', { name: 'KES activity' }).or(page.getByRole('list', { name: 'KES activity' })).waitFor();
+    await settle(page);
+    await page.screenshot({ path: `${dir}/${tag}-82-kes-activity.png`, fullPage: true });
   });
 }

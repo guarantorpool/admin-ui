@@ -25,3 +25,22 @@ export const importFacts = (file: File) => {
   form.append('file', file);
   return api.post<ImportResult>('/facts/import', form);
 };
+
+export type KesActivity = Schemas['KesActivityResponse'];
+
+export interface KesActivityQuery {
+  page: number;
+  size: number;
+  memberNumber?: string;
+  walletAddress?: string;
+  /** DEPOSIT or PAYMENT */
+  type?: string;
+  /** COMPLETED, REVERSED or FAILED */
+  status?: string;
+}
+
+/**
+ * M-Pesa deposits and payments as last read from the Lipa API's feed, the latest change first (C4). Nothing calls the
+ * Lipa API here: a member's feed is read when they sign in and before each quote.
+ */
+export const listKesActivities = (q: KesActivityQuery) => api.get<Page<KesActivity>>('/facts/kes-activities', { query: { ...q } });
