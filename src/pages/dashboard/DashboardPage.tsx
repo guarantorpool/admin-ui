@@ -229,7 +229,7 @@ function PoolHealth({ className }: { className: string }) {
         ? { label: 'Total backing', value: formatNumber(u.totalBackingUsdt, 2), unit: 'USDT', note: 'Backing after haircuts', to: '/backing' }
         : { label: 'Total backing', value: '—', note: 'Not valued yet: no prices read', to: '/backing', tone: 'warn' }
       : loading('Total backing', '/backing'),
-    u ? { label: 'Outstanding guarantees', value: formatNumber(u.totalOutstandingGuarantees ?? 0, 2), unit: 'USDT', note: 'Active and in-claim guarantees', to: '/guarantees?status=active' } : loading('Outstanding guarantees', '/guarantees'),
+    u ? { label: 'Outstanding guarantees', value: formatNumber(u.totalOutstandingGuarantees ?? 0, 2), unit: 'USDT', note: 'Active and in-claim guarantees', to: '/guarantees' } : loading('Outstanding guarantees', '/guarantees'),
     u
       ? {
           label: 'Pool utilization',
