@@ -118,8 +118,11 @@ export function KesActivityList() {
       minWidth={1000}
       sub={(a) =>
         [
-          `${kesType(a.type)} of ${formatAmount(a.amountKes, 'KES')}`,
+          // the phone shows only this line, so it carries what the middle columns show
+          `${kesType(a.type)} of ${formatAmount(a.amountKes, 'KES')}${a.amountUsd ? ` (${formatNumber(a.amountUsd, 2)} USD)` : ''}`,
+          [a.channel, a.recipientType, a.recipientReference].filter(Boolean).join(' · ') || null,
           a.mpesaReceipt ? `receipt ${a.mpesaReceipt}` : null,
+          a.txHash ? `transaction ${short(a.txHash)}` : 'not on-chain',
           `wallet ${short(a.walletAddress)}`,
           a.completedAt ? `completed ${formatDateTime(a.completedAt)}` : 'not completed',
           `read ${formatDateTime(a.readAt)}`
