@@ -530,5 +530,13 @@ for (const scheme of ['light', 'dark'] as const) {
     await page.getByRole('dialog', { name: 'Approve this backing change?' }).waitFor();
     await page.screenshot({ path: `${dir}/${tag}-79-approval-approve.png` });
     await page.keyboard.press('Escape');
+
+    // C5: re-reading Amina's locked BLOCKS; the local chain answers no reads, so this shows how a failed read reads
+    await page.goto(`/members/${amina!.id}`);
+    const reread = page.getByRole('dialog', { name: 'Member details' }).getByRole('button', { name: 'Read again now' });
+    await reread.click();
+    await expect(reread).toHaveText('Read again now');
+    await settle(page);
+    await page.screenshot({ path: `${dir}/${tag}-83-blocks-reread.png` });
   });
 }

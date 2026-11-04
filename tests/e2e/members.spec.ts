@@ -44,6 +44,7 @@ test.describe('members (slice 2)', () => {
     await expect(panel.getByText(amina.number)).toBeVisible();
     await expect(panel.getByText(amina.phone)).toBeVisible();
     await expect(panel.getByRole('button', { name: /Disable the member/ })).toHaveCount(0);
+    await expect(panel.getByRole('button', { name: 'Read again now' })).toHaveCount(0);
     // a member's guarantees need GUARANTEES.READ as well
     await expect(panel.getByRole('tab')).toHaveText(['Overview', 'Backing', 'Trust Score', 'Connections', 'Limit', 'Files']);
 
@@ -123,6 +124,33 @@ test.describe('members (slice 2)', () => {
     await expect(page.getByText('No members match.')).toBeVisible();
     await page.getByRole('button', { name: 'All', exact: true }).click();
     await expect(row).not.toContainText('Disabled');
+  });
+
+  test("reads a member's locked BLOCKS again now, and says when the chain can't be read (C5)", async ({ page }) => {
+    const member = await newMember('Baraka', surname());
+    const user = await newAdmin(page, ['MEMBERS.READ', 'MEMBERS.UPDATE'], 'BlocksReader');
+    await signIn(page, user.email, user.password);
+    await page.goto(`/members/${member.id}`);
+    const panel = details(page);
+    const reread = panel.getByRole('button', { name: 'Read again now' });
+
+    // the local stack's chain answers none of these reads, so either outcome is the backend's own
+    await reread.click();
+    await expect(panel.getByRole('status').filter({ hasText: /^Read on-chain/ }).or(panel.getByRole('alert').filter({ hasText: "The chain couldn't be read just now" }))).toBeVisible();
+
+    // each outcome as the backend gives it
+    await page.route(`**/members/${member.id}/locked-blocks/refresh`, (route) =>
+      route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ status: 503, error: 'Service unavailable', message: 'Your locked BLOCKS could not be read just now.' }) })
+    );
+    await reread.click();
+    await expect(panel.getByRole('alert')).toHaveText("The chain couldn't be read just now, so the last amount is kept. Try again in a moment.");
+    await page.unroute(`**/members/${member.id}/locked-blocks/refresh`);
+    await page.route(`**/members/${member.id}/locked-blocks/refresh`, (route) =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ lockedBlocks: '2500', readAt: new Date().toISOString() }) })
+    );
+    await reread.click();
+    await expect(panel.getByRole('status').filter({ hasText: 'Read on-chain' })).toContainText(/^Read on-chain .*: 2,500(\.0+)? BLOCKS\./);
+    await expect(panel.getByRole('alert')).toHaveCount(0);
   });
 
   test('is closed to a role without MEMBERS.READ', async ({ page }) => {
