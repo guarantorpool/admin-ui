@@ -172,6 +172,15 @@ const LIPA_STATUS: Record<string, Label> = {
 };
 
 export const lipaStatus = (code: string | null | undefined) => pick(LIPA_STATUS, code);
+export const LIPA_STATUSES = Object.keys(LIPA_STATUS);
+
+// how a Lipa API status reached us: the Lipa API's signed callback, or our own status check
+const LIPA_SOURCE: Record<string, string> = {
+  CALLBACK: 'Callback',
+  STATUS_CHECK: 'Status check'
+};
+
+export const lipaSource = (code: string | null | undefined) => (code ? LIPA_SOURCE[code] ?? sentence(code) : '—');
 
 const PAYMENT_METHOD: Record<string, string> = {
   lipa: 'Lipa API',

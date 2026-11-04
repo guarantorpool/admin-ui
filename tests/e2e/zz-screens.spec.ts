@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
-import { apiToken, call, connect, loseKycKey, newAdmin, newMember, post, randomIdNumber, seedDefault, seedGuarantee, seedLoanDocument, seedAlert, seedPoolSamples, seedQuote, seedPayment, seedRefund, signIn, stack, submitAddress, submitKyc, type Member, type SeededGuarantee, type SeededQuote } from './helpers';
+import { apiToken, call, connect, loseKycKey, newAdmin, newMember, post, randomIdNumber, seedDefault, seedGuarantee, seedLoanDocument, seedAlert, seedPoolSamples, seedQuote, seedPayment, seedLipaEvent, seedRefund, signIn, stack, submitAddress, submitKyc, type Member, type SeededGuarantee, type SeededQuote } from './helpers';
 
 // Not a check: screenshots for review, only when SHOTS_DIR is set.
 const dir = process.env.SHOTS_DIR;
@@ -47,6 +47,10 @@ async function sampleMembers(): Promise<Member[]> {
   seedLoanDocument(graceLoan, made[2]!.id, 'Default notice from Mavuno Credit');
   seedLoanDocument(graceLoan, made[2]!.id, 'Statement of account');
   seedDefault(graceLoan, guarantees[1]!.guaranteeId, { owed: '3875.25', daysAgo: 16, verified: true });
+  // what the Lipa API reported on Brian's quote (one failed attempt) and John's (one still processing)
+  seedLipaEvent(quotes[0]!.quoteId, { paymentId: `lipa-pay-${quotes[0]!.quoteId.slice(4).toLowerCase()}`, status: 'PROCESSING', amount: '95.04', minutesAgo: 50 });
+  seedLipaEvent(quotes[0]!.quoteId, { paymentId: `lipa-pay-${quotes[0]!.quoteId.slice(4).toLowerCase()}`, status: 'FAILED', amount: '95.04', reason: 'INSUFFICIENT_FUNDS', message: 'Payment failed, please try again.', source: 'STATUS_CHECK', minutesAgo: 44 });
+  seedLipaEvent(quotes[1]!.quoteId, { paymentId: `lipa-pay-${quotes[1]!.quoteId.slice(4).toLowerCase()}`, status: 'PROCESSING', amount: '158.4', minutesAgo: 3 });
   members = made;
   return made;
 }
@@ -530,5 +534,11 @@ for (const scheme of ['light', 'dark'] as const) {
     await page.getByRole('dialog', { name: 'Approve this backing change?' }).waitFor();
     await page.screenshot({ path: `${dir}/${tag}-79-approval-approve.png` });
     await page.keyboard.press('Escape');
+
+    // C6: the Lipa API's callbacks and our status checks
+    await page.goto('/audit?view=lipa');
+    await page.getByRole('table', { name: 'Lipa API callbacks and status checks' }).or(page.getByRole('list', { name: 'Lipa API callbacks and status checks' })).waitFor();
+    await settle(page);
+    await page.screenshot({ path: `${dir}/${tag}-84-lipa-log.png`, fullPage: true });
   });
 }
