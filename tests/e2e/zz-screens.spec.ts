@@ -507,5 +507,10 @@ for (const scheme of ['light', 'dark'] as const) {
     await page.getByRole('dialog', { name: 'Payment details' }).getByText(paid.txHash).waitFor();
     await settle(page);
     await page.screenshot({ path: `${dir}/${tag}-75-payment-details.png` });
+
+    await page.goto('/kyc/address');
+    await page.getByRole('table', { name: 'Documents' }).or(page.getByRole('list', { name: 'Documents' })).waitFor();
+    await settle(page);
+    await page.screenshot({ path: `${dir}/${tag}-76-address-queue.png` });
   });
 }

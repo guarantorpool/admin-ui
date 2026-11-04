@@ -105,15 +105,50 @@ test.describe('KYC and address review (slice 3)', () => {
     await panel.getByRole('tab', { name: 'KYC submission' }).click();
     await expect(panel.getByText("This member hasn't submitted KYC details.")).toBeVisible();
 
-    // the address tab finds members one at a time until there's one queue
+    // a search finds the member among all members
     await page.keyboard.press('Escape');
     await expect(page).toHaveURL(/\/kyc\/address$/);
-    await expect(page.getByText('Planned: one queue of documents')).toBeVisible();
-    await expect(page.getByText('Search for the member whose documents you want to review.')).toBeVisible();
     await search(page).fill(last);
     const row = page.getByRole('table', { name: 'Members' }).getByRole('link');
     await expect(row).toHaveCount(1);
     await expect(row).toContainText('Complete');
+  });
+
+  test('queues proof-of-address documents across members, and a review takes one off', async ({ page }) => {
+    const amina = await newMember('Amina', surname());
+    const brian = await newMember('Brian', surname());
+    await submitAddress(amina, { latitude: -1.28, longitude: 36.82, comment: 'Next to the church' }, 20);
+    await submitAddress(brian, { latitude: -0.09, longitude: 34.76, comment: 'Green gate' }, 5);
+    const user = await newAdmin(page, REVIEWER, 'Queue');
+    await signIn(page, user.email, user.password);
+
+    await page.goto('/kyc/address');
+    await expect(page.getByText(/Planned/)).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Pending', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    const docs = page.getByRole('table', { name: 'Documents' }).getByRole('link');
+    const aminaRow = docs.filter({ hasText: amina.number });
+    const brianRow = docs.filter({ hasText: brian.number });
+    await expect(aminaRow).toContainText('Utility bill');
+    await expect(aminaRow).toContainText('Pending');
+    await expect(brianRow).toHaveCount(1);
+
+    await aminaRow.click();
+    await expect(page).toHaveURL(new RegExp(`/kyc/address/${amina.id}$`));
+    const document = review(page).getByRole('list', { name: 'Documents' }).getByRole('listitem');
+    await document.getByRole('button', { name: 'Reject' }).click();
+    const reject = page.getByRole('dialog', { name: 'Reject this document?' });
+    await reject.getByRole('textbox').fill('The bill is not in your name.');
+    await reject.getByRole('button', { name: 'Reject' }).click();
+    await expect(document).toContainText('Rejected');
+    await page.keyboard.press('Escape');
+
+    // off the pending queue, and under Rejected
+    await expect(brianRow).toHaveCount(1);
+    await expect(aminaRow).toHaveCount(0);
+    await page.getByRole('button', { name: 'Rejected', exact: true }).click();
+    await expect(page).toHaveURL(/status=rejected/);
+    await expect(aminaRow).toContainText('Rejected');
+    await expect(brianRow).toHaveCount(0);
   });
 
   test('is closed to a role without MEMBERS.KYC', async ({ page }) => {
