@@ -2,13 +2,13 @@ import { expect, test } from '@playwright/test';
 import { codeFor, linkFor, mailCount, newAdmin, signIn, stack } from './helpers';
 
 test.describe('sign-in (slice 1)', () => {
-  test('signs in with password and code, and lands on the first screen the role allows', async ({ page }) => {
+  test('signs in with password and code, and lands on the approvals inbox', async ({ page }) => {
     const { admin } = stack();
     await signIn(page, admin.email, admin.password);
-    // the system admin's first screen until the dashboard exists
-    await expect(page).toHaveURL(/\/alerts$/);
-    await expect(page.getByRole('heading', { name: 'Alerts' })).toBeVisible();
-    await expect(page.getByRole('group', { name: 'Status' }).getByRole('button', { name: /^Open/ })).toBeVisible();
+    // every admin lands on the approvals inbox until the dashboard exists
+    await expect(page).toHaveURL(/\/approvals$/);
+    await expect(page.getByRole('heading', { name: 'Approvals inbox', level: 1 })).toBeVisible();
+    await expect(page.getByRole('group', { name: 'Show' }).getByRole('button', { name: /^Everything waiting/ })).toBeVisible();
     await expect(page.getByText('Local', { exact: true })).toBeVisible();
     const nav = page.getByRole('navigation', { name: 'Admin screens' });
     for (const group of ['Members', 'Guarantees', 'Money', 'Pool', 'Administration']) await expect(nav.getByRole('button', { name: group })).toBeVisible();
@@ -51,10 +51,11 @@ test.describe('sign-in (slice 1)', () => {
   test('hides screens a narrow role cannot open', async ({ page }) => {
     const narrow = await newAdmin(page, ['REFUNDS.READ'], 'Narrow');
     await signIn(page, narrow.email, narrow.password);
-    await expect(page).toHaveURL(/\/refunds$/);
+    await expect(page).toHaveURL(/\/approvals$/);
     const nav = page.getByRole('navigation', { name: 'Admin screens' });
     await expect(nav.getByRole('button', { name: 'Money' })).toBeVisible();
     for (const hidden of ['Members', 'Guarantees', 'Pool', 'Administration']) await expect(nav.getByRole('button', { name: hidden })).toHaveCount(0);
+    await nav.getByRole('button', { name: 'Money' }).click();
     await expect(nav.getByRole('link', { name: 'Refunds' })).toBeVisible();
     // payments are guarantees' records, so they need GUARANTEES.READ
     await expect(nav.getByRole('link', { name: 'Payments' })).toHaveCount(0);
@@ -84,6 +85,6 @@ test.describe('sign-in (slice 1)', () => {
     await page.getByRole('button', { name: 'Change the password' }).click();
     await expect(page.getByText('Your password was changed. Sign in with the new one.')).toBeVisible();
     await signIn(page, user.email, next);
-    await expect(page).toHaveURL(/\/audit$/);
+    await expect(page).toHaveURL(/\/approvals$/);
   });
 });

@@ -90,11 +90,11 @@ export function findScreen(path: string): { screen: Screen; group: NavGroup | nu
 }
 
 /**
- * Where signing in lands. Until the dashboard (Phase D) exists, it's the first screen the admin's role allows
- * after the dashboard and the approvals inbox; an admin with none of those lands on their account.
+ * Where signing in lands. Until the dashboard (Phase D) exists, it's the first screen the admin's role allows after
+ * the dashboard, which is the approvals inbox: every admin can read it. An admin with none lands on their account.
  */
 export function homePath(grants: Grants | null): string {
-  const first = allScreens().find((s) => s.path !== '/dashboard' && s.path !== '/approvals' && can(grants, s.access));
+  const first = allScreens().find((s) => s.path !== '/dashboard' && can(grants, s.access));
   return first?.path ?? ACCOUNT.path;
 }
 

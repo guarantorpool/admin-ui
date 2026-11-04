@@ -15,6 +15,8 @@ test.describe('members (slice 2)', () => {
     await connect(amina, brian);
     const user = await newAdmin(page, ['MEMBERS.READ'], 'Reader');
     await signIn(page, user.email, user.password);
+    await expect(page).toHaveURL(/\/approvals$/);
+    await page.goto('/members');
     await expect(page).toHaveURL(/\/members$/);
     await expect(page.getByRole('heading', { name: 'All members' })).toBeVisible();
 
@@ -136,6 +138,7 @@ test.describe('members (slice 2)', () => {
     const member = await newMember('Peter', last);
     const user = await newAdmin(page, ['MEMBERS.READ'], 'Phone');
     await signIn(page, user.email, user.password);
+    await page.goto('/members');
     await search(page).fill(last);
     const item = page.getByRole('list', { name: 'Members' }).getByRole('link');
     await expect(item).toHaveCount(1);

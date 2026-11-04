@@ -35,10 +35,9 @@ describe('menu', () => {
 });
 
 describe('where sign-in lands', () => {
-  it('is the first screen the role allows, skipping the dashboard and inbox', () => {
-    expect(homePath({ role: 'x', permissions: ['ALERTS.READ', 'MEMBERS.READ'] })).toBe('/alerts');
-    expect(homePath({ role: 'x', permissions: ['REFUNDS.READ'] })).toBe('/refunds');
-    expect(homePath({ role: 'x', permissions: [] })).toBe('/account');
+  it('is the approvals inbox, which every admin can read, until the dashboard exists', () => {
+    expect(homePath({ role: 'x', permissions: ['ALERTS.READ', 'MEMBERS.READ'] })).toBe('/approvals');
+    expect(homePath({ role: 'x', permissions: [] })).toBe('/approvals');
   });
 
   it('only follows a next inside the portal', () => {
