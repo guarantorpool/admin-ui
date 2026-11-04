@@ -19,3 +19,25 @@ export interface AuditQuery {
 
 /** Newest first. */
 export const listAuditLog = (q: AuditQuery) => api.get<Page<AuditEntry>>('/audit-logs', { query: { ...q } });
+
+export type LipaEvent = Schemas['LipaPaymentEventResponse'];
+
+export interface LipaEventQuery {
+  page: number;
+  size: number;
+  /** callback or status_check */
+  source?: string;
+  /** PROCESSING, SUCCESS or FAILED */
+  status?: string;
+  quoteId?: string;
+  paymentId?: string;
+  /** first and last day received, inclusive */
+  from?: string;
+  to?: string;
+}
+
+/**
+ * Every Lipa API callback and status check that was stored, newest first (C6). A repeat of a status already stored for
+ * an attempt isn't stored again. They're kept beside the audit log, not in it.
+ */
+export const listLipaEvents = (q: LipaEventQuery) => api.get<Page<LipaEvent>>('/audit-logs/lipa-events', { query: { ...q } });

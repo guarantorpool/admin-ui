@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { apiToken, loseKycKey, newAdmin, newMember, post, randomIdNumber, signIn, stack, submitKyc } from './helpers';
+import { apiToken, loseKycKey, newAdmin, newMember, post, randomHash, randomIdNumber, seedLipaEvent, seedQuote, signIn, stack, submitKyc } from './helpers';
 
 const keyRow = (page: Page, name: string) => page.getByRole('table', { name: 'Service keys' }).getByRole('row').filter({ hasText: name });
 const logRows = (page: Page) => page.getByRole('table', { name: 'Audit log' }).getByRole('row');
@@ -98,6 +98,52 @@ test.describe('service keys, the KYC key and the audit log (slice 13)', () => {
     await expect(page.getByLabel('Who').locator('option:checked')).toHaveText(admin.email);
     // the header row, and only what that admin did
     await expect(logRows(page).filter({ hasNotText: admin.email })).toHaveCount(1);
+  });
+
+  test('lists the Lipa API callbacks and status checks, with their filters (C6)', async ({ page }) => {
+    const member = await newMember('Njoki', 'L' + Array.from({ length: 7 }, () => String.fromCharCode(97 + Math.floor(Math.random() * 26))).join(''));
+    const { quoteId } = seedQuote(member);
+    const failed = `lipa-pay-${Date.now().toString(36)}a`;
+    const paid = `lipa-pay-${Date.now().toString(36)}b`;
+    const txHash = randomHash();
+    seedLipaEvent(quoteId, { paymentId: failed, status: 'PROCESSING', amount: '158.4', minutesAgo: 30 });
+    seedLipaEvent(quoteId, { paymentId: failed, status: 'FAILED', amount: '158.4', reason: 'INSUFFICIENT_FUNDS', message: 'Payment failed, please try again.', source: 'STATUS_CHECK', minutesAgo: 25 });
+    seedLipaEvent(quoteId, { paymentId: paid, status: 'SUCCESS', amount: '158.4', txHash, minutesAgo: 5 });
+    const user = await newAdmin(page, ['AUDIT.READ', 'GUARANTEES.READ'], 'LipaLog');
+    await signIn(page, user.email, user.password);
+
+    await page.goto('/audit');
+    await expect(page.getByText('Planned: Lipa API callbacks')).toHaveCount(0);
+    await page.getByRole('tab', { name: 'Lipa API callbacks and status checks' }).click();
+    await expect(page).toHaveURL(/view=lipa/);
+    await page.getByLabel('Quote ID').fill(quoteId.toLowerCase());
+    await expect(page).toHaveURL(new RegExp(`quote=${quoteId}`));
+    const rows = page.getByRole('table', { name: 'Lipa API callbacks and status checks' }).getByRole('row').filter({ has: page.getByRole('cell') });
+    await expect(rows).toHaveCount(3);
+    // newest first
+    await expect(rows.nth(0)).toContainText('Success');
+    await expect(rows.nth(0)).toContainText(txHash.slice(0, 10));
+    await expect(rows.nth(1)).toContainText('Status check');
+    await expect(rows.nth(1)).toContainText('INSUFFICIENT_FUNDS');
+    await expect(rows.nth(1)).toContainText('Member told: Payment failed, please try again.');
+    await expect(rows.nth(2)).toContainText('Processing');
+
+    await page.getByRole('combobox', { name: 'Status', exact: true }).selectOption('FAILED');
+    await expect(rows).toHaveCount(1);
+    await page.getByRole('combobox', { name: 'Status', exact: true }).selectOption('');
+    await page.getByLabel('How').selectOption('callback');
+    await expect(rows).toHaveCount(2);
+    // a payment ID shows only that attempt
+    await rows.nth(1).getByRole('button', { name: failed }).click();
+    await expect(page).toHaveURL(new RegExp(`payment=${failed}`));
+    await expect(rows).toHaveCount(1);
+    await page.getByRole('button', { name: 'Clear the filters' }).click();
+    await expect(page).toHaveURL(/\/audit\?view=lipa$/);
+
+    // the quote opens on its Lipa tab
+    await page.getByLabel('Quote ID').fill(quoteId);
+    await rows.first().getByRole('link', { name: quoteId }).click();
+    await expect(page).toHaveURL(new RegExp(`/guarantees/quotes/${quoteId}\\?tab=lipa$`));
   });
 
   test('the system admin previews and runs the key-loss reset', async ({ page }) => {

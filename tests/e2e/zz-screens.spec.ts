@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
-import { apiToken, call, connect, loseKycKey, newAdmin, newMember, post, randomIdNumber, seedDefault, seedGuarantee, seedLoanDocument, seedAlert, seedPoolSamples, seedQuote, seedPayment, seedKesActivity, seedRefund, signIn, stack, submitAddress, submitKyc, type Member, type SeededGuarantee, type SeededQuote } from './helpers';
+import { apiToken, call, connect, loseKycKey, newAdmin, newMember, post, randomIdNumber, seedDefault, seedGuarantee, seedLoanDocument, seedAlert, seedPoolSamples, seedQuote, seedPayment, seedKesActivity, seedLipaEvent, seedRefund, signIn, stack, submitAddress, submitKyc, type Member, type SeededGuarantee, type SeededQuote } from './helpers';
 
 // Not a check: screenshots for review, only when SHOTS_DIR is set.
 const dir = process.env.SHOTS_DIR;
@@ -50,6 +50,11 @@ async function sampleMembers(): Promise<Member[]> {
   seedLoanDocument(graceLoan, made[2]!.id, 'Default notice from Mavuno Credit');
   seedLoanDocument(graceLoan, made[2]!.id, 'Statement of account');
   seedDefault(graceLoan, guarantees[1]!.guaranteeId, { owed: '3875.25', daysAgo: 16, verified: true });
+  // what the Lipa API reported on Brian's quote (one failed attempt) and John's (one still processing)
+  seedLipaEvent(quotes[0]!.quoteId, { paymentId: `lipa-pay-${quotes[0]!.quoteId.slice(4).toLowerCase()}`, status: 'PROCESSING', amount: '95.04', minutesAgo: 50 });
+  seedLipaEvent(quotes[0]!.quoteId, { paymentId: `lipa-pay-${quotes[0]!.quoteId.slice(4).toLowerCase()}`, status: 'FAILED', amount: '95.04', reason: 'INSUFFICIENT_FUNDS', message: 'Payment failed, please try again.', source: 'STATUS_CHECK', minutesAgo: 44 });
+  seedLipaEvent(quotes[1]!.quoteId, { paymentId: `lipa-pay-${quotes[1]!.quoteId.slice(4).toLowerCase()}`, status: 'PROCESSING', amount: '158.4', minutesAgo: 3 });
+
   // M-Pesa activity as the Lipa API's feed would report it for two wallets
   const wallets = ['0x5a3c9e1f27b84d06a1c4e92b7d35f8a0c6e1b493', '0x91d27f3a85c0e64b1d9f72a3c85f2c9a41e7b3d8'];
   seedKesActivity(a, { wallet: wallets[0]!, amountKes: 12900, receipt: 'TJK4H7Q2LM', hoursAgo: 30 });
@@ -554,6 +559,12 @@ for (const scheme of ['light', 'dark'] as const) {
     await page.getByRole('table', { name: 'KES activity' }).or(page.getByRole('list', { name: 'KES activity' })).waitFor();
     await settle(page);
     await page.screenshot({ path: `${dir}/${tag}-82-kes-activity.png`, fullPage: true });
+
+    // C6: the Lipa API's callbacks and our status checks
+    await page.goto('/audit?view=lipa');
+    await page.getByRole('table', { name: 'Lipa API callbacks and status checks' }).or(page.getByRole('list', { name: 'Lipa API callbacks and status checks' })).waitFor();
+    await settle(page);
+    await page.screenshot({ path: `${dir}/${tag}-84-lipa-log.png`, fullPage: true });
 
     // C2: the quotes an open quote replaced
     await page.goto(`/guarantees/quotes/${q}`);

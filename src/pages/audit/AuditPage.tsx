@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Pager, PAGE_SIZES } from '@/components/ui/pager';
 import { Muted } from '@/components/ui/parts';
+import { TabPanel, Tabs } from '@/components/ui/tabs';
 import { ACTION_GROUPS, actorKind, actorName, auditAction, KNOWN_ACTIONS, recordPath, RECORD_TYPES, recordType } from '@/lib/audit';
 import { formatDateTime, zoneLabel } from '@/lib/format';
 import { fullName } from '@/lib/names';
@@ -18,9 +19,16 @@ import { useCompact } from '@/lib/useMedia';
 import { cn } from '@/lib/utils';
 import { NoAccess } from '@/pages/Placeholders';
 import { useGrants } from '@/session/SessionProvider';
+import { LipaEventsList } from './LipaEventsList';
 
 // Screen 21. Everything admins do, and what members, service keys and the GP API itself do, newest first.
-// Filters go in the address, so a filtered log can be shared as a link.
+// Filters go in the address, so a filtered log can be shared as a link. A second tab lists the Lipa API's callbacks
+// and our status checks, which the backend keeps beside the log (C6).
+
+const VIEWS = [
+  { value: 'log', label: 'Audit log' },
+  { value: 'lipa', label: 'Lipa API callbacks and status checks' }
+] as const;
 
 const DEFAULT_SIZE = 25;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
@@ -34,6 +42,21 @@ export function AuditPage() {
 }
 
 function Audit() {
+  const [params, setParams] = useSearchParams();
+  const view = params.get('view') === 'lipa' ? 'lipa' : 'log';
+  return (
+    <>
+      <PageHeader />
+      {/* each tab has its own filters, so switching starts afresh */}
+      <Tabs label="Audit" idPrefix="audit" tabs={VIEWS} value={view} onChange={(v) => setParams(v === 'lipa' ? { view: 'lipa' } : {}, { replace: true })} />
+      <TabPanel key={view} idPrefix="audit" value={view} className="flex flex-col gap-3.5">
+        {view === 'lipa' ? <LipaEventsList /> : <Log />}
+      </TabPanel>
+    </>
+  );
+}
+
+function Log() {
   const grants = useGrants();
   const [params, setParams] = useSearchParams();
 
@@ -100,10 +123,8 @@ function Audit() {
 
   return (
     <>
-      <PageHeader />
       <div className="flex flex-col gap-3.5">
         <Muted>Every action admins take, and what members, service keys and the GP API itself do, newest first. Times are in {zoneLabel()}.</Muted>
-        <Banner tone="plan">Planned: Lipa API callbacks and status checks in the log, with a filter for them.</Banner>
         <div className="flex flex-wrap items-center gap-2">
           <select aria-label="Action" value={action} onChange={(e) => update({ action: e.target.value })} className={cn(selectClass, 'max-w-full')}>
             <option value="">All actions</option>

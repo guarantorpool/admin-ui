@@ -225,6 +225,18 @@ export function seedQuote(member: Member, opts: { status?: 'OPEN' | 'PAID' | 'RE
 }
 
 /**
+ * One status the Lipa API reported for an attempt to pay a quote, as its callback or our status check stored it (C3,
+ * C6); a local run never reaches the Lipa API.
+ */
+export function seedLipaEvent(quoteId: string, opts: { paymentId: string; status: 'PROCESSING' | 'SUCCESS' | 'FAILED'; source?: 'CALLBACK' | 'STATUS_CHECK'; amount?: string; reason?: string; message?: string; txHash?: string; minutesAgo?: number }) {
+  const at = `now() - interval '${opts.minutesAgo ?? 0} minutes'`;
+  const text = (v: string | undefined) => (v ? `'${v.replace(/'/g, "''")}'` : 'NULL');
+  sql(`INSERT INTO lipa_payment_events (id, quote_number, payment_id, status, amount, tx_hash, failure_reason, failure_message, completed_at, source, received_at)
+    VALUES ('${randomUUID()}', '${quoteId}', '${opts.paymentId}', '${opts.status}', ${opts.amount ?? 'NULL'}, ${text(opts.txHash)}, ${text(opts.reason)},
+    ${text(opts.message)}, ${opts.status === 'PROCESSING' ? 'NULL' : at}, '${opts.source ?? 'CALLBACK'}', ${at})`);
+}
+
+/**
  * One M-Pesa deposit or payment as if read from the Lipa API's feed for a member's wallet (C4); a local run never
  * reaches the Lipa API. Returns its Lipa ID.
  */
