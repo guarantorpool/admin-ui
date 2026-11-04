@@ -1,4 +1,5 @@
 import { api } from './client';
+import type { Page } from './members';
 import type { Schemas } from './types';
 
 export type Kyc = Schemas['KycResponse'];
@@ -21,3 +22,9 @@ export const reviewAddressDocument = (memberId: string, documentId: string, stat
     status,
     ...(reason ? { reason } : {})
   } satisfies Schemas['AddressDocumentReviewRequest']);
+
+export type QueuedAddressDocument = Schemas['AddressDocumentResponse'];
+
+/** Proof-of-address documents across every member, the longest waiting first; pending unless a status is given. */
+export const listAddressDocuments = (q: { page: number; size: number; status?: string }) =>
+  api.get<Page<QueuedAddressDocument>>('/members/address-documents', { query: { ...q } });
