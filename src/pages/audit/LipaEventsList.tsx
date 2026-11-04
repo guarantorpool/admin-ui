@@ -86,28 +86,24 @@ export function LipaEventsList() {
   const query = useQuery({ queryKey: ['audit', 'lipa', q], queryFn: () => listLipaEvents(q), placeholderData: keepPreviousData });
 
   const quotes = can(grants, 'GUARANTEES.READ');
+  const quoteCell = (e: LipaEvent) =>
+    quotes && e.quoteId ? (
+      <Link to={`/guarantees/quotes/${e.quoteId}?tab=lipa`} className="font-mono text-[13px] font-medium text-ink-strong underline underline-offset-4">
+        {e.quoteId}
+      </Link>
+    ) : (
+      <span className="font-mono text-[13px]">{e.quoteId ?? '—'}</span>
+    );
+  const paymentButton = (e: LipaEvent) => (
+    <button type="button" className="text-left font-mono text-[12px] text-ink-strong underline-offset-4 hover:underline [overflow-wrap:anywhere]" title="Show only this attempt" onClick={() => update({ payment: e.paymentId })}>
+      {e.paymentId}
+    </button>
+  );
   const columns: Column<LipaEvent>[] = [
     { header: 'Received', cell: (e) => formatDateTime(e.receivedAt) },
     { header: 'How', cell: (e) => lipaSource(e.source) },
-    {
-      header: 'Quote',
-      cell: (e) =>
-        quotes && e.quoteId ? (
-          <Link to={`/guarantees/quotes/${e.quoteId}?tab=lipa`} className="font-mono text-[13px] font-medium text-ink-strong underline underline-offset-4">
-            {e.quoteId}
-          </Link>
-        ) : (
-          <span className="font-mono text-[13px]">{e.quoteId ?? '—'}</span>
-        )
-    },
-    {
-      header: 'Payment ID',
-      cell: (e) => (
-        <button type="button" className="text-left font-mono text-[12px] text-ink-strong underline-offset-4 hover:underline [overflow-wrap:anywhere]" title="Show only this attempt" onClick={() => update({ payment: e.paymentId })}>
-          {e.paymentId}
-        </button>
-      )
-    },
+    { header: 'Quote', cell: quoteCell },
+    { header: 'Payment ID', cell: paymentButton },
     { header: 'Amount', cell: (e) => (e.amount ? formatUsdt(e.amount, { full: true }) : '—'), figure: true },
     { header: 'Transaction or failure', cell: (e) => <What e={e} /> },
     { header: 'Status', cell: (e) => <StatusPill label={lipaStatus(e.status)} /> }
@@ -130,17 +126,16 @@ export function LipaEventsList() {
       columns={columns}
       grid="grid-cols-[0.95fr_0.65fr_0.85fr_1fr_0.85fr_1.3fr_0.75fr]"
       minWidth={920}
-      sub={(e) =>
-        [
-          `${lipaSource(e.source)} for ${e.quoteId}`,
-          e.amount ? formatUsdt(e.amount, { full: true }) : null,
-          e.status === 'FAILED' ? e.failureReason : short(e.txHash),
-          `received ${formatDateTime(e.receivedAt)}`,
-          `payment ${e.paymentId}`
-        ]
-          .filter(Boolean)
-          .join(' · ')
-      }
+      // the phone shows only this line, so the quote link and the attempt's filter are here too
+      sub={(e) => (
+        <>
+          {lipaSource(e.source)} for {quoteCell(e)}
+          {' · '}
+          {[e.amount ? formatUsdt(e.amount, { full: true }) : null, e.status === 'FAILED' ? e.failureReason : short(e.txHash), `received ${formatDateTime(e.receivedAt)}`].filter(Boolean).join(' · ')}
+          {' · payment '}
+          {paymentButton(e)}
+        </>
+      )}
     />
   );
 
