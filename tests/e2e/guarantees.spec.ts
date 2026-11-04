@@ -193,6 +193,29 @@ test.describe('Guarantees and quotes (slice 4)', () => {
     await expect(details(page).getByRole('button', { name: 'Enter a manual close' })).toHaveCount(0);
   });
 
+  test("a quote links to the quote that replaced it and to the quotes it replaced (C2)", async ({ page }) => {
+    const rose = await newMember('Rose', surname());
+    const open = seedQuote(rose);
+    const oldest = seedQuote(rose, { status: 'REPLACED', quotedDaysAgo: 2, replacedBy: open.quoteId });
+    const older = seedQuote(rose, { status: 'REPLACED', quotedDaysAgo: 1, replacedBy: open.quoteId });
+    const user = await newAdmin(page, ['GUARANTEES.READ'], 'QuoteLinks');
+    await signIn(page, user.email, user.password);
+
+    await page.goto(`/guarantees/quotes/${open.quoteId}?member=${rose.id}`);
+    const panel = page.getByRole('dialog', { name: 'Quote details' });
+    await expect(panel.getByText('Replaces (2, oldest first)')).toBeVisible();
+    const replaced = panel.getByRole('link', { name: /^GPQ-/ });
+    await expect(replaced).toHaveText([oldest.quoteId, older.quoteId]);
+    await expect(panel.getByText('Replaced by')).toHaveCount(0);
+
+    await panel.getByRole('link', { name: older.quoteId }).click();
+    await expect(page).toHaveURL(new RegExp(`/guarantees/quotes/${older.quoteId}\\?member=${rose.id}$`));
+    await expect(panel.getByRole('heading', { name: older.quoteId })).toBeVisible();
+    await expect(panel.getByText('Replaced', { exact: true })).toBeVisible();
+    await panel.getByRole('link', { name: open.quoteId }).click();
+    await expect(panel.getByRole('heading', { name: open.quoteId })).toBeVisible();
+  });
+
   test('is closed to a role without GUARANTEES.READ', async ({ page }) => {
     const user = await newAdmin(page, ['MEMBERS.READ'], 'NoGuarantees');
     await signIn(page, user.email, user.password);

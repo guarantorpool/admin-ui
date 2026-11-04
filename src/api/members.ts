@@ -30,6 +30,13 @@ export const listMembers = (q: MemberQuery) => api.get<Page<Account>>('/members'
 
 export const getMember = (id: string) => api.get<Account>(`/members/${id}`);
 
+/**
+ * Re-reads the member's locked BLOCKS on-chain now, as their own refresh does (C5). At most once every 30 seconds per
+ * member, counting the member's own calls: a faster call answers with the last reading. 503 when the chain can't be
+ * read, keeping the last amount.
+ */
+export const refreshLockedBlocks = (id: string) => api.post<Schemas['LockedBlocksResponse']>(`/members/${id}/locked-blocks/refresh`);
+
 export const getTrustScore = (id: string) => api.get<TrustScore>(`/members/${id}/trust-score`);
 
 export const getTrustScoreHistory = (id: string, page: number, size: number) =>

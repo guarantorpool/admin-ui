@@ -2,10 +2,12 @@ import * as React from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
   keepPreviousData,
+  useMutation,
   useQuery,
+  useQueryClient,
   type UseQueryResult,
 } from "@tanstack/react-query";
-import { errorMessage } from "@/api/errors";
+import { ApiError, errorMessage } from "@/api/errors";
 import {
   getMemberGuarantees,
   getNetworkValue,
@@ -15,6 +17,7 @@ import {
   getTrustScore,
   getTrustScoreHistory,
   getUploads,
+  refreshLockedBlocks,
 } from "@/api/members";
 import type { Account } from "@/api/types";
 import { Badge, Banner } from "@/components/ui/badge";
@@ -95,6 +98,58 @@ function useMemberLink() {
   };
 }
 
+/**
+ * The member's locked BLOCKS, and with MEMBERS.UPDATE a way to read them on-chain again now (C5). A new amount also
+ * changes their Trust Score and Relationship Values, so everything about the member is fetched again.
+ */
+function LockedBlocks({
+  memberId,
+  amount,
+}: {
+  memberId: string;
+  amount: string | null | undefined;
+}) {
+  const grants = useGrants();
+  const qc = useQueryClient();
+  const reread = useMutation({
+    mutationFn: () => refreshLockedBlocks(memberId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["members", memberId] }),
+  });
+  const failed =
+    reread.error instanceof ApiError && reread.error.status === 503
+      ? "The chain couldn't be read just now, so the last amount is kept. Try again in a moment."
+      : reread.error
+        ? errorMessage(reread.error)
+        : "";
+  return (
+    <span className="flex flex-col items-start gap-1.5">
+      <span className="flex flex-wrap items-center gap-2">
+        {formatAmount(amount, "BLOCKS", { full: true })}
+        {can(grants, "MEMBERS.UPDATE") ? (
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={reread.isPending}
+            onClick={() => reread.mutate()}
+          >
+            {reread.isPending ? "Reading…" : "Read again now"}
+          </Button>
+        ) : null}
+      </span>
+      <span role="status" className="text-[13px] text-muted">
+        {reread.data
+          ? `Read on-chain${reread.data.readAt ? ` ${formatDateTime(reread.data.readAt, { zone: true })}` : ""}: ${formatAmount(reread.data.lockedBlocks, "BLOCKS", { full: true })}. A reading within the last 30 seconds is reused.`
+          : ""}
+      </span>
+      {failed ? (
+        <span role="alert" className="text-[13px] text-bad-fg">
+          {failed}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
 export function OverviewTab({ member }: { member: Account }) {
   const id = member.id!;
   const trust = useQuery({
@@ -144,7 +199,7 @@ export function OverviewTab({ member }: { member: Account }) {
           { k: "Proof of address", v: <StatusPill label={poa} /> },
           {
             k: "Locked BLOCKS",
-            v: formatAmount(details?.lockedBlocks, "BLOCKS", { full: true }),
+            v: <LockedBlocks memberId={id} amount={details?.lockedBlocks} />,
           },
           {
             k: "Trust Score",
