@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ApiError, errorMessage } from '@/api/errors';
 import { getQuote } from '@/api/guarantees';
@@ -29,6 +29,19 @@ function useMemberByNumber(number: string | undefined) {
   const query = useQuery({ queryKey: ['members', 'by-number', number], queryFn: () => listMembers({ page: 1, size: 1, search: number }), enabled: readable });
   const found = query.data?.results?.find((m) => m.member?.memberNumber === number);
   return found ? { text: `${fullName(found) || 'Unnamed member'}, ${number}`, link: `/members/${found.id}` } : { text: number ?? '—', link: null };
+}
+
+/** A link to another quote in the same panel, keeping the list behind it as it is. */
+function QuoteLink({ id }: { id: string }) {
+  const { search } = useLocation();
+  const keep = new URLSearchParams(search);
+  keep.delete('tab');
+  const rest = keep.toString();
+  return (
+    <Link to={`/guarantees/quotes/${id}${rest ? `?${rest}` : ''}`} className={`font-mono text-[13px] ${link}`}>
+      {id}
+    </Link>
+  );
 }
 
 /** One quote by its quote ID: its terms, the pricing and invoice, and the latest payment through Lipa. */
@@ -102,7 +115,21 @@ export function QuoteDetail({ quoteId, tab, onTab }: { quoteId: string; tab: str
                 { k: 'Quoted', v: formatDateTime(q.quotedAt, { zone: true }) },
                 { k: 'Ends (validUntil)', v: formatDateTime(q.validUntil, { zone: true }) },
                 { k: 'Flagged', v: q.flagged ? 'Yes, premium below expected loss' : 'No' },
-                { k: 'Guarantee created', v: q.guaranteeId ?? 'None' }
+                { k: 'Guarantee created', v: q.guaranteeId ?? 'None' },
+                // a member has one open quote at a time, so asking again replaces it (C2)
+                ...(q.replacedBy ? [{ k: 'Replaced by', v: <QuoteLink id={q.replacedBy} /> }] : []),
+                ...(q.replaces?.length
+                  ? [{
+                      k: q.replaces.length === 1 ? 'Replaces' : `Replaces (${q.replaces.length}, oldest first)`,
+                      v: (
+                        <span className="flex flex-wrap gap-x-3 gap-y-1">
+                          {q.replaces.map((r) => (
+                            <QuoteLink key={r} id={r} />
+                          ))}
+                        </span>
+                      )
+                    }]
+                  : [])
               ]}
             />
           )}
@@ -113,7 +140,7 @@ export function QuoteDetail({ quoteId, tab, onTab }: { quoteId: string; tab: str
           Open the guarantee it created
         </Link>
       ) : null}
-      <Banner tone="plan">Planned: the quote that replaced this one and the quotes it replaced, and every Lipa API payment attempt with its transaction hash and failureReason.</Banner>
+      <Banner tone="plan">Planned: every Lipa API payment attempt with its transaction hash and failureReason.</Banner>
     </>
   );
 }
