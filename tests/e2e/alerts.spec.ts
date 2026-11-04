@@ -115,7 +115,9 @@ test.describe('Alerts (slice 10)', () => {
     await signIn(page, other.email, other.password);
     await expect(page.getByRole('navigation', { name: 'Admin screens' }).getByRole('link', { name: 'Alerts' })).toHaveCount(0);
     await page.getByRole('button', { name: 'Notifications', exact: true }).click();
-    await expect(page.getByRole('menu').getByRole('menuitem')).toHaveCount(0);
+    // no alerts in it, only the way to the approvals inbox
+    await expect(page.getByRole('menu').getByRole('menuitem')).toHaveCount(1);
+    await expect(page.getByRole('menu').getByRole('menuitem', { name: /Approvals inbox/ })).toBeVisible();
     await page.keyboard.press('Escape');
     await page.goto('/alerts');
     await expect(page.getByRole('heading', { name: 'Not available to your role' })).toBeVisible();

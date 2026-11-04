@@ -406,3 +406,20 @@ export const keyStatus = (code: string | null | undefined) => pick(KEY_STATUS, c
 const SCOPE: Record<string, string> = { 'facts:write': 'Send activity records', 'facts:read': 'Read activity records' };
 
 export const scopeLabel = (code: string | null | undefined) => (code ? SCOPE[code] ?? code : '—');
+
+// what waits in the approvals inbox (BlockCoop's approvals inbox, #142 B3)
+const APPROVAL_KIND: Record<string, string> = {
+  guarantee_close: 'Guarantee close',
+  loan_step: 'Loan report or claim step',
+  default_verification: 'Default to verify',
+  loan_recovery: 'Recovery',
+  refund_payout: 'Refund payout',
+  liquidity_adjustment: 'Extra liquidity',
+  pool_wallet: 'New pool wallet',
+  parameter_change: 'Setting change',
+  parameter_change_set: 'Setting changes, together',
+  backing_change: 'Backing change'
+};
+
+export const APPROVAL_KINDS = Object.keys(APPROVAL_KIND);
+export const approvalKind = (code: string | null | undefined) => (code ? APPROVAL_KIND[code] ?? sentence(code) : '—');

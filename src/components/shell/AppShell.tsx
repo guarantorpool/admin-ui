@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Bell, ChevronDown, LogOut, Menu, Moon, Sun, User, X } from 'lucide-react';
 import { listAlerts } from '@/api/alerts';
+import { approvalCountKey, getApprovalCount } from '@/api/approvals';
 import { errorMessage } from '@/api/errors';
 import { Avatar, initials } from '@/components/ui/avatar';
 import { StatusPill } from '@/components/ui/parts';
@@ -20,23 +21,34 @@ import { findScreen, isUnder, visibleNav, type NavGroup } from './nav';
 
 const BELL_SIZE = 5;
 
+/** What waits in the approvals inbox, read once a minute for the menu badge and the bell. Every admin can read it. */
+const useApprovalCount = () => useQuery({ queryKey: approvalCountKey, queryFn: getApprovalCount, refetchInterval: 60_000 });
+
+const countText = (n: number) => (n > 99 ? '99+' : String(n));
+
 const iconButton =
   'relative flex size-9 shrink-0 items-center justify-center rounded-ctl border border-ctl bg-surface text-ink-strong hover:bg-chip [&_svg]:size-5';
 
-function NavItem({ to, label, onNavigate, nested }: { to: string; label: string; onNavigate: () => void; nested?: boolean }) {
+function NavItem({ to, label, onNavigate, nested, badge }: { to: string; label: string; onNavigate: () => void; nested?: boolean; badge?: { count: number; label: string } }) {
   return (
     <NavLink
       to={to}
       onClick={onNavigate}
+      aria-label={badge?.count ? `${label}, ${badge.label}` : undefined}
       className={({ isActive }) =>
         cn(
-          'flex min-h-9 items-center rounded-ctl px-2.5 text-left no-underline',
+          'flex min-h-9 items-center justify-between gap-2 rounded-ctl px-2.5 text-left no-underline',
           nested ? 'font-normal' : 'font-medium',
           isActive ? 'bg-nav-on text-nav-on-fg' : 'text-white hover:bg-white/10'
         )
       }
     >
-      {label}
+      <span>{label}</span>
+      {badge?.count ? (
+        <span aria-hidden="true" title={badge.label} className="min-w-6 rounded-full bg-warn-bg px-1.5 text-center text-xs font-bold leading-5 text-warn-fg">
+          {countText(badge.count)}
+        </span>
+      ) : null}
     </NavLink>
   );
 }
@@ -73,6 +85,8 @@ function Group({ group, onNavigate }: { group: NavGroup; onNavigate: () => void 
 function SideNav({ compact, onClose }: { compact: boolean; onClose: () => void }) {
   const grants = useGrants();
   const entries = visibleNav(grants);
+  const forYou = useApprovalCount().data?.forYou ?? 0;
+  const inboxBadge = { count: forYou, label: `${forYou} waiting for you to decide` };
   return (
     <nav
       aria-label="Admin screens"
@@ -94,7 +108,7 @@ function SideNav({ compact, onClose }: { compact: boolean; onClose: () => void }
       </div>
       {entries.map((e) =>
         e.kind === 'direct' ? (
-          <NavItem key={e.screen.path} to={e.screen.path} label={e.screen.label} onNavigate={onClose} />
+          <NavItem key={e.screen.path} to={e.screen.path} label={e.screen.label} onNavigate={onClose} badge={e.screen.path === '/approvals' ? inboxBadge : undefined} />
         ) : (
           <Group key={e.group.id} group={e.group} onNavigate={onClose} />
         )
@@ -113,21 +127,23 @@ function ThemeButton() {
   );
 }
 
-/** The open alerts, newest first, each opening on the Alerts screen. Approvals join them with the inbox (Phase B). */
+/** The open alerts, newest first, each opening on the Alerts screen, and what waits in the inbox for you to decide. */
 function BellButton() {
   const navigate = useNavigate();
   const readable = can(useGrants(), 'ALERTS.READ');
   const q = { page: 1, size: BELL_SIZE, status: 'open' };
   const open = useQuery({ queryKey: ['alerts', 'list', q], queryFn: () => listAlerts(q), enabled: readable, refetchInterval: 60_000 });
   const count = open.data?.totalResults ?? 0;
-  const label = count ? `Notifications, ${count} open alert${count === 1 ? '' : 's'}` : 'Notifications';
+  const forYou = useApprovalCount().data?.forYou ?? 0;
+  const parts = [count ? `${count} open alert${count === 1 ? '' : 's'}` : '', forYou ? `${forYou} waiting for you to decide` : ''].filter(Boolean);
+  const label = parts.length ? `Notifications, ${parts.join(', ')}` : 'Notifications';
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className={iconButton} aria-label={label} title={label}>
         <Bell aria-hidden="true" />
-        {count ? (
+        {count + forYou ? (
           <span aria-hidden="true" className="absolute -right-1.5 -top-1.5 min-w-5 rounded-full bg-bad-fg px-1 text-center text-[11px] font-bold leading-5 text-surface">
-            {count > 99 ? '99+' : count}
+            {countText(count + forYou)}
           </span>
         ) : null}
       </DropdownMenuTrigger>
@@ -158,7 +174,12 @@ function BellButton() {
             </DropdownMenuItem>
           </>
         )}
-        <p className="m-0 border-t border-line px-4 py-3 text-[13px] text-muted">Approvals waiting for you show here once the approvals inbox exists.</p>
+        <div className="border-t border-line">
+          <DropdownMenuItem onSelect={() => navigate(forYou ? '/approvals?show=for-you' : '/approvals')} className="flex-col items-start gap-0.5">
+            <span className="font-semibold text-ink-strong">Approvals inbox</span>
+            <span className="text-muted">{forYou ? `${forYou} waiting for you to decide` : 'Nothing waiting for you to decide'}</span>
+          </DropdownMenuItem>
+        </div>
       </DropdownMenuContent>
     </DropdownMenu>
   );

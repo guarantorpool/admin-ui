@@ -26,7 +26,7 @@ const group = (id: string, label: string, items: Screen[]): NavEntry => ({ kind:
 
 export const NAV: NavEntry[] = [
   direct({ path: '/dashboard', label: 'Dashboard', about: 'What needs attention, and the pool at a glance.', access: 'ANY', comingIn: 'Phase D' }),
-  direct({ path: '/approvals', label: 'Approvals inbox', about: 'Everything waiting for a second admin, in one list.', access: 'ANY', comingIn: 'Phase B' }),
+  direct({ path: '/approvals', label: 'Approvals inbox', about: 'Everything waiting for a second admin, in one list.', access: 'ANY' }),
   direct({ path: '/alerts', label: 'Alerts', about: "Pool alerts, and acknowledging them with a note.", access: 'ALERTS.READ' }),
   group('members', 'Members', [
     { path: '/members', label: 'All members', about: 'Find a member and see everything about them.', access: 'MEMBERS.READ' },
@@ -90,11 +90,11 @@ export function findScreen(path: string): { screen: Screen; group: NavGroup | nu
 }
 
 /**
- * Where signing in lands. Until the dashboard (Phase D) and the approvals inbox (Phase B) exist, it's the
- * first other screen the admin's role allows; an admin with none of those lands on their account.
+ * Where signing in lands. Until the dashboard (Phase D) exists, it's the first screen the admin's role allows after
+ * the dashboard, which is the approvals inbox: every admin can read it. An admin with none lands on their account.
  */
 export function homePath(grants: Grants | null): string {
-  const first = allScreens().find((s) => s.path !== '/dashboard' && s.path !== '/approvals' && can(grants, s.access));
+  const first = allScreens().find((s) => s.path !== '/dashboard' && can(grants, s.access));
   return first?.path ?? ACCOUNT.path;
 }
 

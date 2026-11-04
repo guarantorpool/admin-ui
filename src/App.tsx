@@ -6,6 +6,7 @@ import { ActivityPage } from '@/pages/activity/ActivityPage';
 import { AdminsPage } from '@/pages/admins/AdminsPage';
 import { AuditPage } from '@/pages/audit/AuditPage';
 import { AlertsPage } from '@/pages/alerts/AlertsPage';
+import { ApprovalsPage } from '@/pages/approvals/ApprovalsPage';
 import { BackingPage } from '@/pages/backing/BackingPage';
 import { ForgotPassword, ResetPassword, SetPassword } from '@/pages/auth/PasswordPages';
 import { SignIn } from '@/pages/auth/SignIn';
@@ -68,6 +69,8 @@ export function App() {
         <Route element={<AppShell />}>
           <Route index element={<Home />} />
           <Route path="/account" element={<Account />} />
+          <Route path="/approvals" element={<ApprovalsPage />} />
+          <Route path="/approvals/:kind/:itemId" element={<ApprovalsPage />} />
           <Route path="/alerts/:alertId?" element={<AlertsPage />} />
           <Route path="/members" element={<MembersPage />} />
           <Route path="/members/:memberId" element={<MembersPage />} />
