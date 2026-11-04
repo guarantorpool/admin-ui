@@ -2,7 +2,7 @@ import * as React from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { errorMessage } from '@/api/errors';
-import { decideAssetBalances, getAssetBalances, setAssetBalances, type AssetBalances } from '@/api/members';
+import { decideAssetBalances, getAssetBalances, pendingBackingKey, setAssetBalances, type AssetBalances } from '@/api/members';
 import type { Schemas } from '@/api/types';
 import { Banner } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -71,7 +71,9 @@ function Backing({ memberId, b, prices }: { memberId: string; b: AssetBalances; 
   const mine = !!p && p.enteredBy?.toLowerCase() === session?.email.toLowerCase();
 
   // an approved change revalues the member and everyone whose Relationship Value counts them, and the pool totals
-  const refresh = () => Promise.all([qc.invalidateQueries({ queryKey: ['members', memberId] }), qc.invalidateQueries({ queryKey: ['pool'] })]);
+  // (and an entered or decided change joins or leaves the list waiting for approval)
+  const refresh = () =>
+    Promise.all([qc.invalidateQueries({ queryKey: ['members', memberId] }), qc.invalidateQueries({ queryKey: pendingBackingKey }), qc.invalidateQueries({ queryKey: ['pool'] })]);
 
   const decide = (approve: boolean) =>
     setDecision({

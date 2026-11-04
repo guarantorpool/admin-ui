@@ -13,6 +13,7 @@ export type RelationshipValue = Schemas['RelationshipValueResponse'];
 export type NetworkValue = Schemas['NetworkValueResponse'];
 export type NetworkValueSnapshot = Schemas['NetworkValueSnapshotResponse'];
 export type AssetBalances = Schemas['AssetBalancesResponse'];
+export type BackingChange = Schemas['BackingChangeResponse'];
 export type Guarantee = Schemas['GuaranteeResponse'];
 export type Upload = Schemas['UploadResponse'];
 
@@ -68,5 +69,9 @@ export const setAssetBalances = (id: string, kesDeposits: number, usdtVaultSavin
   api.put<AssetBalances>(`/members/${id}/asset-balances`, { kesDeposits, usdtVaultSavings, ...(note ? { note } : {}) } satisfies Schemas['AssetBalancesRequest']);
 
 /** Approves or rejects the waiting change; only an admin who didn't enter it can. */
+/** Backing changes waiting for a second admin, across members, oldest first. */
+export const listPendingBacking = (page: number, size: number) => api.get<Page<BackingChange>>('/members/asset-balances/pending', { query: { page, size } });
+export const pendingBackingKey = ['members', 'asset-balances', 'pending'];
+
 export const decideAssetBalances = (id: string, approval: 'approve' | 'reject', note?: string) =>
   api.patch<AssetBalances>(`/members/${id}/asset-balances/${approval}`, (note ? { note } : {}) satisfies Schemas['DecisionRequest']);

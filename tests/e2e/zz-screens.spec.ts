@@ -360,8 +360,10 @@ for (const scheme of ['light', 'dark'] as const) {
 
     await page.goto('/backing');
     await page.getByRole('region', { name: 'Prices and haircuts' }).getByText('Locked BLOCKS count at').waitFor();
+    // Amina's change waits in the list across members
+    await page.getByRole('region', { name: 'Changes waiting for approval' }).getByRole('link').first().waitFor();
     await settle(page);
-    await page.screenshot({ path: `${dir}/${tag}-50-backing.png` });
+    await page.screenshot({ path: `${dir}/${tag}-50-backing.png`, fullPage: true });
     await page.goto(`/backing/${amina!.id}`);
     const backing = page.getByRole('region', { name: "Member's backing" });
     await backing.getByRole('region', { name: 'Waiting for approval' }).waitFor();

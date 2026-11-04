@@ -8,6 +8,8 @@ const surname = () => 'B' + Array.from({ length: 7 }, () => String.fromCharCode(
 
 const backing = (page: Page) => page.getByRole('region', { name: "Member's backing" });
 const prices = (page: Page) => page.getByRole('region', { name: 'Prices and haircuts' });
+// every member's changes waiting for a second admin; other tests add their own, so a test looks for its member's row
+const changes = (page: Page) => page.getByRole('region', { name: 'Changes waiting for approval' });
 
 test.describe('Backing assets and prices (slice 9)', () => {
   test('one admin enters KES deposits and vault savings, and a second admin approves them', async ({ page, browser }) => {
@@ -20,7 +22,8 @@ test.describe('Backing assets and prices (slice 9)', () => {
     // no member open: the haircuts from the pool settings, and the prices once a member is open
     await expect(prices(page).getByText('Locked BLOCKS count at')).toBeVisible();
     await expect(prices(page).getByText(/The BLOCKS price and KES rate show once a member is open/)).toBeVisible();
-    await expect(page.getByText('Planned: one list of backing changes waiting for approval across all members.')).toBeVisible();
+    await expect(page.getByText(/^Planned:/)).toHaveCount(0);
+    await expect(changes(page)).toBeVisible();
 
     await page.getByRole('searchbox', { name: 'Find a member' }).fill(last);
     await page.getByRole('list', { name: 'Matching members' }).getByRole('button', { name: new RegExp(`Wanjiru ${last}`) }).click();
@@ -53,6 +56,10 @@ test.describe('Backing assets and prices (slice 9)', () => {
     await expect(backing(page).getByRole('button', { name: 'Enter new amounts' })).toBeDisabled();
     // nothing counts until it's approved
     await expect(backing(page).getByText('Never set')).toBeVisible();
+    // and it joins the list across members
+    const row = changes(page).getByRole('link', { name: new RegExp(member.number) });
+    await expect(row).toContainText(/12,500\.75 KES\s*was 0\.00 KES/);
+    await expect(row).toContainText(first.email);
 
     const other = await browser.newPage();
     const second = await newAdmin(other, ENTER, 'BackingApprover');
@@ -80,7 +87,11 @@ test.describe('Backing assets and prices (slice 9)', () => {
     await expect(other.getByText('Amounts entered. A second admin approves them.')).toBeVisible();
     await other.close();
 
-    await page.reload();
+    // the list opens the member to decide it
+    await page.goto('/backing');
+    await expect(row).toContainText(/0\.00 USDT\s*was 40\.12 USDT/);
+    await row.click();
+    await expect(page).toHaveURL(new RegExp(`/backing/${member.id}$`));
     await waiting.getByRole('button', { name: 'Reject' }).click();
     const reject = page.getByRole('dialog', { name: 'Reject this backing change?' });
     await expect(reject.getByText('40.123456 USDT → 0.00 USDT')).toBeVisible();
@@ -88,6 +99,7 @@ test.describe('Backing assets and prices (slice 9)', () => {
     await expect(page.getByText('Backing change rejected.')).toBeVisible();
     await expect(waiting).toHaveCount(0);
     await expect(backing(page).getByText('40.123456 USDT →')).toBeVisible();
+    await expect(row).toHaveCount(0);
   });
 
   test('a read-only role sees the backing but not the actions', async ({ page }) => {
