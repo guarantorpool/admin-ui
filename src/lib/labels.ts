@@ -172,6 +172,33 @@ const LIPA_STATUS: Record<string, Label> = {
 };
 
 export const lipaStatus = (code: string | null | undefined) => pick(LIPA_STATUS, code);
+export const LIPA_STATUSES = Object.keys(LIPA_STATUS);
+
+// how a Lipa API status reached us: the Lipa API's signed callback, or our own status check
+const LIPA_SOURCE: Record<string, string> = {
+  CALLBACK: 'Callback',
+  STATUS_CHECK: 'Status check'
+};
+
+export const lipaSource = (code: string | null | undefined) => (code ? LIPA_SOURCE[code] ?? sentence(code) : '—');
+
+// a KES activity's status in the Lipa API's feed: a completed one counts, a reversed one is taken back
+const KES_STATUS: Record<string, Label> = {
+  COMPLETED: { text: 'Completed', tone: 'ok' },
+  REVERSED: { text: 'Reversed', tone: 'warn' },
+  FAILED: { text: 'Failed', tone: 'bad' }
+};
+
+export const KES_STATUSES = Object.keys(KES_STATUS);
+export const kesStatus = (code: string | null | undefined) => pick(KES_STATUS, code);
+
+const KES_TYPE: Record<string, string> = {
+  DEPOSIT: 'Deposit',
+  PAYMENT: 'Payment'
+};
+
+export const KES_TYPES = Object.keys(KES_TYPE);
+export const kesType = (code: string | null | undefined) => (code ? KES_TYPE[code] ?? sentence(code) : '—');
 
 const PAYMENT_METHOD: Record<string, string> = {
   lipa: 'Lipa API',

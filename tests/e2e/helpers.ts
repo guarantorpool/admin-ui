@@ -224,6 +224,36 @@ export function seedQuote(member: Member, opts: { status?: 'OPEN' | 'PAID' | 'RE
   return { quoteId, amountDue, id };
 }
 
+/**
+ * One status the Lipa API reported for an attempt to pay a quote, as its callback or our status check stored it (C3,
+ * C6); a local run never reaches the Lipa API.
+ */
+export function seedLipaEvent(quoteId: string, opts: { paymentId: string; status: 'PROCESSING' | 'SUCCESS' | 'FAILED'; source?: 'CALLBACK' | 'STATUS_CHECK'; amount?: string; reason?: string; message?: string; txHash?: string; minutesAgo?: number }) {
+  const at = `now() - interval '${opts.minutesAgo ?? 0} minutes'`;
+  const text = (v: string | undefined) => (v ? `'${v.replace(/'/g, "''")}'` : 'NULL');
+  sql(`INSERT INTO lipa_payment_events (id, quote_number, payment_id, status, amount, tx_hash, failure_reason, failure_message, completed_at, source, received_at)
+    VALUES ('${randomUUID()}', '${quoteId}', '${opts.paymentId}', '${opts.status}', ${opts.amount ?? 'NULL'}, ${text(opts.txHash)}, ${text(opts.reason)},
+    ${text(opts.message)}, ${opts.status === 'PROCESSING' ? 'NULL' : at}, '${opts.source ?? 'CALLBACK'}', ${at})`);
+}
+
+/**
+ * One M-Pesa deposit or payment as if read from the Lipa API's feed for a member's wallet (C4); a local run never
+ * reaches the Lipa API. Returns its Lipa ID.
+ */
+export function seedKesActivity(member: Member, opts: { wallet: string; type?: 'DEPOSIT' | 'PAYMENT'; status?: 'COMPLETED' | 'REVERSED' | 'FAILED'; amountKes?: number; receipt?: string; onChain?: boolean; hoursAgo?: number }): string {
+  const id = `lipa-act-${randomOf('0123456789abcdef', 12)}`;
+  const kes = opts.amountKes ?? 1290;
+  const at = `now() - interval '${opts.hoursAgo ?? 1} hours'`;
+  const completed = (opts.status ?? 'COMPLETED') === 'FAILED' ? 'NULL' : at;
+  const payment = opts.type === 'PAYMENT';
+  sql(`INSERT INTO kes_activities (id, member_id, wallet_address, activity_type, channel, recipient_type, recipient_reference, amount_kes,
+    kes_per_usd, amount_usd, amount_blocks, kes_per_block, mpesa_receipt, tx_hash, status, completed_at, lipa_updated_at, read_at)
+    VALUES ('${id}', '${member.id}', '${opts.wallet}', '${opts.type ?? 'DEPOSIT'}', 'MPESA', ${payment ? "'PAYBILL'" : 'NULL'},
+    ${payment ? "'888880'" : 'NULL'}, ${kes}, 129, ${kes / 129}, ${kes / 5.16}, 5.16, ${opts.receipt ? `'${opts.receipt}'` : 'NULL'},
+    ${opts.onChain === false ? 'NULL' : `'${randomHash()}'`}, '${opts.status ?? 'COMPLETED'}', ${completed}, ${at}, ${at})`);
+  return id;
+}
+
 export interface SeededGuarantee {
   guaranteeId: string;
   quoteId: string;
