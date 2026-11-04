@@ -19,6 +19,7 @@ import { ComingSoon, NotFound } from '@/pages/Placeholders';
 import { PoolHealthPage } from '@/pages/pool/PoolHealthPage';
 import { PoolSettingsPage } from '@/pages/pool/PoolSettingsPage';
 import { PoolWalletsPage } from '@/pages/pool/PoolWalletsPage';
+import { PaymentsPage } from '@/pages/payments/PaymentsPage';
 import { RefundsPage } from '@/pages/refunds/RefundsPage';
 import { ServiceKeysPage } from '@/pages/serviceKeys/ServiceKeysPage';
 import { useGrants, useSession } from '@/session/SessionProvider';
@@ -83,6 +84,8 @@ export function App() {
           <Route path="/loans/:loanId" element={<LoansPage />} />
           <Route path="/claims" element={<ClaimsPage />} />
           <Route path="/claims/:loanId" element={<ClaimsPage />} />
+          <Route path="/payments" element={<PaymentsPage />} />
+          <Route path="/payments/:guaranteeId/:paymentId" element={<PaymentsPage />} />
           <Route path="/refunds" element={<RefundsPage />} />
           <Route path="/refunds/:refundId" element={<RefundsPage />} />
           <Route path="/pool/health" element={<PoolHealthPage />} />

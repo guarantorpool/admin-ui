@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
-import { apiToken, call, connect, loseKycKey, newAdmin, newMember, post, randomIdNumber, seedDefault, seedGuarantee, seedLoanDocument, seedAlert, seedPoolSamples, seedQuote, seedRefund, signIn, stack, submitAddress, submitKyc, type Member, type SeededGuarantee, type SeededQuote } from './helpers';
+import { apiToken, call, connect, loseKycKey, newAdmin, newMember, post, randomIdNumber, seedDefault, seedGuarantee, seedLoanDocument, seedAlert, seedPoolSamples, seedQuote, seedPayment, seedRefund, signIn, stack, submitAddress, submitKyc, type Member, type SeededGuarantee, type SeededQuote } from './helpers';
 
 // Not a check: screenshots for review, only when SHOTS_DIR is set.
 const dir = process.env.SHOTS_DIR;
@@ -26,6 +26,7 @@ async function sampleMembers(): Promise<Member[]> {
   await submitKyc(c, { idType: 'passport', idNumber: `AK${randomIdNumber()}`, dateOfBirth: '1985-07-19', address: 'Milimani, Kisumu' });
   await submitAddress(b, { latitude: -1.2921, longitude: 36.8219, comment: 'Behind the market, blue gate' });
   guarantees = [seedGuarantee(a), seedGuarantee(c, { flagged: true }), seedGuarantee(d)];
+  seedPayment(guarantees[2]!, { status: 'FAILED', hoursAgo: 75 });
   quotes = [seedQuote(b, { flagged: true, lipa: { status: 'FAILED', message: 'Payment failed, please try again.' } }), seedQuote(d, { lipa: { status: 'PROCESSING' } }), seedQuote(c, { status: 'EXPIRED', quotedDaysAgo: 4 })];
   seedRefund({ paymentId: guarantees[1]!.paymentId }, { type: 'stray_payment', status: 'PAID', amount: '95.04', daysAgo: 3 });
   seedRefund({ quote: quotes[2]! }, { type: 'window_lapsed', amount: '158.4', daysAgo: 2 });
@@ -496,5 +497,15 @@ for (const scheme of ['light', 'dark'] as const) {
     await page.waitForURL(/admin=/);
     await settle(page);
     await page.screenshot({ path: `${dir}/${tag}-73-audit-filtered.png` });
+
+    await page.goto('/payments');
+    await page.getByRole('table', { name: 'Payments' }).or(page.getByRole('list', { name: 'Payments' })).waitFor();
+    await settle(page);
+    await page.screenshot({ path: `${dir}/${tag}-74-payments.png` });
+    const paid = guarantees[1]!;
+    await page.goto(`/payments/${paid.guaranteeId}/${paid.paymentId}`);
+    await page.getByRole('dialog', { name: 'Payment details' }).getByText(paid.txHash).waitFor();
+    await settle(page);
+    await page.screenshot({ path: `${dir}/${tag}-75-payment-details.png` });
   });
 }

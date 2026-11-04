@@ -9,11 +9,12 @@ import { Button } from '@/components/ui/button';
 import { DecisionDialog, NOTE_HINT, type Decision } from '@/components/ui/decision-dialog';
 import { Fields, Muted, StatusPill } from '@/components/ui/parts';
 import { TabPanel, Tabs } from '@/components/ui/tabs';
-import { formatDate, formatDateTime, formatIn, formatNumber, formatUsdt } from '@/lib/format';
-import { guaranteeStatus, paymentMethod, paymentStatus } from '@/lib/labels';
+import { formatDate, formatDateTime, formatNumber, formatUsdt } from '@/lib/format';
+import { guaranteeStatus } from '@/lib/labels';
 import { can } from '@/lib/permissions';
 import { useMemberName } from '@/pages/members/useMemberName';
 import { useGrants, useSession } from '@/session/SessionProvider';
+import { PaymentCard } from '@/pages/payments/PaymentCard';
 import { PricingTrail } from './PricingTrail';
 
 export const GUARANTEE_TABS = [
@@ -23,8 +24,6 @@ export const GUARANTEE_TABS = [
 ] as const;
 
 const usdt = (v: string | undefined) => formatUsdt(v, { full: true });
-/** An amount in a payment's own currency, at full precision. */
-const inCurrency = (v: string | undefined, currency: string | undefined) => formatIn(v, currency, { full: true });
 const blocksPrice = (v: string | undefined) => (v ? `1 BLOCKS = ${formatNumber(v)} USDT` : '—');
 
 /** One guarantee by its business ID: its terms, the pricing behind them, its payments and a manual close. */
@@ -96,7 +95,6 @@ export function GuaranteeDetail({ guaranteeId, tab, onTab }: { guaranteeId: stri
 }
 
 function PaymentList({ query }: { query: { isPending: boolean; isError: boolean; error: unknown; data?: Payment[] } }) {
-  const refunds = can(useGrants(), 'REFUNDS.READ');
   if (query.isPending) return <Muted>Loading the payments…</Muted>;
   if (query.isError) return <Banner tone="bad">{errorMessage(query.error)}</Banner>;
   const payments = query.data ?? [];
@@ -105,36 +103,10 @@ function PaymentList({ query }: { query: { isPending: boolean; isError: boolean;
     <ol aria-label="Payment attempts" className="m-0 flex list-none flex-col gap-3 p-0">
       {payments.map((p) => (
         <li key={p.paymentId} className="flex flex-col gap-3 rounded-card border border-line p-3.5">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="font-semibold">{paymentMethod(p.method)}</span>
-            <StatusPill label={paymentStatus(p.status)} />
-          </div>
-          <Fields
-            rows={[
-              { k: 'Amount due', v: inCurrency(p.amountDue, p.currency) },
-              { k: 'Received', v: inCurrency(p.amountReceived, p.currency) },
-              { k: 'Operating fee', v: p.operatingFee ? inCurrency(p.operatingFee.amount, p.operatingFee.currency) : '—' },
-              // a Lipa payment's reference is the transaction that paid the pool
-              { k: p.method === 'lipa' ? 'Transaction hash' : 'Provider reference', v: <span className="font-mono text-[13px] [overflow-wrap:anywhere]">{p.providerReference ?? '—'}</span> },
-              { k: 'Started', v: formatDateTime(p.initiatedAt, { zone: true }) },
-              { k: 'Confirmed', v: formatDateTime(p.confirmedAt, { zone: true }) },
-              ...(Number(p.amountRefunded) > 0 ? [{ k: 'Owed back', v: <OwedBack payment={p} link={refunds} /> }] : [])
-            ]}
-          />
+          <PaymentCard payment={p} />
         </li>
       ))}
     </ol>
-  );
-}
-
-/** What's owed back on a payment, linked to its refunds for an admin who can read them. */
-function OwedBack({ payment: p, link }: { payment: Payment; link: boolean }) {
-  const text = `${inCurrency(p.amountRefunded, p.currency)}, ${inCurrency(p.amountOwed, p.currency)} not paid yet`;
-  if (!link || !p.paymentId) return <>{text}</>;
-  return (
-    <Link to={`/refunds?payment=${p.paymentId}`} className="font-medium text-ink-strong underline underline-offset-4">
-      {text}
-    </Link>
   );
 }
 

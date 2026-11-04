@@ -230,6 +230,9 @@ export interface SeededGuarantee {
   txHash: string;
   /** the database ID of its confirmed payment, which a refund owed on it points at */
   paymentId: string;
+  /** the guarantee's database ID */
+  id: string;
+  amountDue: string;
 }
 
 /** A quote paid through the Lipa API, the active guarantee it created and its confirmed payment (see seedQuote). */
@@ -253,7 +256,19 @@ export function seedGuarantee(member: Member, opts: { flagged?: boolean; status?
     operating_fee_rate, operating_fee_min_usd, operating_fee_max_usd, operating_fee_usdt)
     VALUES ('${paymentId}', '${id}', 'LIPA', ${amountDue}, ${amountDue}, 0, 'CONFIRMED', '${txHash}', ${activatedAt}, ${activatedAt},
     ${activatedAt}, 'USDT', ${flagged ? '86.4' : '144'}, 'lipa', ${amountDue}, ${fee}, 'USDT', 0.1, 1, 50, ${fee})`);
-  return { guaranteeId, quoteId, txHash, paymentId };
+  return { guaranteeId, quoteId, txHash, paymentId, id, amountDue: String(amountDue) };
+}
+
+/** Another attempt to pay a seeded guarantee, one that failed or is still pending, started some hours ago. Returns its id. */
+export function seedPayment(g: SeededGuarantee, opts: { status: 'FAILED' | 'PENDING'; hoursAgo?: number }): string {
+  const id = randomUUID();
+  const at = `now() - interval '${opts.hoursAgo ?? 2} hours'`;
+  sql(`INSERT INTO premium_payments (id, guarantee_id, method, amount_due, amount_received, amount_refunded, status, provider_reference,
+    initiated_at, confirm_by, confirmed_at, currency, premium_usdt, provider, amount_asked, operating_fee, operating_fee_currency,
+    operating_fee_rate, operating_fee_min_usd, operating_fee_max_usd, operating_fee_usdt)
+    VALUES ('${id}', '${g.id}', 'LIPA', ${g.amountDue}, 0, 0, '${opts.status}', NULL, ${at}, ${at} + interval '30 minutes', NULL, 'USDT', 144,
+    'lipa', ${g.amountDue}, 14.4, 'USDT', 0.1, 1, 50, 14.4)`);
+  return id;
 }
 
 /**
