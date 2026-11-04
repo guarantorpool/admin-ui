@@ -16,6 +16,8 @@ export interface GuaranteeQuery {
   status?: string;
   /** only those whose premium is below their expected loss (COV under 1) */
   flagged?: boolean;
+  /** part of the GPG-… or GPQ-… ID, ignoring case */
+  search?: string;
 }
 
 // Guarantees and quotes are named by their business IDs (GPG-…, GPQ-…); the database ID is never shown.
