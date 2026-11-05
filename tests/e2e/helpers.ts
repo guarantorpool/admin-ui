@@ -393,6 +393,62 @@ export async function newSafe(owners: number, threshold: number): Promise<{ addr
   return { address, owners: signers };
 }
 
+const USDT_TOKEN = '0x55d398326f99059ff775485246999027b3197955';
+const BLOCKS_TOKEN = '0xfd3f86d951bcddd209241884c021636c2a60e195';
+const TRANSFER = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
+const topic = (address: string) => '0x' + '0'.repeat(24) + address.slice(2).toLowerCase();
+// an amount in a token's 18 decimals, as a hex word
+const raw = (amount: string) => {
+  const [whole, frac = ''] = amount.split('.');
+  return (BigInt(whole!) * 10n ** 18n + BigInt((frac + '0'.repeat(18)).slice(0, 18))).toString(16);
+};
+
+/** The current pool wallet's address, made if there is none (the pool tests leave one). */
+export function currentWallet(): string {
+  if (sql("SELECT count(*) FROM pool_wallets WHERE status = 'CURRENT'") === '0') seedPoolSamples();
+  return sql("SELECT address FROM pool_wallets WHERE status = 'CURRENT'");
+}
+
+/** A wallet retired 9 days ago whose watch has ended, so what reaches it now is a late payment. */
+export function seedRetiredWallet(): { id: string; address: string } {
+  const id = randomUUID();
+  const address = Wallet.createRandom().address.toLowerCase();
+  const by = `(SELECT id FROM accounts WHERE lower(email) = lower('${stack().admin.email}'))`;
+  sql(`INSERT INTO pool_wallets (id, address, status, slot, signers, threshold, current_from, current_until, watch_until, proposed_by, proposed_by_email, proposed_at, proposal_note, decided_by, decided_by_email, decided_at)
+    VALUES ('${id}', '${address}', 'RETIRED', NULL, '${Wallet.createRandom().address.toLowerCase()}', 1, now() - interval '200 days', now() - interval '9 days', now() - interval '2 days',
+    ${by}, '${stack().admin.email}', now() - interval '201 days', 'Sweep test wallet', ${by}, 'earlier-admin@test.local', now() - interval '200 days')`);
+  return { id, address };
+}
+
+/** USDT a Lipa payment sent to a retired wallet after its watch ended, as the backend records it: waiting for a sweep. */
+export function seedLatePayment(walletId: string, quote: SeededQuote, amount: string): string {
+  const id = randomUUID();
+  sql(`INSERT INTO late_wallet_payments (id, wallet_id, quote_id, payment_id, tx_hash, amount, arrived_at, block_number, log_index, status, recorded_at)
+    VALUES ('${id}', '${walletId}', '${quote.id}', 'lp_${randomOf('0123456789abcdef', 8)}', '0x${randomOf('0123456789abcdef', 64)}', ${amount},
+    now() - interval '1 day', 64, 0, 'WAITING', now() - interval '1 day')`);
+  return id;
+}
+
+/** What a wallet holds on the chain stand-in. */
+export async function chainBalances(holder: string, usdt: string, blocks: string) {
+  await post(`${stack().chainUrl}/balances`, { token: USDT_TOKEN, holder, raw: raw(usdt) });
+  await post(`${stack().chainUrl}/balances`, { token: BLOCKS_TOKEN, holder, raw: raw(blocks) });
+}
+
+/**
+ * A sweep the wallet's signers made on the chain stand-in: a transaction moving `usdt` and `blocks` (either may be
+ * '0') from one wallet to another, mined now in block 128. Returns its hash.
+ */
+export async function chainSweep(from: string, to: string, usdt: string, blocks: string): Promise<string> {
+  const hash = '0x' + randomOf('0123456789abcdef', 64);
+  const logs = [
+    ...(usdt !== '0' ? [{ address: USDT_TOKEN, topics: [TRANSFER, topic(from), topic(to)], data: '0x' + raw(usdt).padStart(64, '0'), logIndex: 3 }] : []),
+    ...(blocks !== '0' ? [{ address: BLOCKS_TOKEN, topics: [TRANSFER, topic(from), topic(to)], data: '0x' + raw(blocks).padStart(64, '0'), logIndex: 4 }] : [])
+  ];
+  await post(`${stack().chainUrl}/receipts`, { hash, block: 128, time: Math.floor(Date.now() / 1000), logs });
+  return hash;
+}
+
 /**
  * Extra liquidity and pool wallets for screenshots, made once: approved and rejected movements and one waiting, and
  * a current and a retired wallet with a new one waiting. What's waiting is entered as an earlier admin, so the first

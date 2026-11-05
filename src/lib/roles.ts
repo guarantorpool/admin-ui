@@ -27,7 +27,8 @@ const ACTION: Record<string, string> = {
   PROPOSE: 'Propose',
   APPROVE: 'Approve',
   MANAGE: 'Manage',
-  IMPORT: 'Import'
+  IMPORT: 'Import',
+  SWEEP: 'Record sweeps'
 };
 
 export const moduleLabel = (module: string) => MODULE[module] ?? sentence(module);

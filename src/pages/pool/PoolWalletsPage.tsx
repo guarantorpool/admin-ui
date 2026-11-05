@@ -1,9 +1,9 @@
 import * as React from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { errorMessage } from '@/api/errors';
-import { decideWallet, listWallets, proposeWallet, type PoolWallet } from '@/api/pool';
+import { decideWallet, listSweeps, listWallets, proposeWallet, sweepsKey, type PoolWallet } from '@/api/pool';
 import { PageHeader } from '@/components/shell/AppShell';
 import { Banner } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -14,17 +14,20 @@ import { Input } from '@/components/ui/input';
 import { Fields, Item, Items, Muted, SectionTitle, StatusPill } from '@/components/ui/parts';
 import { Rows, type Column } from '@/components/ui/rows';
 import { Sheet } from '@/components/ui/sheet';
+import { Tabs } from '@/components/ui/tabs';
 import { formatDate, formatDateTime } from '@/lib/format';
 import { walletStatus } from '@/lib/labels';
 import { can } from '@/lib/permissions';
 import { useMedia, WIDE_QUERY } from '@/lib/useMedia';
 import { NoAccess } from '@/pages/Placeholders';
 import { useGrants, useSession } from '@/session/SessionProvider';
+import { RetiredWalletParts, SweepDetail, SweepList } from './Sweeps';
 
 // Screen 13. The pool wallet is a Safe multisig that receives the pool's USDT. It's replaced from time to time: one
 // admin proposes a Safe, the GP API reads its signers and threshold from the chain, and a different admin approves
 // it, which retires the current wallet. Every wallet is kept, and a retired one is still watched for payments for a
-// while.
+// while. What reaches a retired wallet is swept into the current one by its signers, recorded here by one admin and
+// approved by a second (Phase E1).
 
 const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
 // the backend's limit on a note
@@ -55,7 +58,9 @@ export function PoolWalletsPage() {
 function PoolWallets() {
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const { walletId } = useParams();
+  const { walletId, sweepId } = useParams();
+  const [params] = useSearchParams();
+  const view = sweepId || params.get('view') === 'sweeps' ? 'sweeps' : 'wallets';
   const wide = useMedia(WIDE_QUERY);
   const [proposing, setProposing] = React.useState(false);
   const canPropose = can(useGrants(), 'WALLETS.PROPOSE');
@@ -63,40 +68,60 @@ function PoolWallets() {
   const wallets = query.data ?? [];
   const waiting = wallets.find((w) => w.status === 'proposed');
   const open = wallets.find((w) => w.id === walletId);
+  const sweeps = useQuery({ queryKey: sweepsKey, queryFn: listSweeps });
+  const sweepsWaiting = (sweeps.data ?? []).filter((s) => s.status === 'pending').length;
+  const tabs = [
+    { value: 'wallets', label: 'Wallets' },
+    { value: 'sweeps', label: 'Sweeps', count: sweepsWaiting }
+  ];
 
   return (
     <>
-      <PageHeader actions={canPropose ? <Button onClick={() => setProposing(true)} disabled={!!waiting}>Propose a new wallet</Button> : undefined} />
+      <PageHeader actions={canPropose && view === 'wallets' ? <Button onClick={() => setProposing(true)} disabled={!!waiting}>Propose a new wallet</Button> : undefined} />
       <div className="flex flex-col gap-3.5">
-        <Muted>Members' premiums are paid into the current pool wallet, a Safe multisig. Switching to a new one takes two admins, and a retired wallet is still watched for payments for a while.</Muted>
-        {waiting && canPropose ? <Banner tone="warn">A new wallet is waiting for approval. Another can be proposed once it's approved or rejected.</Banner> : null}
-        <section className="flex min-w-0 flex-col overflow-hidden rounded-card border border-line bg-surface">
-          {query.isPending ? (
-            <p className="m-0 px-4 py-5 text-muted">Loading…</p>
-          ) : query.isError ? (
-            <div className="p-3.5">
-              <Banner tone="bad">{errorMessage(query.error)}</Banner>
-            </div>
-          ) : !wallets.length ? (
-            <p className="m-0 px-4 py-5 text-muted">No pool wallet has been proposed yet. Members can't pay by wallet until the first one is approved.</p>
+        <Tabs label="Pool wallets" idPrefix="wallets" tabs={tabs} value={view} onChange={(v) => navigate(v === 'sweeps' ? '/pool/wallets?view=sweeps' : '/pool/wallets')} />
+        <div role="tabpanel" id={`wallets-panel-${view}`} aria-labelledby={`wallets-tab-${view}`} className="flex flex-col gap-3.5">
+          {view === 'sweeps' ? (
+            <>
+              <Muted>A sweep moves what reached a retired wallet into the current one. The wallet's signers make it; one admin records it and a different one approves it. Approving owes back, as refunds, the late payments it moved.</Muted>
+              <SweepList />
+            </>
           ) : (
-            <Rows<PoolWallet>
-              label="Pool wallets"
-              rows={wallets}
-              rowKey={(w) => w.id!}
-              columns={COLUMNS}
-              grid="grid-cols-[1.1fr_0.7fr_0.9fr_0.9fr_0.9fr_1.1fr]"
-              minWidth={820}
-              linkFor={(w) => `/pool/wallets/${w.id}`}
-              sub={(w) => `${mustSign(w)} must sign · ${w.status === 'current' ? `current since ${formatDate(w.currentFrom)}` : w.status === 'retired' ? `retired ${formatDate(w.currentUntil)}` : `proposed ${formatDate(w.proposedAt)}`}`}
-            />
+            <>
+              <Muted>Members' premiums are paid into the current pool wallet, a Safe multisig. Switching to a new one takes two admins, and a retired wallet is still watched for payments for a while.</Muted>
+              {waiting && canPropose ? <Banner tone="warn">A new wallet is waiting for approval. Another can be proposed once it's approved or rejected.</Banner> : null}
+              <section className="flex min-w-0 flex-col overflow-hidden rounded-card border border-line bg-surface">
+                {query.isPending ? (
+                  <p className="m-0 px-4 py-5 text-muted">Loading…</p>
+                ) : query.isError ? (
+                  <div className="p-3.5">
+                    <Banner tone="bad">{errorMessage(query.error)}</Banner>
+                  </div>
+                ) : !wallets.length ? (
+                  <p className="m-0 px-4 py-5 text-muted">No pool wallet has been proposed yet. Members can't pay by wallet until the first one is approved.</p>
+                ) : (
+                  <Rows<PoolWallet>
+                    label="Pool wallets"
+                    rows={wallets}
+                    rowKey={(w) => w.id!}
+                    columns={COLUMNS}
+                    grid="grid-cols-[1.1fr_0.7fr_0.9fr_0.9fr_0.9fr_1.1fr]"
+                    minWidth={820}
+                    linkFor={(w) => `/pool/wallets/${w.id}`}
+                    sub={(w) => `${mustSign(w)} must sign · ${w.status === 'current' ? `current since ${formatDate(w.currentFrom)}` : w.status === 'retired' ? `retired ${formatDate(w.currentUntil)}` : `proposed ${formatDate(w.proposedAt)}`}`}
+                  />
+                )}
+              </section>
+            </>
           )}
-        </section>
-        <Banner tone="plan">Planned: sweeping money sent to a retired wallet into the current one. It needs GP API work.</Banner>
+        </div>
       </div>
 
       <Sheet open={!!walletId} onClose={() => navigate('/pool/wallets')} title="Pool wallet details" wide={wide}>
         {query.isPending ? <Muted>Loading the wallet…</Muted> : open ? <WalletDetail wallet={open} /> : <Banner tone="bad">There's no such pool wallet.</Banner>}
+      </Sheet>
+      <Sheet open={!!sweepId} onClose={() => navigate('/pool/wallets?view=sweeps')} title="Sweep details" wide={false}>
+        {sweepId ? <SweepDetail sweepId={sweepId} /> : null}
       </Sheet>
       <ProposeDialog
         open={proposing}
@@ -182,6 +207,8 @@ function WalletDetail({ wallet: w }: { wallet: PoolWallet }) {
           ) : null}
         </section>
       ) : null}
+
+      {w.status === 'retired' ? <RetiredWalletParts wallet={w} /> : null}
 
       <section className="flex flex-col gap-2 rounded-card border border-line bg-surface p-4">
         <SectionTitle>Signers, as read from the Safe</SectionTitle>

@@ -11,6 +11,9 @@ export type MovementType = NonNullable<Movement['type']>;
 export type PoolWallet = Schemas['PoolWalletResponse'];
 export type Prices = Schemas['Prices'];
 export type PoolCharts = Schemas['PoolChartsResponse'];
+export type RetiredWallet = Schemas['RetiredWalletResponse'];
+export type LatePayment = Schemas['LatePayment'];
+export type Sweep = Schemas['PoolWalletSweepResponse'];
 
 export interface MovementQuery {
   page: number;
@@ -52,6 +55,22 @@ export const proposeWallet = (address: string, note?: string) =>
 /** Approves or rejects a proposed wallet; only an admin who didn't propose it can. */
 export const decideWallet = (id: string, approval: 'approve' | 'reject', note?: string) =>
   api.patch<PoolWallet>(`/pool/wallets/${encodeURIComponent(id)}/${approval}`, (note ? { note } : {}) satisfies Schemas['DecisionRequest']);
+
+/** Each retired wallet: what it holds on-chain, the payments that reached it after its watch, and its sweeps. */
+export const listRetiredWallets = () => api.get<RetiredWallet[]>('/pool/wallets/retired');
+export const retiredKey = ['pool', 'wallets', 'retired'];
+
+/** Every sweep of a retired wallet, newest first. */
+export const listSweeps = () => api.get<Sweep[]>('/pool/sweeps');
+export const sweepsKey = ['pool', 'sweeps'];
+
+/** Records a sweep the wallet's signers made; the GP API reads what it moved from the transaction's receipt. */
+export const recordSweep = (walletId: string, txHash: string, note?: string) =>
+  api.post<Sweep>(`/pool/wallets/${encodeURIComponent(walletId)}/sweeps`, { txHash, ...(note ? { note } : {}) } satisfies Schemas['RecordSweepRequest']);
+
+/** Approves or rejects a recorded sweep; only an admin who didn't record it can. Approving owes back the late payments it moved. */
+export const decideSweep = (id: string, approval: 'approve' | 'reject', note?: string) =>
+  api.patch<Sweep>(`/pool/sweeps/${encodeURIComponent(id)}/${approval}`, (note ? { note } : {}) satisfies Schemas['DecisionRequest']);
 
 /** The dashboard's charts over the last 12 months, in Nairobi days and months, oldest first. */
 export const getPoolCharts = () => api.get<PoolCharts>('/pool/charts');

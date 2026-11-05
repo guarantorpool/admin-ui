@@ -218,7 +218,7 @@ const REFUND_STATUS: Record<string, Label> = {
 export const refundStatus = (code: string | null | undefined) => pick(REFUND_STATUS, code);
 
 // The refund types the Lipa API can owe, as the filter offers them; the last two below only exist from before D-039.
-export const REFUND_TYPES = ['overpayment', 'window_lapsed', 'capacity_changed', 'stray_payment', 'amount_mismatch'] as const;
+export const REFUND_TYPES = ['overpayment', 'window_lapsed', 'capacity_changed', 'stray_payment', 'amount_mismatch', 'retired_wallet'] as const;
 
 // why each type is owed, in the brief's words (screen 11)
 const REFUND_WHY: Record<string, string> = {
@@ -227,6 +227,7 @@ const REFUND_WHY: Record<string, string> = {
   capacity_changed: 'The USDT arrived, but the pool had no capacity left for the guarantee.',
   stray_payment: "The USDT arrived for a quote already replaced or paid, or while a claim paused the member's new guarantees.",
   amount_mismatch: 'Less than the amount due arrived, so it was never credited. The quote stays open.',
+  retired_wallet: "The USDT went to a retired pool wallet after its watch ended, so it wasn't credited. It's owed back now a sweep has moved it to the current wallet.",
   payment_failed: 'A direct payment, from before the Lipa API, failed after part of it arrived.',
   blocks_payment: 'Paid in BLOCKS on a payment started before premiums were priced in USDT, so it never activated.'
 };
@@ -290,6 +291,23 @@ const WALLET_STATUS: Record<string, Label> = {
 };
 
 export const walletStatus = (code: string | null | undefined) => pick(WALLET_STATUS, code);
+
+// a sweep of a retired wallet is recorded by one admin and approved by a second (#142 E1)
+const SWEEP_STATUS: Record<string, Label> = {
+  pending: { text: 'Waiting for approval', tone: 'warn' },
+  approved: { text: 'Approved', tone: 'ok' },
+  rejected: { text: 'Rejected', tone: 'bad' }
+};
+
+export const sweepStatus = (code: string | null | undefined) => pick(SWEEP_STATUS, code);
+
+// USDT paid to a retired wallet after its watch ended waits for a sweep, then is owed back (R-43)
+const LATE_STATUS: Record<string, Label> = {
+  waiting: { text: 'Waiting for a sweep', tone: 'warn' },
+  refund_owed: { text: 'Refund owed', tone: 'neutral' }
+};
+
+export const lateStatus = (code: string | null | undefined) => pick(LATE_STATUS, code);
 
 // what last recalculated the Correction Factor
 const FACTOR_TRIGGER: Record<string, string> = {
@@ -443,6 +461,7 @@ const APPROVAL_KIND: Record<string, string> = {
   refund_payout: 'Refund payout',
   liquidity_adjustment: 'Extra liquidity',
   pool_wallet: 'New pool wallet',
+  pool_wallet_sweep: 'Sweep of a retired wallet',
   parameter_change: 'Setting change',
   parameter_change_set: 'Setting changes, together',
   backing_change: 'Backing change'
