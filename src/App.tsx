@@ -19,6 +19,7 @@ import { LoansPage } from '@/pages/loans/LoansPage';
 import { MembersPage } from '@/pages/members/MembersPage';
 import { ComingSoon, NotFound } from '@/pages/Placeholders';
 import { PoolHealthPage } from '@/pages/pool/PoolHealthPage';
+import { ReconciliationPage } from '@/pages/pool/ReconciliationPage';
 import { PoolSettingsPage } from '@/pages/pool/PoolSettingsPage';
 import { PoolWalletsPage } from '@/pages/pool/PoolWalletsPage';
 import { PaymentsPage } from '@/pages/payments/PaymentsPage';
@@ -97,6 +98,7 @@ export function App() {
           <Route path="/pool/wallets" element={<PoolWalletsPage />} />
           <Route path="/pool/wallets/:walletId" element={<PoolWalletsPage />} />
           <Route path="/pool/sweeps/:sweepId" element={<PoolWalletsPage />} />
+          <Route path="/pool/reconciliation" element={<ReconciliationPage />} />
           {/* one route, so opening and closing a setting keeps each card on its page */}
           <Route path="/pool/settings/:key?" element={<PoolSettingsPage />} />
           <Route path="/backing" element={<BackingPage />} />

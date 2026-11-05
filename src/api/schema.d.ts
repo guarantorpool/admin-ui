@@ -1952,6 +1952,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/pool/reconciliation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * One month's reconciliation
+         * @description A summary (premiums, late payments, refunds owed and paid, claims paid, sweeps, and each token's opening balance, money in and out, moves between pool wallets and closing balance, read on-chain) and a match list: each premium, late payment and approved sweep, matched or missing on-chain, and every transfer through a pool wallet that no record names. complete is false until every pool wallet's transfers are read past the month's end.
+         *
+         *     **Requires:** `hasAuthority('POOL.READ')`
+         */
+        get: operations["report"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/pool/reconciliation/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * One month's reconciliation as a file
+         * @description CSV with the summary, a blank line, then the match list; or XLSX with a sheet for each. Amounts in full, times in UTC.
+         *
+         *     **Requires:** `hasAuthority('POOL.READ')`
+         */
+        get: operations["export"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/pool/prices": {
         parameters: {
             query?: never;
@@ -3815,6 +3859,78 @@ export interface components {
             stored?: boolean;
             /** Format: date-time */
             calculatedAt?: string;
+        };
+        ReconciliationClaims: {
+            /** Format: int64 */
+            count?: number;
+            blocks?: string;
+            payouts?: components["schemas"]["ReconciliationPayout"][];
+        };
+        ReconciliationFlow: {
+            opening?: string;
+            in?: string;
+            out?: string;
+            internal?: string;
+            closing?: string;
+        };
+        ReconciliationItem: {
+            /** @enum {string} */
+            kind?: "premium" | "late_payment" | "sweep" | "transfer";
+            /** @enum {string} */
+            status?: "matched" | "missing_on_chain" | "no_record";
+            /** Format: date-time */
+            at?: string;
+            reference?: string;
+            txHash?: string;
+            token?: string;
+            recorded?: string;
+            onChain?: string;
+            wallet?: string;
+            direction?: string;
+            counterparty?: string;
+        };
+        ReconciliationPayout: {
+            currency?: string;
+            amount?: string;
+        };
+        ReconciliationRefunds: {
+            /** Format: int64 */
+            count?: number;
+            amounts?: components["schemas"]["ReconciliationPayout"][];
+        };
+        ReconciliationResponse: {
+            month?: string;
+            /** Format: date-time */
+            from?: string;
+            /** Format: date-time */
+            to?: string;
+            /** Format: date-time */
+            readUpTo?: string;
+            complete?: boolean;
+            summary?: components["schemas"]["ReconciliationSummary"];
+            items?: components["schemas"]["ReconciliationItem"][];
+        };
+        ReconciliationSummary: {
+            premiums?: components["schemas"]["ReconciliationTotal"];
+            premiumsOwedBack?: components["schemas"]["ReconciliationTotal"];
+            latePayments?: components["schemas"]["ReconciliationTotal"];
+            refundsOwed?: components["schemas"]["ReconciliationRefunds"];
+            refundsPaid?: components["schemas"]["ReconciliationRefunds"];
+            claimsPaid?: components["schemas"]["ReconciliationClaims"];
+            sweeps?: components["schemas"]["ReconciliationSweeps"];
+            usdt?: components["schemas"]["ReconciliationFlow"];
+            blocks?: components["schemas"]["ReconciliationFlow"];
+        };
+        ReconciliationSweeps: {
+            /** Format: int64 */
+            count?: number;
+            usdt?: string;
+            blocks?: string;
+        };
+        ReconciliationTotal: {
+            /** Format: int64 */
+            count?: number;
+            amount?: string;
         };
         PageResponseLiquidityAdjustmentResponse: {
             results?: components["schemas"]["LiquidityAdjustmentResponse"][];
@@ -10998,6 +11114,123 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["PoolWalletSweepResponse"][];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not logged in, or the token or key is invalid */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Logged in, but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    report: {
+        parameters: {
+            query: {
+                month: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ReconciliationResponse"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not logged in, or the token or key is invalid */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Logged in, but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    export: {
+        parameters: {
+            query: {
+                month: string;
+                format?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": string;
                 };
             };
             /** @description Invalid request */
