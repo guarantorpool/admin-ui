@@ -547,3 +547,43 @@ export function seedChartHistory() {
       AND id <> (SELECT max(id) FROM ${table})`);
   }
 }
+
+export interface SeededMonth {
+  /** a late payment whose transfer was read */
+  matched: SeededQuote;
+  /** a late payment whose transaction moved nothing read */
+  missing: SeededQuote;
+  /** the sender of USDT no record names */
+  stranger: string;
+}
+
+/**
+ * A month for the reconciliation (E2), in the past so nothing else writes to it: a retired wallet, two late payments to
+ * it on the 10th and 12th, the first one's transfer read on-chain and the second one's not, and 7 USDT arriving on
+ * the 14th that no record names. Every pool wallet's transfers are marked read to now, so the month is complete; a
+ * local run reads no chain, so the transfers go straight in, as the reader would store them.
+ */
+export async function seedReconciliationMonth(month: string): Promise<SeededMonth> {
+  const wallet = seedRetiredWallet();
+  const member = await newMember('Month', 'Payer');
+  const matched = seedQuote(member, { status: 'EXPIRED', quotedDaysAgo: 3 });
+  const missing = seedQuote(member, { status: 'EXPIRED', quotedDaysAgo: 2 });
+  const stranger = Wallet.createRandom().address.toLowerCase();
+  const payer = Wallet.createRandom().address.toLowerCase();
+  const at = (day: number) => `timestamptz '${month}-${String(day).padStart(2, '0')} 10:00:00+03'`;
+  const late = (q: SeededQuote, tx: string, amount: string, day: number) =>
+    sql(`INSERT INTO late_wallet_payments (id, wallet_id, quote_id, payment_id, tx_hash, amount, arrived_at, block_number, log_index, status, recorded_at)
+      VALUES ('${randomUUID()}', '${wallet.id}', '${q.id}', 'lp_${randomOf('0123456789abcdef', 8)}', '${tx}', ${amount}, ${at(day)}, ${day}, 0, 'WAITING', ${at(day)})`);
+  const transfer = (tx: string, from: string, amount: string, day: number) =>
+    sql(`INSERT INTO pool_wallet_transfers (id, wallet_id, token, direction, counterparty, tx_hash, log_index, amount, block_number, mined_at, read_at)
+      VALUES ('${randomUUID()}', '${wallet.id}', 'USDT', 'IN', '${from}', '${tx}', 0, ${amount}, ${day}, ${at(day)}, now())`);
+  const paid = randomHash();
+  late(matched, paid, '40', 10);
+  transfer(paid, payer, '40', 10);
+  late(missing, randomHash(), '25', 12);
+  transfer(randomHash(), stranger, '7', 14);
+  sql(`INSERT INTO pool_wallet_transfer_reads (wallet_id, read_to_block, read_to_time, read_at)
+    SELECT id, 1000, now(), now() FROM pool_wallets WHERE status IN ('CURRENT', 'RETIRED')
+    ON CONFLICT (wallet_id) DO UPDATE SET read_to_time = now(), read_at = now()`);
+  return { matched, missing, stranger };
+}

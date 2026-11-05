@@ -8668,6 +8668,162 @@
         }
       }
     },
+    "/api/pool/reconciliation": {
+      "get": {
+        "tags": [
+          "Reconciliation"
+        ],
+        "summary": "One month's reconciliation",
+        "description": "A summary (premiums, late payments, refunds owed and paid, claims paid, sweeps, and each token's opening balance, money in and out, moves between pool wallets and closing balance, read on-chain) and a match list: each premium, late payment and approved sweep, matched or missing on-chain, and every transfer through a pool wallet that no record names. complete is false until every pool wallet's transfers are read past the month's end.\n\n**Requires:** `hasAuthority('POOL.READ')`",
+        "operationId": "report",
+        "parameters": [
+          {
+            "name": "month",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReconciliationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in, or the token or key is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/pool/reconciliation/export": {
+      "get": {
+        "tags": [
+          "Reconciliation"
+        ],
+        "summary": "One month's reconciliation as a file",
+        "description": "CSV with the summary, a blank line, then the match list; or XLSX with a sheet for each. Amounts in full, times in UTC.\n\n**Requires:** `hasAuthority('POOL.READ')`",
+        "operationId": "export",
+        "parameters": [
+          {
+            "name": "month",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "byte"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in, or the token or key is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/pool/prices": {
       "get": {
         "tags": [
@@ -15360,6 +15516,211 @@
           "calculatedAt": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "ReconciliationClaims": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "blocks": {
+            "type": "string"
+          },
+          "payouts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReconciliationPayout"
+            }
+          }
+        }
+      },
+      "ReconciliationFlow": {
+        "type": "object",
+        "properties": {
+          "opening": {
+            "type": "string"
+          },
+          "in": {
+            "type": "string"
+          },
+          "out": {
+            "type": "string"
+          },
+          "internal": {
+            "type": "string"
+          },
+          "closing": {
+            "type": "string"
+          }
+        }
+      },
+      "ReconciliationItem": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "premium",
+              "late_payment",
+              "sweep",
+              "transfer"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "matched",
+              "missing_on_chain",
+              "no_record"
+            ]
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "txHash": {
+            "type": "string"
+          },
+          "token": {
+            "type": "string"
+          },
+          "recorded": {
+            "type": "string"
+          },
+          "onChain": {
+            "type": "string"
+          },
+          "wallet": {
+            "type": "string"
+          },
+          "direction": {
+            "type": "string"
+          },
+          "counterparty": {
+            "type": "string"
+          }
+        }
+      },
+      "ReconciliationPayout": {
+        "type": "object",
+        "properties": {
+          "currency": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "string"
+          }
+        }
+      },
+      "ReconciliationRefunds": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "amounts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReconciliationPayout"
+            }
+          }
+        }
+      },
+      "ReconciliationResponse": {
+        "type": "object",
+        "properties": {
+          "month": {
+            "type": "string"
+          },
+          "from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "readUpTo": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "complete": {
+            "type": "boolean"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/ReconciliationSummary"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReconciliationItem"
+            }
+          }
+        }
+      },
+      "ReconciliationSummary": {
+        "type": "object",
+        "properties": {
+          "premiums": {
+            "$ref": "#/components/schemas/ReconciliationTotal"
+          },
+          "premiumsOwedBack": {
+            "$ref": "#/components/schemas/ReconciliationTotal"
+          },
+          "latePayments": {
+            "$ref": "#/components/schemas/ReconciliationTotal"
+          },
+          "refundsOwed": {
+            "$ref": "#/components/schemas/ReconciliationRefunds"
+          },
+          "refundsPaid": {
+            "$ref": "#/components/schemas/ReconciliationRefunds"
+          },
+          "claimsPaid": {
+            "$ref": "#/components/schemas/ReconciliationClaims"
+          },
+          "sweeps": {
+            "$ref": "#/components/schemas/ReconciliationSweeps"
+          },
+          "usdt": {
+            "$ref": "#/components/schemas/ReconciliationFlow"
+          },
+          "blocks": {
+            "$ref": "#/components/schemas/ReconciliationFlow"
+          }
+        }
+      },
+      "ReconciliationSweeps": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "usdt": {
+            "type": "string"
+          },
+          "blocks": {
+            "type": "string"
+          }
+        }
+      },
+      "ReconciliationTotal": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "amount": {
+            "type": "string"
           }
         }
       },

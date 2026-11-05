@@ -1,4 +1,4 @@
-import { api } from './client';
+import { api, download } from './client';
 import type { Page } from './members';
 import type { Schemas } from './types';
 
@@ -14,6 +14,10 @@ export type PoolCharts = Schemas['PoolChartsResponse'];
 export type RetiredWallet = Schemas['RetiredWalletResponse'];
 export type LatePayment = Schemas['LatePayment'];
 export type Sweep = Schemas['PoolWalletSweepResponse'];
+export type Reconciliation = Schemas['ReconciliationResponse'];
+// the response's own parts: schema names like Item are shared with other responses
+export type ReconciliationItem = NonNullable<Reconciliation['items']>[number];
+export type Flow = NonNullable<NonNullable<Reconciliation['summary']>['usdt']>;
 
 export interface MovementQuery {
   page: number;
@@ -74,3 +78,11 @@ export const decideSweep = (id: string, approval: 'approve' | 'reject', note?: s
 
 /** The dashboard's charts over the last 12 months, in Nairobi days and months, oldest first. */
 export const getPoolCharts = () => api.get<PoolCharts>('/pool/charts');
+
+/** One month (yyyy-MM, Nairobi) of records matched against the transfers read on-chain through the pool wallets. */
+export const getReconciliation = (month: string) => api.get<Reconciliation>('/pool/reconciliation', { query: { month } });
+export const reconciliationKey = (month: string) => ['pool', 'reconciliation', month];
+
+/** Saves that month's reconciliation as a CSV or XLSX file. */
+export const downloadReconciliation = (month: string, format: 'csv' | 'xlsx') =>
+  download('/pool/reconciliation/export', `reconciliation-${month}.${format}`, { query: { month, format } });

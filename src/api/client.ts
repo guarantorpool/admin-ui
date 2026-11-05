@@ -65,7 +65,8 @@ async function parse<T>(res: Response): Promise<T> {
   }
 }
 
-export async function request<T>(method: Method, path: string, opts: RequestOptions = {}): Promise<T> {
+/** Sends a call with the token, refreshing it once if refused; a failure is thrown as an ApiError. */
+async function authed(method: Method, path: string, opts: RequestOptions): Promise<Response> {
   const auth = opts.auth !== false;
   let token = auth ? await currentToken() : null;
   let res = await send(method, path, opts, token);
@@ -79,7 +80,29 @@ export async function request<T>(method: Method, path: string, opts: RequestOpti
   }
 
   if (!res.ok) throw await toApiError(res);
-  return parse<T>(res);
+  return res;
+}
+
+export async function request<T>(method: Method, path: string, opts: RequestOptions = {}): Promise<T> {
+  return parse<T>(await authed(method, path, opts));
+}
+
+/** A file the GP API sends, saved by the browser under the name it gives (or `fallback`). */
+export async function download(path: string, fallback: string, opts: RequestOptions = {}): Promise<void> {
+  const res = await authed('GET', path, opts);
+  const named = /filename="?([^";]+)"?/i.exec(res.headers.get('Content-Disposition') ?? '');
+  const url = URL.createObjectURL(await res.blob());
+  try {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = named?.[1] ?? fallback;
+    document.body.append(a);
+    a.click();
+    a.remove();
+  } finally {
+    // after the click has started the save
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
 }
 
 export const api = {

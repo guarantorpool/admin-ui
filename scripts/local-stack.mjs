@@ -238,6 +238,7 @@ export async function startStack({ quiet = false } = {}) {
         ONCHAIN_READER_CRON: '-',
         KES_RATE_CRON: '-',
         VALUATION_CRON: '-',
+        POOL_TRANSFERS_CRON: '-',
         FACTOR_REFRESH_ENABLED: 'false',
         GUARANTEE_JOBS_ENABLED: 'false',
         // the chain stand-in: it answers for registered Safes only, so a member's wallet sign-in, which reads the

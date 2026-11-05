@@ -309,6 +309,24 @@ const LATE_STATUS: Record<string, Label> = {
 
 export const lateStatus = (code: string | null | undefined) => pick(LATE_STATUS, code);
 
+// reconciliation (#142 E2): whether a record and the transfers read on-chain agree
+const MATCH_STATUS: Record<string, Label> = {
+  matched: { text: 'Matched', tone: 'ok' },
+  missing_on_chain: { text: 'Missing on-chain', tone: 'bad' },
+  no_record: { text: 'No record', tone: 'warn' }
+};
+
+export const matchStatus = (code: string | null | undefined) => pick(MATCH_STATUS, code);
+
+const MATCH_KIND: Record<string, string> = {
+  premium: 'Premium',
+  late_payment: 'Late payment',
+  sweep: 'Sweep',
+  transfer: 'Transfer'
+};
+
+export const matchKind = (code: string | null | undefined) => (code ? (MATCH_KIND[code] ?? code) : '—');
+
 // what last recalculated the Correction Factor
 const FACTOR_TRIGGER: Record<string, string> = {
   scheduled: 'Scheduled recalculation',
