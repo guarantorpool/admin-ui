@@ -336,8 +336,8 @@ for (const scheme of ['light', 'dark'] as const) {
     await page.screenshot({ path: `${dir}/${tag}-42-wallet-approve.png` });
     await page.keyboard.press('Escape');
 
-    await page.goto('/pool/settings');
-    await page.getByRole('region', { name: 'Haircuts' }).waitFor();
+    await page.goto('/pool/settings?group=trust-score-benchmarks');
+    await page.getByRole('region', { name: 'Trust Score benchmarks' }).waitFor();
     await settle(page);
     await page.screenshot({ path: `${dir}/${tag}-43-pool-settings.png`, fullPage: true });
     await page.goto('/pool/settings/claim_grace_days');

@@ -8,42 +8,45 @@ const ALL = ['PARAMETERS.READ', 'PARAMETERS.PROPOSE', 'PARAMETERS.APPROVE'];
 
 const tag = () => Date.now().toString(36);
 const group = (page: Page, title: string) => page.getByRole('region', { name: title });
+const groupLink = (page: Page, title: string) => page.getByRole('navigation', { name: 'Setting groups' }).getByRole('link', { name: new RegExp(`^${title}\\b`) });
 const row = (page: Page, key: string) => page.getByRole('link').filter({ has: page.getByText(key, { exact: true }) });
 const sheet = (page: Page) => page.getByRole('dialog', { name: 'Pool setting' });
 const waiting = (page: Page) => page.getByRole('list', { name: 'Waiting changes' }).getByRole('listitem');
 const history = (page: Page) => page.getByRole('list', { name: 'Setting changes' }).getByRole('listitem');
 
 test.describe('Pool settings (slice 8)', () => {
-  test('a big group shows six settings at a time, and opens on the setting open', async ({ page }) => {
-    const admin = await newAdmin(page, ['PARAMETERS.READ'], 'Pages');
+  test('the groups are a menu, and the chosen group shows all its settings', async ({ page }) => {
+    const admin = await newAdmin(page, ['PARAMETERS.READ'], 'Groups');
     await signIn(page, admin.email, admin.password);
     await page.goto('/pool/settings');
-    const benchmarks = group(page, 'Trust Score benchmarks');
-    await expect(benchmarks.getByRole('link')).toHaveCount(6);
-    await expect(benchmarks.getByText('Showing 1–6 of 11')).toBeVisible();
-    await expect(row(page, 'benchmark_loans_taken')).toHaveCount(0);
-    // a page taller than the card scrolls inside it, down to its last setting
-    const last = benchmarks.getByText('benchmark_deposit_volume', { exact: true });
-    await last.scrollIntoViewIfNeeded();
-    await expect(last).toBeInViewport({ ratio: 1 });
-    await benchmarks.getByRole('button', { name: 'Next page' }).click();
-    await expect(benchmarks.getByRole('link')).toHaveCount(5);
-    await expect(row(page, 'benchmark_loans_taken')).toBeVisible();
-    // the other cards keep their own page, and a small group has no pager
-    await expect(group(page, 'Trust Score activity').getByText('Page 1 of 2')).toBeVisible();
-    await expect(group(page, 'Haircuts').getByRole('button', { name: 'Next page' })).toHaveCount(0);
-    // every card is one height, however many settings it holds
-    const heights = await Promise.all(['Trust Score benchmarks', 'Haircuts', 'Claims'].map(async (t) => (await group(page, t).boundingBox())?.height));
-    expect(new Set(heights).size).toBe(1);
+    // the first group opens, and only one group shows at a time
+    await expect(group(page, 'Trust Score pillar weights')).toBeVisible();
+    await expect(group(page, 'Trust Score benchmarks')).toHaveCount(0);
+    await expect(groupLink(page, 'Trust Score pillar weights')).toHaveAttribute('aria-current', 'true');
+    await expect(groupLink(page, 'Trust Score benchmarks')).toContainText('11');
 
-    await page.goto('/pool/settings/benchmark_loans_taken');
+    // a big group shows every setting, with no pages, and its last one is on the page
+    await groupLink(page, 'Trust Score benchmarks').click();
+    await expect(page).toHaveURL(/group=trust-score-benchmarks/);
+    const benchmarks = group(page, 'Trust Score benchmarks');
+    await expect(benchmarks.getByRole('link')).toHaveCount(11);
+    await expect(benchmarks.getByRole('button', { name: 'Next page' })).toHaveCount(0);
+    const last = row(page, 'benchmark_loans_taken');
+    await last.scrollIntoViewIfNeeded();
+    await expect(last.getByText('benchmark_loans_taken', { exact: true })).toBeInViewport({ ratio: 1 });
+
+    // a setting opened by its link shows its own group behind it, and closing it keeps that group
+    await page.goto('/pool/settings/claim_grace_days');
     await expect(sheet(page)).toBeVisible();
-    // behind the open setting, hidden from assistive tech, the card is on the page with it; closed, it stays there
-    await expect(page.locator('section[aria-label="Trust Score benchmarks"]').getByText('Page 2 of 2')).toBeVisible();
+    await expect(page.locator('section[aria-label="Claims"]')).toHaveCount(1);
     await page.keyboard.press('Escape');
-    await expect(page).toHaveURL(/\/pool\/settings$/);
-    await expect(benchmarks.getByText('Page 2 of 2')).toBeVisible();
-    await expect(row(page, 'benchmark_loans_taken')).toBeVisible();
+    await expect(page).toHaveURL(/\/pool\/settings\?group=claims$/);
+    await expect(row(page, 'claim_grace_days')).toBeVisible();
+    // and a setting opened from the group comes back to it
+    await row(page, 'claim_waiting_days').click();
+    await expect(sheet(page)).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(group(page, 'Claims')).toBeVisible();
   });
 
   test('shows every setting in its group, and one that applies at once changes straight away', async ({ page }) => {
@@ -52,17 +55,20 @@ test.describe('Pool settings (slice 8)', () => {
     await page.goto('/pool/settings');
     await expect(page.getByRole('heading', { name: 'Pool settings', level: 1 })).toBeVisible();
     for (const title of ['Trust Score pillar weights', 'Trust Score benchmarks', 'Pricing inputs', 'Operating fee', 'Quotes and tenures', 'Haircuts', 'Applies at once']) {
-      await expect(group(page, title)).toBeVisible();
+      await expect(groupLink(page, title)).toBeVisible();
     }
+    await groupLink(page, 'Operating fee').click();
+    await expect(row(page, 'operating_fee_rate')).toContainText('Two admins');
+    await groupLink(page, 'Pricing inputs').click();
+    await expect(row(page, 'recovery_rate_calculated')).toContainText('0 (off)');
     // the five that apply at once, and only those
+    await groupLink(page, 'Applies at once').click();
     const atOnce = group(page, 'Applies at once');
     await expect(atOnce.getByRole('link')).toHaveCount(5);
     await expect(atOnce.getByText('Two admins')).toHaveCount(0);
-    await expect(row(page, 'operating_fee_rate')).toContainText('Two admins');
-    await expect(row(page, 'recovery_rate_calculated')).toContainText('0 (off)');
 
     await row(page, 'invite_token_ttl_hours').click();
-    await expect(page).toHaveURL(/\/pool\/settings\/invite_token_ttl_hours$/);
+    await expect(page).toHaveURL(/\/pool\/settings\/invite_token_ttl_hours\?group=applies-at-once$/);
     await expect(sheet(page).getByText('At once, when changed on its own')).toBeVisible();
     await expect(sheet(page).getByText("It hasn't been changed since it was set up.")).toBeVisible();
     await sheet(page).getByRole('button', { name: 'Change this setting' }).click();
@@ -142,6 +148,7 @@ test.describe('Pool settings (slice 8)', () => {
     await expect(done).toContainText(`approved by ${second.email}`);
     await expect(done).toContainText('Note: Agreed at the operations meeting');
     await other.getByRole('tab', { name: 'Current settings' }).click();
+    await groupLink(other, 'Pool upkeep and alerts').click();
     await expect(row(other, 'alert_refund_held_hours')).toContainText('36');
     await expect(row(other, 'alert_refund_held_hours')).toContainText('Two admins');
     await other.close();
@@ -210,6 +217,7 @@ test.describe('Pool settings (slice 8)', () => {
 
     await other.goto('/pool/settings');
     await expect(row(other, 'pillar_weight_identity')).toContainText('0.15');
+    await groupLink(other, 'Pool upkeep and alerts').click();
     await expect(row(other, 'alert_reader_failures')).toContainText('4');
     await expect(row(other, 'alert_refund_window_hours')).toContainText('48');
     await other.goto('/pool/settings?view=history&key=pillar_weight_identity');
@@ -223,6 +231,7 @@ test.describe('Pool settings (slice 8)', () => {
     const reader = await newAdmin(page, ['PARAMETERS.READ'], 'Reader');
     await signIn(page, reader.email, reader.password);
     await page.goto('/pool/settings');
+    await groupLink(page, 'Haircuts').click();
     await expect(group(page, 'Haircuts')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Propose a change set' })).toHaveCount(0);
     await row(page, 'blocks_haircut').click();

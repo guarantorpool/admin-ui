@@ -6,12 +6,12 @@ import { getParameter, listChanges, listParameters, type Parameter } from '@/api
 import { PageHeader } from '@/components/shell/AppShell';
 import { Badge, Banner } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Pager } from '@/components/ui/pager';
 import { Fields, Muted, SectionTitle } from '@/components/ui/parts';
 import { Rows, type Column } from '@/components/ui/rows';
 import { Sheet } from '@/components/ui/sheet';
 import { Tabs } from '@/components/ui/tabs';
 import { formatDateTime, formatNumber } from '@/lib/format';
+import { cn } from '@/lib/utils';
 import { can } from '@/lib/permissions';
 import { groupSettings, PILLAR_WEIGHTS, settingValue } from '@/lib/settings';
 import { NoAccess } from '@/pages/Placeholders';
@@ -26,8 +26,6 @@ import { ChangeDialog, ChangeSetDialog } from './SettingForms';
 const VIEWS = ['current', 'waiting', 'history'] as const;
 type View = (typeof VIEWS)[number];
 const DEFAULT_SIZE = 25;
-// settings on a group's card at a time
-const GROUP_SIZE = 6;
 
 /** A setting's key, breaking only after an underscore when it doesn't fit: pillar_weight_ / relationship. */
 function KeyName({ name }: { name: string | undefined }) {
@@ -99,6 +97,14 @@ function PoolSettings() {
     setParams(next, { replace: true });
   };
 
+  // closing a setting opened by a link with no group keeps the setting's group in view
+  const closingSearch = () => {
+    const next = new URLSearchParams(params);
+    const g = view === 'current' && !next.has('group') ? shownGroup(groupSettings(all), null, key) : undefined;
+    if (g) next.set('group', groupSlug(g.title));
+    return next.toString();
+  };
+
   const tabs = [
     { value: 'current', label: 'Current settings' },
     { value: 'waiting', label: 'Waiting for approval', count: waiting.length },
@@ -123,7 +129,7 @@ function PoolSettings() {
         </div>
       </div>
 
-      <Sheet open={!!key} onClose={() => navigate({ pathname: '/pool/settings', search: params.toString() })} title="Pool setting" wide={false}>
+      <Sheet open={!!key} onClose={() => navigate({ pathname: '/pool/settings', search: closingSearch() })} title="Pool setting" wide={false}>
         {key ? <SettingDetail settingKey={key} onChange={setChanging} onChangeSet={setSetStart} /> : null}
       </Sheet>
       <ChangeDialog setting={changing} onClose={() => setChanging(null)} />
@@ -133,48 +139,90 @@ function PoolSettings() {
 }
 
 function Current({ settings, loading }: { settings: Parameter[]; loading: boolean }) {
+  const { key } = useParams();
   const [params] = useSearchParams();
+  const groups = groupSettings(settings);
+  const shown = shownGroup(groups, params.get('group'), key);
+  // on narrow screens the groups are a row that scrolls sideways; keep the one shown in view
+  const currentRef = React.useRef<HTMLAnchorElement | null>(null);
+  React.useEffect(() => {
+    currentRef.current?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+  }, [shown?.title]);
   if (loading) return <Muted>Loading…</Muted>;
+  if (!shown) return null;
   const search = params.toString();
+  const groupLink = (title: string) => {
+    const next = new URLSearchParams(params);
+    next.set('group', groupSlug(title));
+    return `/pool/settings?${next.toString()}`;
+  };
   return (
     <>
       <Muted>Most settings take two admins: one proposes a change and a different one approves it. The five under "Applies at once" change straight away when changed on their own. Open a setting to change it or see its history.</Muted>
-      <div className="grid items-start gap-3.5 xl:grid-cols-2">
-        {groupSettings(settings).map((g) => (
-          <SettingGroup key={g.title} title={g.title} settings={g.settings} search={search} />
-        ))}
+      <div className="grid items-start gap-3.5 lg:grid-cols-[15rem_minmax(0,1fr)]">
+        {/* the groups; a column beside the one shown on wide screens, a row across the top on narrow ones */}
+        <nav aria-label="Setting groups" className="flex min-w-0 gap-1 overflow-x-auto rounded-card border border-line bg-surface p-1.5 lg:flex-col lg:overflow-visible">
+          {groups.map((g) => {
+            const waitingIn = g.settings.filter((p) => p.changePending).length;
+            const current = g.title === shown.title;
+            return (
+              <Link
+                key={g.title}
+                ref={current ? currentRef : undefined}
+                to={groupLink(g.title)}
+                replace
+                aria-current={current ? 'true' : undefined}
+                className={cn(
+                  'flex min-h-9 shrink-0 items-center justify-between gap-2 whitespace-nowrap rounded-ctl px-2.5 no-underline lg:whitespace-normal',
+                  current ? 'bg-selected font-semibold text-ink-strong' : 'text-ink hover:bg-page'
+                )}
+              >
+                <span>{g.title}</span>
+                <span className="flex items-center gap-1.5 text-[13px] tabular-nums text-muted">
+                  {waitingIn ? (
+                    <span title={`${waitingIn} waiting for approval`} className="rounded-full bg-warn-bg px-[7px] text-xs font-semibold leading-5 text-warn-fg">
+                      {waitingIn}
+                      <span className="sr-only"> waiting for approval</span>
+                    </span>
+                  ) : null}
+                  <span>
+                    {g.settings.length}
+                    <span className="sr-only"> settings</span>
+                  </span>
+                </span>
+              </Link>
+            );
+          })}
+        </nav>
+        <SettingGroup title={shown.title} settings={shown.settings} search={search} />
       </div>
     </>
   );
 }
 
-/**
- * One group's card, a page of settings at a time; it opens on the setting open. Every card is one height whatever it
- * holds, and a page of long descriptions scrolls inside it.
- */
+/** The group a setting group's link names, as it reads in the address: "trust-score-benchmarks". */
+const groupSlug = (title: string) => title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+/** The group shown: the one in the address, else the open setting's, else the first. */
+function shownGroup<T extends { title: string; settings: Parameter[] }>(groups: T[], slug: string | null, key: string | undefined): T | undefined {
+  return groups.find((g) => groupSlug(g.title) === slug) ?? groups.find((g) => g.settings.some((p) => p.key === key)) ?? groups[0];
+}
+
+/** One group's settings, all of them, with their descriptions; the page is as long as the group. */
 function SettingGroup({ title, settings, search }: { title: string; settings: Parameter[]; search: string }) {
-  const { key } = useParams();
-  const [page, setPage] = React.useState(() => Math.floor(Math.max(0, settings.findIndex((p) => p.key === key)) / GROUP_SIZE) + 1);
-  const pages = Math.ceil(settings.length / GROUP_SIZE);
-  // a group can shrink under the page shown, when a setting moves to "Applies at once"
-  const shown = Math.min(page, Math.max(1, pages));
   return (
-    <section aria-label={title} className="flex h-[30rem] min-w-0 flex-col overflow-hidden rounded-card border border-line bg-surface">
+    <section aria-label={title} className="min-w-0 rounded-card border border-line bg-surface">
       <h2 className="m-0 px-4 pb-1 pt-3.5 text-base font-bold">{title}</h2>
-      {/* a styled scrollbar is always drawn, where an overlay one (Chrome on Windows 11) hides that rows are cut off */}
-      <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-color:var(--ctl)_transparent] [scrollbar-width:thin]">
-        <Rows<Parameter>
-          label={title}
-          rows={settings.slice((shown - 1) * GROUP_SIZE, shown * GROUP_SIZE)}
-          rowKey={(p) => p.key!}
-          columns={COLUMNS}
-          grid="grid-cols-[minmax(0,1fr)_5.5rem_10rem]"
-          minWidth={480}
-          linkFor={(p) => `/pool/settings/${encodeURIComponent(p.key!)}${search ? `?${search}` : ''}`}
-          sub={(p) => `Value ${settingValue(p.key, p.value)}`}
-        />
-      </div>
-      {pages > 1 ? <Pager page={shown} size={GROUP_SIZE} total={settings.length} onPage={setPage} /> : null}
+      <Rows<Parameter>
+        label={title}
+        rows={settings}
+        rowKey={(p) => p.key!}
+        columns={COLUMNS}
+        grid="grid-cols-[minmax(0,1fr)_5.5rem_10rem]"
+        minWidth={480}
+        linkFor={(p) => `/pool/settings/${encodeURIComponent(p.key!)}${search ? `?${search}` : ''}`}
+        sub={(p) => `Value ${settingValue(p.key, p.value)}`}
+      />
     </section>
   );
 }
