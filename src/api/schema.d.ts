@@ -218,6 +218,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/pool/wallets/{walletId}/sweeps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record a sweep of a retired pool wallet
+         * @description txHash is the transaction its signers made outside the backend. It must have succeeded, be confirmed, be mined after the wallet was retired and have moved USDT and/or BLOCKS from it to the current pool wallet; a transaction is one sweep. A different admin approves it. Audited.
+         *
+         *     **Requires:** `hasAuthority('WALLETS.SWEEP')`
+         */
+        post: operations["recordSweep"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/pool/liquidity-adjustments": {
         parameters: {
             query?: never;
@@ -1232,6 +1254,28 @@ export interface paths {
         patch: operations["decide_1"];
         trace?: never;
     };
+    "/api/pool/sweeps/{sweepId}/{approval}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Approve or reject a recorded sweep
+         * @description By a different admin from the one who recorded it. Approving checks the transaction again, then owes back the late payments it moved (oldest first, as far as its USDT covers them) as retired_wallet refunds. Audited.
+         *
+         *     **Requires:** `hasAuthority('WALLETS.APPROVE')`
+         */
+        patch: operations["decideSweep"];
+        trace?: never;
+    };
     "/api/pool/liquidity-adjustments/{adjustmentId}/{approval}": {
         parameters: {
             query?: never;
@@ -1800,6 +1844,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/pool/wallets/retired": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Every retired pool wallet, with what it still holds and its sweeps
+         * @description The most recently retired first. USDT and BLOCKS balances are read on-chain now; when the chain can't be read they are null and balancesRead is false. latePayments are Lipa payments that reached the wallet after its watch ended: waiting until a sweep moves them, then owed back.
+         *
+         *     **Requires:** `hasAuthority('POOL.READ')`
+         */
+        get: operations["retired"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/pool/wallet": {
         parameters: {
             query?: never;
@@ -1858,6 +1924,26 @@ export interface paths {
          *     **Requires:** `hasAuthority('POOL.READ')`
          */
         get: operations["underwritingInputs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/pool/sweeps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Every sweep of a retired pool wallet, newest first
+         * @description **Requires:** `hasAuthority('POOL.READ')`
+         */
+        get: operations["sweeps"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2926,7 +3012,7 @@ export interface components {
             firstName?: string;
             lastName?: string;
             /** @enum {string} */
-            type?: "overpayment" | "window_lapsed" | "payment_failed" | "capacity_changed" | "stray_payment" | "amount_mismatch" | "blocks_payment";
+            type?: "overpayment" | "window_lapsed" | "payment_failed" | "capacity_changed" | "stray_payment" | "amount_mismatch" | "blocks_payment" | "retired_wallet";
             /** @enum {string} */
             status?: "owed" | "entered" | "paid";
             amount?: string;
@@ -2973,6 +3059,35 @@ export interface components {
             /** Format: date-time */
             proposedAt?: string;
             proposalNote?: string;
+            decidedBy?: string;
+            /** Format: date-time */
+            decidedAt?: string;
+            decisionNote?: string;
+        };
+        RecordSweepRequest: {
+            txHash: string;
+            note?: string;
+        };
+        PoolWalletSweepResponse: {
+            /** Format: uuid */
+            sweepId?: string;
+            /** Format: uuid */
+            fromWalletId?: string;
+            fromAddress?: string;
+            /** Format: uuid */
+            toWalletId?: string;
+            toAddress?: string;
+            txHash?: string;
+            usdtAmount?: string;
+            blocksAmount?: string;
+            /** Format: date-time */
+            minedAt?: string;
+            /** @enum {string} */
+            status?: "pending" | "approved" | "rejected";
+            note?: string;
+            enteredBy?: string;
+            /** Format: date-time */
+            enteredAt?: string;
             decidedBy?: string;
             /** Format: date-time */
             decidedAt?: string;
@@ -3621,6 +3736,31 @@ export interface components {
             /** Format: int64 */
             totalResults?: number;
         };
+        LatePayment: {
+            /** Format: uuid */
+            latePaymentId?: string;
+            quoteId?: string;
+            paymentId?: string;
+            txHash?: string;
+            amount?: string;
+            /** Format: date-time */
+            arrivedAt?: string;
+            /** @enum {string} */
+            status?: "waiting" | "refund_owed";
+            /** Format: uuid */
+            sweepId?: string;
+            /** Format: uuid */
+            refundId?: string;
+        };
+        RetiredWalletResponse: {
+            wallet?: components["schemas"]["PoolWalletResponse"];
+            usdtBalance?: string;
+            blocksBalance?: string;
+            balancesRead?: boolean;
+            lateWaiting?: string;
+            latePayments?: components["schemas"]["LatePayment"][];
+            sweeps?: components["schemas"]["PoolWalletSweepResponse"][];
+        };
         PoolUtilizationResponse: {
             totalBackingUsdt?: string;
             totalOutstandingGuarantees?: string;
@@ -4268,7 +4408,7 @@ export interface components {
         };
         ApprovalResponse: {
             /** @enum {string} */
-            kind?: "guarantee_close" | "loan_step" | "default_verification" | "loan_recovery" | "refund_payout" | "liquidity_adjustment" | "pool_wallet" | "parameter_change" | "parameter_change_set" | "backing_change";
+            kind?: "guarantee_close" | "loan_step" | "default_verification" | "loan_recovery" | "refund_payout" | "liquidity_adjustment" | "pool_wallet" | "pool_wallet_sweep" | "parameter_change" | "parameter_change_set" | "backing_change";
             id?: string;
             summary?: string;
             action?: string;
@@ -5077,6 +5217,68 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["PoolWalletResponse"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not logged in, or the token or key is invalid */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Logged in, but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    recordSweep: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                walletId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordSweepRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PoolWalletSweepResponse"];
                 };
             };
             /** @description Invalid request */
@@ -8558,6 +8760,69 @@ export interface operations {
             };
         };
     };
+    decideSweep: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sweepId: string;
+                approval: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DecisionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PoolWalletSweepResponse"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not logged in, or the token or key is invalid */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Logged in, but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     decideLiquidityAdjustment: {
         parameters: {
             query?: never;
@@ -10493,6 +10758,62 @@ export interface operations {
             };
         };
     };
+    retired: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RetiredWalletResponse"][];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not logged in, or the token or key is invalid */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Logged in, but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     current: {
         parameters: {
             query?: never;
@@ -10621,6 +10942,62 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["UnderwritingInputsResponse"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not logged in, or the token or key is invalid */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Logged in, but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    sweeps: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PoolWalletSweepResponse"][];
                 };
             };
             /** @description Invalid request */

@@ -14,7 +14,7 @@ export type Permission =
   | 'GUARANTEES.READ' | 'GUARANTEES.MANAGE'
   | 'ALERTS.READ' | 'ALERTS.MANAGE'
   | 'REFUNDS.READ' | 'REFUNDS.MANAGE'
-  | 'WALLETS.PROPOSE' | 'WALLETS.APPROVE';
+  | 'WALLETS.PROPOSE' | 'WALLETS.APPROVE' | 'WALLETS.SWEEP';
 
 /** A screen's access rule: a permission, several that are all needed, the system admin role, or open to every admin. */
 export type Access = Permission | readonly Permission[] | 'SYSTEM_ADMIN' | 'ANY';

@@ -1033,6 +1033,89 @@
         }
       }
     },
+    "/api/pool/wallets/{walletId}/sweeps": {
+      "post": {
+        "tags": [
+          "Pool wallets"
+        ],
+        "summary": "Record a sweep of a retired pool wallet",
+        "description": "txHash is the transaction its signers made outside the backend. It must have succeeded, be confirmed, be mined after the wallet was retired and have moved USDT and/or BLOCKS from it to the current pool wallet; a transaction is one sweep. A different admin approves it. Audited.\n\n**Requires:** `hasAuthority('WALLETS.SWEEP')`",
+        "operationId": "recordSweep",
+        "parameters": [
+          {
+            "name": "walletId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordSweepRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PoolWalletSweepResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in, or the token or key is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/pool/liquidity-adjustments": {
       "get": {
         "tags": [
@@ -5545,6 +5628,96 @@
         }
       }
     },
+    "/api/pool/sweeps/{sweepId}/{approval}": {
+      "patch": {
+        "tags": [
+          "Pool wallets"
+        ],
+        "summary": "Approve or reject a recorded sweep",
+        "description": "By a different admin from the one who recorded it. Approving checks the transaction again, then owes back the late payments it moved (oldest first, as far as its USDT covers them) as retired_wallet refunds. Audited.\n\n**Requires:** `hasAuthority('WALLETS.APPROVE')`",
+        "operationId": "decideSweep",
+        "parameters": [
+          {
+            "name": "sweepId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "approval",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PoolWalletSweepResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in, or the token or key is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/pool/liquidity-adjustments/{adjustmentId}/{approval}": {
       "patch": {
         "tags": [
@@ -8179,6 +8352,71 @@
         }
       }
     },
+    "/api/pool/wallets/retired": {
+      "get": {
+        "tags": [
+          "Pool wallets"
+        ],
+        "summary": "Every retired pool wallet, with what it still holds and its sweeps",
+        "description": "The most recently retired first. USDT and BLOCKS balances are read on-chain now; when the chain can't be read they are null and balancesRead is false. latePayments are Lipa payments that reached the wallet after its watch ended: waiting until a sweep moves them, then owed back.\n\n**Requires:** `hasAuthority('POOL.READ')`",
+        "operationId": "retired",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RetiredWalletResponse"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in, or the token or key is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/pool/wallet": {
       "get": {
         "tags": [
@@ -8318,6 +8556,71 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/UnderwritingInputsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in, or the token or key is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/pool/sweeps": {
+      "get": {
+        "tags": [
+          "Pool wallets"
+        ],
+        "summary": "Every sweep of a retired pool wallet, newest first",
+        "description": "**Requires:** `hasAuthority('POOL.READ')`",
+        "operationId": "sweeps",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PoolWalletSweepResponse"
+                  }
                 }
               }
             }
@@ -12558,7 +12861,8 @@
               "capacity_changed",
               "stray_payment",
               "amount_mismatch",
-              "blocks_payment"
+              "blocks_payment",
+              "retired_wallet"
             ]
           },
           "status": {
@@ -12691,6 +12995,87 @@
           },
           "proposalNote": {
             "type": "string"
+          },
+          "decidedBy": {
+            "type": "string"
+          },
+          "decidedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "decisionNote": {
+            "type": "string"
+          }
+        }
+      },
+      "RecordSweepRequest": {
+        "type": "object",
+        "properties": {
+          "txHash": {
+            "type": "string",
+            "minLength": 1
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "txHash"
+        ]
+      },
+      "PoolWalletSweepResponse": {
+        "type": "object",
+        "properties": {
+          "sweepId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fromWalletId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fromAddress": {
+            "type": "string"
+          },
+          "toWalletId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "toAddress": {
+            "type": "string"
+          },
+          "txHash": {
+            "type": "string"
+          },
+          "usdtAmount": {
+            "type": "string"
+          },
+          "blocksAmount": {
+            "type": "string"
+          },
+          "minedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "approved",
+              "rejected"
+            ]
+          },
+          "note": {
+            "type": "string"
+          },
+          "enteredBy": {
+            "type": "string"
+          },
+          "enteredAt": {
+            "type": "string",
+            "format": "date-time"
           },
           "decidedBy": {
             "type": "string"
@@ -14758,6 +15143,78 @@
           }
         }
       },
+      "LatePayment": {
+        "type": "object",
+        "properties": {
+          "latePaymentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quoteId": {
+            "type": "string"
+          },
+          "paymentId": {
+            "type": "string"
+          },
+          "txHash": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "string"
+          },
+          "arrivedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "waiting",
+              "refund_owed"
+            ]
+          },
+          "sweepId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "refundId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "RetiredWalletResponse": {
+        "type": "object",
+        "properties": {
+          "wallet": {
+            "$ref": "#/components/schemas/PoolWalletResponse"
+          },
+          "usdtBalance": {
+            "type": "string"
+          },
+          "blocksBalance": {
+            "type": "string"
+          },
+          "balancesRead": {
+            "type": "boolean"
+          },
+          "lateWaiting": {
+            "type": "string"
+          },
+          "latePayments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LatePayment"
+            }
+          },
+          "sweeps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PoolWalletSweepResponse"
+            }
+          }
+        }
+      },
       "PoolUtilizationResponse": {
         "type": "object",
         "properties": {
@@ -16510,6 +16967,7 @@
               "refund_payout",
               "liquidity_adjustment",
               "pool_wallet",
+              "pool_wallet_sweep",
               "parameter_change",
               "parameter_change_set",
               "backing_change"

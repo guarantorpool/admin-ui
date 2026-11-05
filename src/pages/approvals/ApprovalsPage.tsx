@@ -54,6 +54,8 @@ export function itsScreen(a: Approval): string {
       return '/pool/health?view=liquidity';
     case 'pool_wallet':
       return `/pool/wallets/${id}`;
+    case 'pool_wallet_sweep':
+      return `/pool/sweeps/${id}`;
     case 'parameter_change':
     case 'parameter_change_set':
       return '/pool/settings';

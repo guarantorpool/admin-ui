@@ -84,21 +84,37 @@ const SAFE_CALLS = { '0xa0e67e2b': 'getOwners', '0xe75235b8': 'getThreshold' };
 const word = (hex) => hex.replace(/^0x/, '').padStart(64, '0');
 
 /**
- * A JSON-RPC stand-in for BNB Smart Chain, on a free local port. It answers the three reads that check a pool wallet
- * (the block number, a contract's code, a Safe's getOwners and getThreshold) for the Safes registered with
- * `POST /safes` ({ address, owners, threshold }); any other call gets a JSON-RPC error, so the backend's other chain
- * reads fail as they would with no chain at all.
+ * A JSON-RPC stand-in for BNB Smart Chain, on a free local port. It answers the reads that check a pool wallet (the
+ * block number, a contract's code, a Safe's getOwners and getThreshold) for the Safes registered with `POST /safes`
+ * ({ address, owners, threshold }); a sweep's receipt and its block's time for the transactions registered with
+ * `POST /receipts` ({ hash, block, time, logs: [{ address, topics, data, logIndex }] }); and an ERC-20 balanceOf for
+ * the holdings registered with `POST /balances` ({ token, holder, raw }, raw as a hex word). Any other call gets a
+ * JSON-RPC error, so the backend's other chain reads fail as they would with no chain at all.
  */
 export async function startChain() {
   const safes = new Map();
+  const receipts = new Map();
+  const blockTimes = new Map();
+  const balances = new Map();
   const answer = ({ method, params = [] }) => {
     if (method === 'eth_blockNumber') return '0x100';
+    if (method === 'eth_getTransactionReceipt') {
+      const r = receipts.get(String(params[0]).toLowerCase());
+      if (r) return r;
+    }
+    if (method === 'eth_getBlockByNumber' && blockTimes.has(Number(params[0]))) return { timestamp: '0x' + blockTimes.get(Number(params[0])).toString(16) };
     if (method === 'eth_getCode') return safes.has(String(params[0]).toLowerCase()) ? '0x6080' : '0x';
     if (method === 'eth_call') {
       const safe = safes.get(String(params[0]?.to).toLowerCase());
       const call = SAFE_CALLS[String(params[0]?.data).slice(0, 10)];
       if (safe && call === 'getOwners') return '0x' + word('20') + word(safe.owners.length.toString(16)) + safe.owners.map(word).join('');
       if (safe && call === 'getThreshold') return '0x' + word(safe.threshold.toString(16));
+      // balanceOf(address): the token is the call's target, the holder its argument
+      const data = String(params[0]?.data);
+      if (data.slice(0, 10) === '0x70a08231') {
+        const raw = balances.get(String(params[0]?.to).toLowerCase() + ':0x' + data.slice(-40).toLowerCase());
+        if (raw) return '0x' + word(raw);
+      }
     }
     throw new Error(`${method} is not answered by the local chain`);
   };
@@ -111,6 +127,23 @@ export async function startChain() {
         const json = JSON.parse(body || '{}');
         if (req.url === '/safes') {
           safes.set(json.address.toLowerCase(), { owners: json.owners.map((o) => o.toLowerCase()), threshold: json.threshold });
+          res.end('{}');
+          return;
+        }
+        if (req.url === '/receipts') {
+          const hex = (n) => '0x' + n.toString(16);
+          receipts.set(json.hash.toLowerCase(), {
+            transactionHash: json.hash.toLowerCase(),
+            status: '0x1',
+            blockNumber: hex(json.block),
+            logs: json.logs.map((l) => ({ address: l.address, topics: l.topics, data: l.data, logIndex: hex(l.logIndex ?? 0) }))
+          });
+          blockTimes.set(json.block, json.time);
+          res.end('{}');
+          return;
+        }
+        if (req.url === '/balances') {
+          balances.set(json.token.toLowerCase() + ':' + json.holder.toLowerCase(), json.raw);
           res.end('{}');
           return;
         }
