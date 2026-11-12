@@ -11,32 +11,20 @@ import { OtpInput } from '@/components/ui/input-otp';
 import { env } from '@/lib/env';
 import * as store from '@/session/store';
 import { AuthLayout } from './AuthLayout';
-
-function useCountdown(seconds: number, restartKey: unknown): number {
-  const [left, setLeft] = React.useState(seconds);
-  React.useEffect(() => {
-    setLeft(seconds);
-    if (seconds <= 0) return;
-    const until = Date.now() + seconds * 1000;
-    const t = window.setInterval(() => {
-      const s = Math.max(0, Math.ceil((until - Date.now()) / 1000));
-      setLeft(s);
-      if (s === 0) window.clearInterval(t);
-    }, 500);
-    return () => window.clearInterval(t);
-  }, [seconds, restartKey]);
-  return left;
-}
+import { useCountdown } from './useCountdown';
 
 /**
  * Sign-in in two steps: email and password, then the one-time code (BlockCoop D-009).
- * With `locked` it is the lock screen (D-001): the email is kept, and signing in returns every tab to its
- * page, because this renders in place of the page without changing the address.
+ * With `locked` it is the lock screen (D-001): the email is filled in, and signing in returns every tab to its
+ * page, because this renders in place of the page without changing the address. The email stays editable:
+ * signing in with a different one forgets the lock, and that admin starts on their own first screen.
  */
 export function SignIn({ locked }: { locked?: store.Locked }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const notice = (location.state as { notice?: string } | null)?.notice ?? store.signOutNotice();
+  // a notice handed over by a page (a changed password) shows on the lock screen too; the sign-out one does not
+  const handedNotice = (location.state as { notice?: string } | null)?.notice;
+  const notice = handedNotice ?? (locked ? null : store.signOutNotice());
 
   const [email, setEmail] = React.useState(locked?.email ?? '');
   const [password, setPassword] = React.useState('');
@@ -75,7 +63,8 @@ export function SignIn({ locked }: { locked?: store.Locked }) {
       const res = await verifyOtp(challenge.challengeId, value);
       if (!res.profile) throw new Error('The GP API returned no session.');
       // The routes take it from here: the sign-in page goes on to `next` or the first screen, and a
-      // locked page renders again where it was.
+      // locked page renders again where it was. Another admin signing in on the lock screen is sent to
+      // their own first screen instead, in every tab (the store marks the session `switched`).
       store.signedIn(res.profile);
     } catch (err) {
       setError(errorMessage(err));
@@ -144,7 +133,7 @@ export function SignIn({ locked }: { locked?: store.Locked }) {
             No activity for {env.idleLockMinutes} minutes, so every tab was signed out. Sign in again to carry on where you left off.
           </p>
         ) : null}
-        {notice && !locked ? <Banner tone="ok">{notice}</Banner> : null}
+        {notice ? <Banner tone="ok">{notice}</Banner> : null}
         <Field id="email" label="Email">
           <Input
             id="email"
@@ -152,7 +141,6 @@ export function SignIn({ locked }: { locked?: store.Locked }) {
             autoComplete="username"
             required
             value={email}
-            readOnly={!!locked}
             onChange={(e) => setEmail(e.target.value)}
             autoFocus={!locked}
           />
@@ -177,7 +165,7 @@ export function SignIn({ locked }: { locked?: store.Locked }) {
             Sign in as someone else
           </Button>
         ) : null}
-        <Link to="/forgot-password" className="self-start font-medium text-ink-strong underline-offset-4 hover:underline">
+        <Link to={email.trim() ? `/forgot-password?email=${encodeURIComponent(email.trim())}` : '/forgot-password'} className="self-start font-medium text-ink-strong underline-offset-4 hover:underline">
           Forgot password
         </Link>
       </form>

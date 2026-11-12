@@ -76,6 +76,7 @@ export async function waitForMail(logPath, to, subject, { skip = 0, timeoutMs = 
 }
 
 export const loginCode = (mail) => /login code is:\s*(\d{6})/.exec(mail.body)?.[1];
+export const resetCode = (mail) => /password reset code is:\s*(\d{6})/.exec(mail.body)?.[1];
 export const linkIn = (mail, route) => new RegExp(`https?://\\S+/${route}\\?token=\\S+`).exec(mail.body)?.[0];
 
 // ------------------------------------------------------------------ the chain stand-in

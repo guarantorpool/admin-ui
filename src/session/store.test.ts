@@ -124,6 +124,58 @@ describe('idle lock (D-001)', () => {
     store.forgetLocked();
     expect(store.getState().status).toBe('signedOut');
   });
+
+  it('tells another admin signing in from the lock screen apart from the one it locked', () => {
+    const locked = { email: 'admin-a@test.local', at: NOW };
+    expect(store.isOtherAdmin(locked, ' Admin-A@test.local ')).toBe(false);
+    expect(store.isOtherAdmin(locked, 'admin-b@test.local')).toBe(true);
+    expect(store.isOtherAdmin(null, 'admin-b@test.local')).toBe(false);
+  });
+
+  it('marks the session switched when another admin signs in after the lock, in this tab or another', async () => {
+    fetchMock.mockResolvedValue(reply(200));
+    store.signedIn(profile(1));
+    await store.lock();
+    store.signedIn(profile(2, { email: 'admin-b@test.local' }));
+    const state = store.getState();
+    expect(state.status === 'signedIn' && state.switched).toBe(true);
+    store.ackAdminSwitch();
+    const after = store.getState();
+    expect(after.status === 'signedIn' && after.switched).toBe(false);
+
+    // another tab: the lock and then the new session arrive through storage events
+    localStorage.removeItem(store.SESSION_KEY);
+    localStorage.setItem(store.LOCKED_KEY, JSON.stringify({ email: 'admin-b@test.local', at: NOW }));
+    store.onStorage(new StorageEvent('storage', { key: store.LOCKED_KEY }));
+    localStorage.setItem(store.SESSION_KEY, JSON.stringify(store.fromLogin(profile(3))));
+    localStorage.removeItem(store.LOCKED_KEY);
+    store.onStorage(new StorageEvent('storage', { key: store.SESSION_KEY }));
+    const other = store.getState();
+    expect(other.status === 'signedIn' && other.switched).toBe(true);
+  });
+
+  it('does not mark the session switched when the locked admin signs back in', async () => {
+    fetchMock.mockResolvedValue(reply(200));
+    store.signedIn(profile(1));
+    await store.lock();
+    store.signedIn(profile(2, { email: 'Admin-A@test.local' }));
+    const state = store.getState();
+    expect(state.status === 'signedIn' && state.switched).toBeFalsy();
+  });
+
+  it('stores the new session before clearing the lock, so another tab never passes through signed out', () => {
+    const order: string[] = [];
+    const set = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, k: string) {
+      order.push(`set:${k}`);
+    });
+    const remove = vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(function (this: Storage, k: string) {
+      order.push(`remove:${k}`);
+    });
+    store.signedIn(profile(1));
+    set.mockRestore();
+    remove.mockRestore();
+    expect(order.indexOf(`set:${store.SESSION_KEY}`)).toBeLessThan(order.indexOf(`remove:${store.LOCKED_KEY}`));
+  });
 });
 
 describe('refresh', () => {

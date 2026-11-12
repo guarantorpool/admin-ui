@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { codeFor, linkFor, mailCount, newAdmin, signIn, stack } from './helpers';
+import { codeFor, mailCount, newAdmin, resetCodeFor, signIn, stack } from './helpers';
 
 test.describe('sign-in (slice 1)', () => {
   test('signs in with password and code, and lands on the dashboard', async ({ page }) => {
@@ -63,17 +63,21 @@ test.describe('sign-in (slice 1)', () => {
     await expect(page.getByRole('heading', { name: 'Not available to your role' })).toBeVisible();
   });
 
-  test('resets a forgotten password from the emailed link', async ({ page }) => {
+  test('resets a forgotten password with the emailed code', async ({ page }) => {
     const user = await newAdmin(page, ['AUDIT.READ'], 'Forgot');
     await page.goto('/sign-in');
     await page.getByRole('link', { name: 'Forgot password' }).click();
     const skip = mailCount();
     await page.getByLabel('Email').fill(user.email);
-    await page.getByRole('button', { name: 'Email the link' }).click();
-    await expect(page.getByText(/a link to set a new password is on its way/)).toBeVisible();
+    await page.getByRole('button', { name: 'Email me a code' }).click();
+    await expect(page).toHaveURL(/\/reset-password\?email=/);
+    await expect(page.getByText(/a 6-digit code is on its way/)).toBeVisible();
+    await expect(page.getByText(/link/i)).toHaveCount(0);
+    // the backend allows a new code after 60 seconds
+    await expect(page.getByRole('button', { name: /Send a new code in \d+s/ })).toBeDisabled();
 
-    const link = new URL(await linkFor(user.email, /reset/i, 'reset-password', skip));
-    await page.goto(link.pathname + link.search);
+    const code = await resetCodeFor(user.email, skip);
+    await page.getByLabel('Reset code').fill(code === '000000' ? '111111' : '000000');
     await page.getByLabel('New password', { exact: true }).fill('short');
     await page.getByLabel('New password again').fill('short');
     await page.getByRole('button', { name: 'Change the password' }).click();
@@ -82,6 +86,10 @@ test.describe('sign-in (slice 1)', () => {
     const next = 'New-Pass-2026!x';
     await page.getByLabel('New password', { exact: true }).fill(next);
     await page.getByLabel('New password again').fill(next);
+    await page.getByRole('button', { name: 'Change the password' }).click();
+    await expect(page.getByRole('alert')).toContainText('This code is invalid or has expired');
+
+    await page.getByLabel('Reset code').fill(code);
     await page.getByRole('button', { name: 'Change the password' }).click();
     await expect(page.getByText('Your password was changed. Sign in with the new one.')).toBeVisible();
     await signIn(page, user.email, next);

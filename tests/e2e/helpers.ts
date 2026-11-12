@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { expect, type Page } from '@playwright/test';
 import { Wallet } from 'ethers';
 import { randomUUID } from 'node:crypto';
-import { docker, linkIn, loginCode, readMails, waitForMail, type Mail } from '../../scripts/local-stack.mjs';
+import { docker, linkIn, loginCode, readMails, resetCode, waitForMail, type Mail } from '../../scripts/local-stack.mjs';
 
 interface StackState {
   apiBase: string;
@@ -25,6 +25,13 @@ export function nextMail(to: string, subject: RegExp, skip: number): Promise<Mai
 export async function codeFor(email: string, skip: number): Promise<string> {
   const code = loginCode(await nextMail(email, /login code/i, skip));
   if (!code) throw new Error(`No code in the email to ${email}`);
+  return code;
+}
+
+/** The 6-digit code from the next password reset email to `email`. */
+export async function resetCodeFor(email: string, skip: number): Promise<string> {
+  const code = resetCode(await nextMail(email, /password reset code/i, skip));
+  if (!code) throw new Error(`No password reset code in the email to ${email}`);
   return code;
 }
 
