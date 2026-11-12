@@ -4105,7 +4105,7 @@
         "tags": [
           "Auth"
         ],
-        "summary": "A new admin sets their first password with the token from the invitation email",
+        "summary": "A new admin sets their first password with the token from the invitation link",
         "operationId": "setPassword",
         "requestBody": {
           "content": {
@@ -4176,7 +4176,8 @@
         "tags": [
           "Auth"
         ],
-        "summary": "Set a new password with the email and the code from the reset email. Logs out every session. A wrong or expired code answers 400.",
+        "summary": "Set a new password with the emailed reset code. Logs out every session.",
+        "description": "A wrong, expired or unknown email or code all answer 400 \"This code is invalid or has expired\". Each wrong code uses up one attempt; after the last one, ask for a new code.",
         "operationId": "resetPassword",
         "requestBody": {
           "content": {
@@ -4665,7 +4666,8 @@
         "tags": [
           "Auth"
         ],
-        "summary": "Email a 6-digit password reset code. Always answers the same, whether or not the account exists. Calling it again sends a new code once the resend wait is over.",
+        "summary": "Email an admin a 6-digit password reset code",
+        "description": "Always answers 200 with the same body, whether or not an admin account exists for the email. Asking again sends a new code once resendAvailableInSeconds has passed, up to the resend limit; otherwise nothing is sent, with the same answer. The code expires after expiresInSeconds.",
         "operationId": "forgotPassword",
         "requestBody": {
           "content": {
@@ -4683,7 +4685,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ForgotPasswordResponse"
+                  "$ref": "#/components/schemas/ResetCodeResponse"
                 }
               }
             }
@@ -14592,22 +14594,6 @@
           "email"
         ]
       },
-      "ForgotPasswordResponse": {
-        "type": "object",
-        "properties": {
-          "message": {
-            "type": "string"
-          },
-          "expiresInSeconds": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "resendAvailableInSeconds": {
-            "type": "integer",
-            "format": "int64"
-          }
-        }
-      },
       "WalletRecoveryRequest": {
         "type": "object",
         "properties": {
@@ -14731,7 +14717,8 @@
           },
           "code": {
             "type": "string",
-            "pattern": "^\\d{6}$"
+            "maxLength": 20,
+            "minLength": 0
           },
           "newPassword": {
             "type": "string",
@@ -14804,6 +14791,25 @@
         "required": [
           "pass"
         ]
+      },
+      "ResetCodeResponse": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "expiresInSeconds": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "resendAvailableInSeconds": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
       },
       "ChangePasswordRequest": {
         "type": "object",

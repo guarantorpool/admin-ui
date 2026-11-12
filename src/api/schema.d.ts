@@ -924,7 +924,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** A new admin sets their first password with the token from the invitation email */
+        /** A new admin sets their first password with the token from the invitation link */
         post: operations["setPassword"];
         delete?: never;
         options?: never;
@@ -941,7 +941,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Set a new password with the email and the code from the reset email. Logs out every session. A wrong or expired code answers 400. */
+        /**
+         * Set a new password with the emailed reset code. Logs out every session.
+         * @description A wrong, expired or unknown email or code all answer 400 "This code is invalid or has expired". Each wrong code uses up one attempt; after the last one, ask for a new code.
+         */
         post: operations["resetPassword"];
         delete?: never;
         options?: never;
@@ -1066,7 +1069,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Email a 6-digit password reset code. Always answers the same, whether or not the account exists. Calling it again sends a new code once the resend wait is over. */
+        /**
+         * Email an admin a 6-digit password reset code
+         * @description Always answers 200 with the same body, whether or not an admin account exists for the email. Asking again sends a new code once resendAvailableInSeconds has passed, up to the resend limit; otherwise nothing is sent, with the same answer. The code expires after expiresInSeconds.
+         */
         post: operations["forgotPassword"];
         delete?: never;
         options?: never;
@@ -3564,13 +3570,6 @@ export interface components {
         EmailRequest: {
             email: string;
         };
-        ForgotPasswordResponse: {
-            message?: string;
-            /** Format: int64 */
-            expiresInSeconds?: number;
-            /** Format: int64 */
-            resendAvailableInSeconds?: number;
-        };
         WalletRecoveryRequest: {
             token: string;
             message: string;
@@ -3624,6 +3623,14 @@ export interface components {
         };
         GpPassRequest: {
             pass: string;
+        };
+        ResetCodeResponse: {
+            title?: string;
+            message?: string;
+            /** Format: int64 */
+            expiresInSeconds?: number;
+            /** Format: int64 */
+            resendAvailableInSeconds?: number;
         };
         ChangePasswordRequest: {
             currentPassword: string;
@@ -8182,7 +8189,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ForgotPasswordResponse"];
+                    "*/*": components["schemas"]["ResetCodeResponse"];
                 };
             };
             /** @description Invalid request */

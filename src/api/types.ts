@@ -7,4 +7,4 @@ export type LoginProfile = Schemas['Profile'];
 export type OtpChallenge = Schemas['OtpChallengeResponse'];
 export type Account = Schemas['AccountResponse'];
 export type MessageResponse = Schemas['MessageResponse'];
-export type ForgotPasswordResponse = Schemas['ForgotPasswordResponse'];
+export type ResetCodeResponse = Schemas['ResetCodeResponse'];
