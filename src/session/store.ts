@@ -40,7 +40,8 @@ export interface Locked {
 export type SessionState =
   | { status: 'signedOut'; session: null; locked: null }
   | { status: 'locked'; session: null; locked: Locked }
-  | { status: 'signedIn'; session: Session; locked: null };
+  /** `switched`: this tab showed the lock screen for another admin, so the page it kept is not this admin's. */
+  | { status: 'signedIn'; session: Session; locked: null; switched?: boolean };
 
 // ------------------------------------------------------------------ storage
 
@@ -103,6 +104,11 @@ export function fromLogin(p: LoginProfile): Session {
 
 const listeners = new Set<() => void>();
 let snapshot: SessionState = compute();
+/**
+ * The admin this tab last showed the lock screen for, until someone signs in. It outlasts a forgotten lock
+ * ("Sign in as someone else"), so a tab that kept the locked admin's page still learns the admin changed.
+ */
+let lockedFor: string | null = snapshot.locked?.email ?? null;
 
 function compute(): SessionState {
   const session = readSession();
@@ -117,7 +123,14 @@ function emit(): void {
   const same = next.status === snapshot.status
     && JSON.stringify(next.session) === JSON.stringify(snapshot.session)
     && JSON.stringify(next.locked) === JSON.stringify(snapshot.locked);
-  if (!same) snapshot = next;
+  if (!same) {
+    if (next.status === 'locked') lockedFor = next.locked.email;
+    if (next.status === 'signedIn') {
+      if (lockedFor !== null && isOtherAdmin({ email: lockedFor, at: 0 }, next.session.email)) next.switched = true;
+      lockedFor = null;
+    }
+    snapshot = next;
+  }
   listeners.forEach((l) => l());
 }
 
@@ -142,8 +155,10 @@ export function signedIn(profile: LoginProfile, now = Date.now()): Session {
   // activity first: another tab that sees the new session before the new activity time would find
   // every tab idle and lock them all again
   write(ACTIVITY_KEY, now);
-  write(LOCKED_KEY, null);
+  // the session before clearing the lock, so another tab goes straight from locked to signed in, never
+  // through signed out (which would send it to the sign-in page)
   write(SESSION_KEY, session);
+  write(LOCKED_KEY, null);
   notice = null;
   emit();
   return session;
@@ -170,6 +185,7 @@ export function signOutNotice(): string | null {
  */
 export function clearSession(reason?: string): void {
   notice = reason ?? null;
+  lockedFor = null;
   write(SESSION_KEY, null);
   write(LOCKED_KEY, null);
   emit();
@@ -239,6 +255,13 @@ export function forgetLocked(): void {
   emit();
 }
 
+/** The route guards have sent this tab to the new admin's first screen after a `switched` sign-in. */
+export function ackAdminSwitch(): void {
+  if (snapshot.status !== 'signedIn' || !snapshot.switched) return;
+  snapshot = { ...snapshot, switched: false };
+  listeners.forEach((l) => l());
+}
+
 /**
  * True when the lock screen is being used to sign in as a different admin than the one it locked, so the
  * lock (and the page it kept) belongs to someone else and is forgotten.
@@ -294,5 +317,6 @@ export function refresh(staleToken: string): Promise<Session | null> {
 /** For tests: re-reads storage after it was changed directly. */
 export function reload(): void {
   lastActivityWrite = 0;
+  lockedFor = null;
   emit();
 }

@@ -1,3 +1,4 @@
+import * as React from 'react';
 import { Navigate, Outlet, Route, Routes, useLocation, useSearchParams } from 'react-router-dom';
 import { AppShell } from '@/components/shell/AppShell';
 import { allScreens, homePath, safeNext } from '@/components/shell/nav';
@@ -26,6 +27,7 @@ import { PaymentsPage } from '@/pages/payments/PaymentsPage';
 import { RefundsPage } from '@/pages/refunds/RefundsPage';
 import { ServiceKeysPage } from '@/pages/serviceKeys/ServiceKeysPage';
 import { useGrants, useSession } from '@/session/SessionProvider';
+import * as store from '@/session/store';
 
 /**
  * Screens that need a session. Signed out: go to sign-in, coming back here after. Locked (D-001): the
@@ -34,6 +36,7 @@ import { useGrants, useSession } from '@/session/SessionProvider';
 function RequireSession() {
   const state = useSession();
   const location = useLocation();
+  if (state.status === 'signedIn' && state.switched) return <SwitchedAdmin />;
   if (state.status === 'locked') return <SignIn locked={state.locked} />;
   if (state.status === 'signedOut') {
     const next = location.pathname + location.search;
@@ -42,11 +45,22 @@ function RequireSession() {
   return <Outlet />;
 }
 
+/**
+ * Another admin signed in from the lock screen (in this tab or another): the page this tab kept, and any
+ * `next`, were the locked admin's, so this admin starts on their own first screen.
+ */
+function SwitchedAdmin() {
+  const grants = useGrants();
+  React.useEffect(() => store.ackAdminSwitch(), []);
+  return <Navigate to={homePath(grants)} replace />;
+}
+
 /** Sign-in pages: a signed-in admin is sent on to the page they came for, or their first screen. */
 function SignedOutOnly() {
   const state = useSession();
   const grants = useGrants();
   const [params] = useSearchParams();
+  if (state.status === 'signedIn' && state.switched) return <SwitchedAdmin />;
   if (state.status === 'signedIn') return <Navigate to={safeNext(params.get('next')) ?? homePath(grants)} replace />;
   if (state.status === 'locked') return <SignIn locked={state.locked} />;
   return <Outlet />;

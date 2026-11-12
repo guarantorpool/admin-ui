@@ -62,14 +62,9 @@ export function SignIn({ locked }: { locked?: store.Locked }) {
     try {
       const res = await verifyOtp(challenge.challengeId, value);
       if (!res.profile) throw new Error('The GP API returned no session.');
-      if (store.isOtherAdmin(locked, email)) {
-        // someone else is signing in on the lock screen: the locked admin's page (and `next`) is not theirs.
-        // Both changes render together, so the lock screen stays until the new session opens their home.
-        navigate('/', { replace: true });
-        store.forgetLocked();
-      }
       // The routes take it from here: the sign-in page goes on to `next` or the first screen, and a
-      // locked page renders again where it was.
+      // locked page renders again where it was. Another admin signing in on the lock screen is sent to
+      // their own first screen instead, in every tab (the store marks the session `switched`).
       store.signedIn(res.profile);
     } catch (err) {
       setError(errorMessage(err));

@@ -45,13 +45,15 @@ test.describe('session (D-001)', () => {
     await expect(page.getByLabel('Email')).toHaveValue('');
   });
 
-  test('another admin can sign in from the lock screen, which forgets the lock and its page', async ({ page }) => {
+  test('another admin can sign in from the lock screen, which forgets the lock and its page in every tab', async ({ page, context }) => {
     const first = await newAdmin(page, ['MEMBERS.READ'], 'Locked');
     const second = await newAdmin(page, ['REFUNDS.READ'], 'Other');
     await signIn(page, first.email, first.password);
     await page.goto('/members');
+    const other = await context.newPage();
+    await other.goto('/members/unknown');
     await goIdle(page);
-    await expect(page.getByRole('heading', { name: 'Your session was locked' })).toBeVisible();
+    for (const p of [page, other]) await expect(p.getByRole('heading', { name: 'Your session was locked' })).toBeVisible();
 
     const email = page.getByLabel('Email');
     await expect(email).toBeEditable();
@@ -64,6 +66,8 @@ test.describe('session (D-001)', () => {
     await email.fill(second.email);
     await signIn(page, second.email, second.password, { fromLockScreen: true });
     await expect(page).toHaveURL(/\/dashboard$/);
+    // the other tab kept the locked admin's record page; it goes to the new admin's first screen too
+    await expect(other).toHaveURL(/\/dashboard$/);
     expect(await page.evaluate(() => localStorage.getItem('blockcoop-admin.locked'))).toBeNull();
   });
 
