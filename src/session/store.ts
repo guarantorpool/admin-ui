@@ -239,6 +239,15 @@ export function forgetLocked(): void {
   emit();
 }
 
+/**
+ * True when the lock screen is being used to sign in as a different admin than the one it locked, so the
+ * lock (and the page it kept) belongs to someone else and is forgotten.
+ */
+export function isOtherAdmin(locked: Locked | null | undefined, email: string): boolean {
+  if (!locked) return false;
+  return locked.email.trim().toLowerCase() !== email.trim().toLowerCase();
+}
+
 let inTabRefresh: Promise<Session | null> | null = null;
 
 /**

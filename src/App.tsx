@@ -63,10 +63,11 @@ export function App() {
       <Route element={<SignedOutOnly />}>
         <Route path="/sign-in" element={<SignIn />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+        {/* the reset code step: the code is typed in, not opened from a link */}
+        <Route path="/reset-password" element={<ResetPassword />} />
       </Route>
       {/* emailed links open whatever the session, so a signed-in admin can still accept an invitation link */}
       <Route path="/set-password" element={<SetPassword />} />
-      <Route path="/reset-password" element={<ResetPassword />} />
       <Route element={<RequireSession />}>
         <Route element={<AppShell />}>
           <Route index element={<Home />} />

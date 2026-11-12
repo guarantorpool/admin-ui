@@ -941,7 +941,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Set a new password with the token from the reset email. Logs out every session. */
+        /** Set a new password with the email and the code from the reset email. Logs out every session. A wrong or expired code answers 400. */
         post: operations["resetPassword"];
         delete?: never;
         options?: never;
@@ -1066,7 +1066,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Email a password reset link. Always answers the same, whether or not the account exists. */
+        /** Email a 6-digit password reset code. Always answers the same, whether or not the account exists. Calling it again sends a new code once the resend wait is over. */
         post: operations["forgotPassword"];
         delete?: never;
         options?: never;
@@ -3564,6 +3564,13 @@ export interface components {
         EmailRequest: {
             email: string;
         };
+        ForgotPasswordResponse: {
+            message?: string;
+            /** Format: int64 */
+            expiresInSeconds?: number;
+            /** Format: int64 */
+            resendAvailableInSeconds?: number;
+        };
         WalletRecoveryRequest: {
             token: string;
             message: string;
@@ -3591,6 +3598,11 @@ export interface components {
         };
         NewPasswordRequest: {
             token: string;
+            newPassword: string;
+        };
+        ResetPasswordRequest: {
+            email: string;
+            code: string;
             newPassword: string;
         };
         ResendOtpRequest: {
@@ -7744,7 +7756,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["NewPasswordRequest"];
+                "application/json": components["schemas"]["ResetPasswordRequest"];
             };
         };
         responses: {
@@ -8170,7 +8182,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["MessageResponse"];
+                    "*/*": components["schemas"]["ForgotPasswordResponse"];
                 };
             };
             /** @description Invalid request */

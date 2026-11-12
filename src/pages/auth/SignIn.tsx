@@ -11,27 +11,13 @@ import { OtpInput } from '@/components/ui/input-otp';
 import { env } from '@/lib/env';
 import * as store from '@/session/store';
 import { AuthLayout } from './AuthLayout';
-
-function useCountdown(seconds: number, restartKey: unknown): number {
-  const [left, setLeft] = React.useState(seconds);
-  React.useEffect(() => {
-    setLeft(seconds);
-    if (seconds <= 0) return;
-    const until = Date.now() + seconds * 1000;
-    const t = window.setInterval(() => {
-      const s = Math.max(0, Math.ceil((until - Date.now()) / 1000));
-      setLeft(s);
-      if (s === 0) window.clearInterval(t);
-    }, 500);
-    return () => window.clearInterval(t);
-  }, [seconds, restartKey]);
-  return left;
-}
+import { useCountdown } from './useCountdown';
 
 /**
  * Sign-in in two steps: email and password, then the one-time code (BlockCoop D-009).
- * With `locked` it is the lock screen (D-001): the email is kept, and signing in returns every tab to its
- * page, because this renders in place of the page without changing the address.
+ * With `locked` it is the lock screen (D-001): the email is filled in, and signing in returns every tab to its
+ * page, because this renders in place of the page without changing the address. The email stays editable:
+ * signing in with a different one forgets the lock, and that admin starts on their own first screen.
  */
 export function SignIn({ locked }: { locked?: store.Locked }) {
   const navigate = useNavigate();
@@ -74,6 +60,12 @@ export function SignIn({ locked }: { locked?: store.Locked }) {
     try {
       const res = await verifyOtp(challenge.challengeId, value);
       if (!res.profile) throw new Error('The GP API returned no session.');
+      if (store.isOtherAdmin(locked, email)) {
+        // someone else is signing in on the lock screen: the locked admin's page (and `next`) is not theirs.
+        // Both changes render together, so the lock screen stays until the new session opens their home.
+        navigate('/', { replace: true });
+        store.forgetLocked();
+      }
       // The routes take it from here: the sign-in page goes on to `next` or the first screen, and a
       // locked page renders again where it was.
       store.signedIn(res.profile);
@@ -152,7 +144,6 @@ export function SignIn({ locked }: { locked?: store.Locked }) {
             autoComplete="username"
             required
             value={email}
-            readOnly={!!locked}
             onChange={(e) => setEmail(e.target.value)}
             autoFocus={!locked}
           />

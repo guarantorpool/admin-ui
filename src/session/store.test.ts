@@ -124,6 +124,13 @@ describe('idle lock (D-001)', () => {
     store.forgetLocked();
     expect(store.getState().status).toBe('signedOut');
   });
+
+  it('tells another admin signing in from the lock screen apart from the one it locked', () => {
+    const locked = { email: 'admin-a@test.local', at: NOW };
+    expect(store.isOtherAdmin(locked, ' Admin-A@test.local ')).toBe(false);
+    expect(store.isOtherAdmin(locked, 'admin-b@test.local')).toBe(true);
+    expect(store.isOtherAdmin(null, 'admin-b@test.local')).toBe(false);
+  });
 });
 
 describe('refresh', () => {

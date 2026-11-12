@@ -1,5 +1,5 @@
 import { api } from './client';
-import type { Account, MessageResponse, OtpChallenge, Schemas } from './types';
+import type { Account, ForgotPasswordResponse, MessageResponse, OtpChallenge, Schemas } from './types';
 
 type LoginResponse = Schemas['LoginResponse'];
 const open = { auth: false } as const;
@@ -15,12 +15,16 @@ export const verifyOtp = (challengeId: string, code: string) =>
 export const resendOtp = (challengeId: string) =>
   api.post<OtpChallenge>('/auth/resend-otp', { challengeId } satisfies Schemas['ResendOtpRequest'], open);
 
+// Emails a 6-digit reset code. It answers the same for every email; calling it again is the resend, which the
+// backend ignores until its wait is over.
 export const forgotPassword = (email: string) =>
-  api.post<MessageResponse>('/auth/forgot-password', { email } satisfies Schemas['EmailRequest'], open);
+  api.post<ForgotPasswordResponse>('/auth/forgot-password', { email } satisfies Schemas['EmailRequest'], open);
 
-export const resetPassword = (token: string, newPassword: string) =>
-  api.post<MessageResponse>('/auth/reset-password', { token, newPassword } satisfies Schemas['NewPasswordRequest'], open);
+// A wrong or expired code answers 400 "This code is invalid or has expired".
+export const resetPassword = (email: string, code: string, newPassword: string) =>
+  api.post<MessageResponse>('/auth/reset-password', { email, code, newPassword } satisfies Schemas['ResetPasswordRequest'], open);
 
+// The new-admin invitation, with the token from the emailed link.
 export const setPassword = (token: string, newPassword: string) =>
   api.post<MessageResponse>('/auth/set-password', { token, newPassword } satisfies Schemas['NewPasswordRequest'], open);
 

@@ -45,6 +45,28 @@ test.describe('session (D-001)', () => {
     await expect(page.getByLabel('Email')).toHaveValue('');
   });
 
+  test('another admin can sign in from the lock screen, which forgets the lock and its page', async ({ page }) => {
+    const first = await newAdmin(page, ['MEMBERS.READ'], 'Locked');
+    const second = await newAdmin(page, ['REFUNDS.READ'], 'Other');
+    await signIn(page, first.email, first.password);
+    await page.goto('/members');
+    await goIdle(page);
+    await expect(page.getByRole('heading', { name: 'Your session was locked' })).toBeVisible();
+
+    const email = page.getByLabel('Email');
+    await expect(email).toBeEditable();
+    // a wrong password keeps the email editable
+    await page.getByLabel('Password').fill('Wrong-password-1!');
+    await page.getByRole('button', { name: 'Continue' }).click();
+    await expect(page.getByRole('alert')).toBeVisible();
+    await expect(email).toBeEditable();
+
+    await email.fill(second.email);
+    await signIn(page, second.email, second.password, { fromLockScreen: true });
+    await expect(page).toHaveURL(/\/dashboard$/);
+    expect(await page.evaluate(() => localStorage.getItem('blockcoop-admin.locked'))).toBeNull();
+  });
+
   test('two tabs refreshing an expired token together stay signed in', async ({ page, context }) => {
     const user = await newAdmin(page, ['ALERTS.READ'], 'Refresh');
     await signIn(page, user.email, user.password);

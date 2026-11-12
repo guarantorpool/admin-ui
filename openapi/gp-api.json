@@ -4176,13 +4176,13 @@
         "tags": [
           "Auth"
         ],
-        "summary": "Set a new password with the token from the reset email. Logs out every session.",
+        "summary": "Set a new password with the email and the code from the reset email. Logs out every session. A wrong or expired code answers 400.",
         "operationId": "resetPassword",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/NewPasswordRequest"
+                "$ref": "#/components/schemas/ResetPasswordRequest"
               }
             }
           },
@@ -4665,7 +4665,7 @@
         "tags": [
           "Auth"
         ],
-        "summary": "Email a password reset link. Always answers the same, whether or not the account exists.",
+        "summary": "Email a 6-digit password reset code. Always answers the same, whether or not the account exists. Calling it again sends a new code once the resend wait is over.",
         "operationId": "forgotPassword",
         "requestBody": {
           "content": {
@@ -4683,7 +4683,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/MessageResponse"
+                  "$ref": "#/components/schemas/ForgotPasswordResponse"
                 }
               }
             }
@@ -14592,6 +14592,22 @@
           "email"
         ]
       },
+      "ForgotPasswordResponse": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "expiresInSeconds": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "resendAvailableInSeconds": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "WalletRecoveryRequest": {
         "type": "object",
         "properties": {
@@ -14703,6 +14719,30 @@
         "required": [
           "newPassword",
           "token"
+        ]
+      },
+      "ResetPasswordRequest": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[a-zA-Z0-9_+&*-]+(?:\\.[a-zA-Z0-9_+&*-]+)*@(?:[a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,7}$"
+          },
+          "code": {
+            "type": "string",
+            "pattern": "^\\d{6}$"
+          },
+          "newPassword": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z0-9]).{8,72}$"
+          }
+        },
+        "required": [
+          "code",
+          "email",
+          "newPassword"
         ]
       },
       "ResendOtpRequest": {
