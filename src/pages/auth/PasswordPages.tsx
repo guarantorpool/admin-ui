@@ -97,6 +97,7 @@ export function ResetPassword() {
   const [error, setError] = React.useState('');
   const [busy, setBusy] = React.useState(false);
   const [resent, setResent] = React.useState(false);
+  const [resending, setResending] = React.useState(false);
   const resendIn = useCountdown(sent.resendAvailableInSeconds ?? 0, sent);
   const codeRef = React.useRef<HTMLInputElement>(null);
 
@@ -130,8 +131,10 @@ export function ResetPassword() {
   };
 
   const resend = async () => {
+    if (resending) return;
     setError('');
     setResent(false);
+    setResending(true);
     try {
       const fresh = await forgotPassword(email);
       setSent({ expiresInSeconds: fresh.expiresInSeconds, resendAvailableInSeconds: fresh.resendAvailableInSeconds });
@@ -139,6 +142,8 @@ export function ResetPassword() {
       setCode('');
     } catch (err) {
       setError(errorMessage(err));
+    } finally {
+      setResending(false);
     }
   };
 
@@ -161,8 +166,8 @@ export function ResetPassword() {
         <Button type="submit" disabled={busy}>
           {busy ? 'Saving…' : 'Change the password'}
         </Button>
-        <Button type="button" variant="outline" onClick={() => void resend()} disabled={resendIn > 0 || busy}>
-          {resendIn > 0 ? `Send a new code in ${resendIn}s` : 'Send a new code'}
+        <Button type="button" variant="outline" onClick={() => void resend()} disabled={resendIn > 0 || busy || resending}>
+          {resending ? 'Sending…' : resendIn > 0 ? `Send a new code in ${resendIn}s` : 'Send a new code'}
         </Button>
         <Link to={`/forgot-password?email=${encodeURIComponent(email)}`} className="self-start font-medium text-ink-strong underline-offset-4 hover:underline">
           Use a different email

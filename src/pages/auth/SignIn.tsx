@@ -22,7 +22,9 @@ import { useCountdown } from './useCountdown';
 export function SignIn({ locked }: { locked?: store.Locked }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const notice = (location.state as { notice?: string } | null)?.notice ?? store.signOutNotice();
+  // a notice handed over by a page (a changed password) shows on the lock screen too; the sign-out one does not
+  const handedNotice = (location.state as { notice?: string } | null)?.notice;
+  const notice = handedNotice ?? (locked ? null : store.signOutNotice());
 
   const [email, setEmail] = React.useState(locked?.email ?? '');
   const [password, setPassword] = React.useState('');
@@ -136,7 +138,7 @@ export function SignIn({ locked }: { locked?: store.Locked }) {
             No activity for {env.idleLockMinutes} minutes, so every tab was signed out. Sign in again to carry on where you left off.
           </p>
         ) : null}
-        {notice && !locked ? <Banner tone="ok">{notice}</Banner> : null}
+        {notice ? <Banner tone="ok">{notice}</Banner> : null}
         <Field id="email" label="Email">
           <Input
             id="email"
@@ -168,7 +170,7 @@ export function SignIn({ locked }: { locked?: store.Locked }) {
             Sign in as someone else
           </Button>
         ) : null}
-        <Link to="/forgot-password" className="self-start font-medium text-ink-strong underline-offset-4 hover:underline">
+        <Link to={email.trim() ? `/forgot-password?email=${encodeURIComponent(email.trim())}` : '/forgot-password'} className="self-start font-medium text-ink-strong underline-offset-4 hover:underline">
           Forgot password
         </Link>
       </form>

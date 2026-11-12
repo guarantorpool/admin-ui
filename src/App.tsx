@@ -52,6 +52,17 @@ function SignedOutOnly() {
   return <Outlet />;
 }
 
+/**
+ * Forgot password and the reset code step: like the sign-in pages, but they stay open on the lock screen, so a
+ * locked admin who forgot the password can follow its "Forgot password" link instead of getting the lock again.
+ */
+function SignedOutOrLocked() {
+  const state = useSession();
+  const grants = useGrants();
+  if (state.status === 'signedIn') return <Navigate to={homePath(grants)} replace />;
+  return <Outlet />;
+}
+
 function Home() {
   const grants = useGrants();
   return <Navigate to={homePath(grants)} replace />;
@@ -62,6 +73,8 @@ export function App() {
     <Routes>
       <Route element={<SignedOutOnly />}>
         <Route path="/sign-in" element={<SignIn />} />
+      </Route>
+      <Route element={<SignedOutOrLocked />}>
         <Route path="/forgot-password" element={<ForgotPassword />} />
         {/* the reset code step: the code is typed in, not opened from a link */}
         <Route path="/reset-password" element={<ResetPassword />} />
