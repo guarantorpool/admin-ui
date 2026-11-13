@@ -13,12 +13,14 @@ test.describe('your account (slice 1)', () => {
     await page.getByLabel('First name').fill('Wanjiru');
     await page.getByLabel('Phone number').fill('not a phone');
     await page.getByRole('button', { name: 'Save' }).click();
-    await expect(page.getByRole('dialog').getByRole('alert')).toContainText('Kenyan mobile number');
-    await page.getByLabel('Phone number').fill('+254722000111');
+    await expect(page.getByRole('dialog').getByRole('alert')).toContainText('Enter a mobile number');
+    // another country's number, typed with spaces, is saved without them
+    const phone = `+44 7700 ${String(Date.now()).slice(-6)}`;
+    await page.getByLabel('Phone number').fill(phone);
     await page.getByRole('button', { name: 'Save' }).click();
     await expect(page.getByText('Your details were saved.')).toBeVisible();
     await expect(page.getByText('Wanjiru Profile')).toBeVisible();
-    await expect(page.getByText('+254722000111')).toBeVisible();
+    await expect(page.getByText(phone.replace(/ /g, ''))).toBeVisible();
     await expect(page.getByRole('button', { name: /Your account menu, Wanjiru/ })).toBeVisible();
   });
 

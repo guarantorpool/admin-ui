@@ -18,10 +18,10 @@ import { formatDateTime } from '@/lib/format';
 import { fullName } from '@/lib/names';
 import { roleLabel } from '@/lib/roles';
 import { checkNewPassword, PASSWORD_RULES } from '@/lib/password';
+import { cleanPhone, isPhone, PHONE_MESSAGE } from '@/lib/phone';
 import { useSession } from '@/session/SessionProvider';
 import * as store from '@/session/store';
 
-const PHONE = /^\+?(?:254|0)([17]\d{8})$/;
 const NAME = /^[\p{L} .'-]+$/u;
 const IMAGE_TYPES = 'image/jpeg,image/png,image/gif,image/webp';
 
@@ -47,7 +47,7 @@ function EditProfile({ account, open, onOpenChange }: { account: AccountData; op
   }, [open, account]);
 
   const save = useMutation({
-    mutationFn: () => updateProfile({ firstName: first.trim(), lastName: last.trim(), ...(phone.trim() ? { phoneNumber: phone.trim() } : {}) }),
+    mutationFn: () => updateProfile({ firstName: first.trim(), lastName: last.trim(), ...(phone.trim() ? { phoneNumber: cleanPhone(phone) } : {}) }),
     onSuccess: (updated) => {
       qc.setQueryData(['profile'], updated);
       store.updateProfile({ firstName: updated.firstName ?? '', lastName: updated.lastName ?? '' });
@@ -60,7 +60,7 @@ function EditProfile({ account, open, onOpenChange }: { account: AccountData; op
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!NAME.test(first.trim()) || !NAME.test(last.trim())) return setError('Names can only have letters, spaces, dots, apostrophes and hyphens.');
-    if (phone.trim() && !PHONE.test(phone.trim())) return setError('Enter a Kenyan mobile number, such as 0712345678 or +254712345678.');
+    if (phone.trim() && !isPhone(phone)) return setError(PHONE_MESSAGE);
     setError('');
     save.mutate();
   };
