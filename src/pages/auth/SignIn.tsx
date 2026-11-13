@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { adminLogin, resendOtp, verifyOtp } from '@/api/auth';
-import { errorMessage } from '@/api/errors';
+import { ApiError, errorMessage } from '@/api/errors';
 import type { OtpChallenge } from '@/api/types';
 import { Banner } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -67,10 +67,26 @@ export function SignIn({ locked }: { locked?: store.Locked }) {
       // their own first screen instead, in every tab (the store marks the session `switched`).
       store.signedIn(res.profile);
     } catch (err) {
+      if (loginEnded(err)) return;
       setError(errorMessage(err));
       setCode('');
       setBusy(false);
     }
+  };
+
+  /**
+   * 410: this login can't go on (codes used up, too many resends, the account locked). Back to the password step
+   * with the email kept and the backend's reason shown (#34).
+   */
+  const loginEnded = (err: unknown): boolean => {
+    if (!(err instanceof ApiError) || err.status !== 410) return false;
+    setChallenge(null);
+    setPassword('');
+    setCode('');
+    setResent(false);
+    setBusy(false);
+    setError(err.message);
+    return true;
   };
 
   const resend = async () => {
@@ -81,6 +97,8 @@ export function SignIn({ locked }: { locked?: store.Locked }) {
       setResent(true);
       setCode('');
     } catch (err) {
+      if (loginEnded(err)) return;
+      setResent(false);
       setError(errorMessage(err));
     }
   };

@@ -1,6 +1,8 @@
 // The admin session (D-001). Tokens live in localStorage, so every tab shares one session; storage events
 // keep the tabs in step. After the idle time with no activity in any tab, every tab locks: the session is
 // ended on the backend and the tokens cleared, but the email is kept and each tab stays on its page.
+// The backend has the same idle limit: an admin's refresh token stops working 30 minutes after it was issued, so
+// while the admin is active the portal refreshes ahead of that (keepAlive), and an idle session ends on both sides.
 
 import { env } from '@/lib/env';
 import type { LoginProfile } from '@/api/types';
@@ -14,6 +16,11 @@ const REFRESH_LOCK = 'blockcoop-admin.refresh';
 export const EXPIRY_SKEW_MS = 30_000;
 /** Activity is written at most this often, so typing doesn't write to storage on every key. */
 const ACTIVITY_WRITE_MS = 10_000;
+/**
+ * keepAlive refreshes once the refresh token is this old and there was activity since it was issued, so the
+ * backend's idle limit is always at least the idle time after the last activity, and at most this much more.
+ */
+export const KEEP_ALIVE_AFTER_MS = 5 * 60_000;
 
 export interface Session {
   accountId: string;
@@ -29,6 +36,8 @@ export interface Session {
   refreshToken: string;
   /** epoch ms */
   refreshTokenExpiry: number;
+  /** epoch ms, when this browser got the current refresh token; missing in a session stored before #34 */
+  issuedAt?: number;
 }
 
 export interface Locked {
@@ -84,7 +93,7 @@ export function lastActivity(): number {
   return typeof n === 'number' ? n : 0;
 }
 
-export function fromLogin(p: LoginProfile): Session {
+export function fromLogin(p: LoginProfile, now = Date.now()): Session {
   return {
     accountId: p.accountId ?? '',
     firstName: p.firstName ?? '',
@@ -96,7 +105,8 @@ export function fromLogin(p: LoginProfile): Session {
     token: p.token ?? '',
     tokenExpiry: p.tokenExpiry ?? 0,
     refreshToken: p.refreshToken ?? '',
-    refreshTokenExpiry: p.refreshTokenExpiry ?? 0
+    refreshTokenExpiry: p.refreshTokenExpiry ?? 0,
+    issuedAt: now
   };
 }
 
@@ -151,7 +161,7 @@ export function onStorage(e: StorageEvent): void {
 // ------------------------------------------------------------------ changes
 
 export function signedIn(profile: LoginProfile, now = Date.now()): Session {
-  const session = fromLogin(profile);
+  const session = fromLogin(profile, now);
   // activity first: another tab that sees the new session before the new activity time would find
   // every tab idle and lock them all again
   write(ACTIVITY_KEY, now);
@@ -209,6 +219,29 @@ export function isIdle(now = Date.now()): boolean {
   return now - lastActivity() >= idleMs();
 }
 
+/**
+ * True when the session should be refreshed to keep it alive on the backend: there was activity since the refresh
+ * token was issued, and it is at least KEEP_ALIVE_AFTER_MS old.
+ */
+export function needsKeepAlive(session: Session, now = Date.now()): boolean {
+  const issuedAt = session.issuedAt ?? 0;
+  return now - issuedAt >= KEEP_ALIVE_AFTER_MS && lastActivity() > issuedAt;
+}
+
+/**
+ * Refreshes the session while the admin is active, before the backend's idle limit ends it (admin-ui#34). Any tab
+ * may call it; the refresh lock means only one refreshes, and the others find the new tokens.
+ */
+export async function keepAlive(now = Date.now()): Promise<void> {
+  const session = readSession();
+  if (!session || isIdle(now) || !needsKeepAlive(session, now)) return;
+  try {
+    await refresh(session.token, true);
+  } catch {
+    // offline or the backend failed: the next check tries again, and a request refreshes on its own
+  }
+}
+
 // ------------------------------------------------------------------ backend calls
 
 function url(path: string): string {
@@ -228,7 +261,7 @@ async function endOnBackend(session: Session): Promise<void> {
   try {
     await postJson('/auth/logout', { refreshToken: session.refreshToken });
   } catch {
-    // offline: the refresh token expires on its own (12 hours for admins)
+    // offline: the refresh token expires on its own (30 idle minutes for admins, #34)
   }
 }
 
@@ -279,13 +312,15 @@ let inTabRefresh: Promise<Session | null> | null = null;
  * Whoever gets the lock second finds the new tokens already stored and uses them.
  *
  * @param staleToken the access token the caller found expired or had refused
+ * @param keepingAlive true for keepAlive: the access token is still good, and the refresh is only to keep the
+ *   session alive, so a tab that waited and finds any newer session stored skips its own refresh
  * @returns the session to use, or null when it has ended (the tokens are then cleared)
  */
-export function refresh(staleToken: string): Promise<Session | null> {
+export function refresh(staleToken: string, keepingAlive = false): Promise<Session | null> {
   const run = async (): Promise<Session | null> => {
     const current = readSession();
     if (!current) return null;
-    if (current.token !== staleToken && current.tokenExpiry - Date.now() > EXPIRY_SKEW_MS) return current;
+    if (current.token !== staleToken && (keepingAlive || current.tokenExpiry - Date.now() > EXPIRY_SKEW_MS)) return current;
     if (current.refreshTokenExpiry <= Date.now()) {
       clearSession();
       return null;

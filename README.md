@@ -19,7 +19,7 @@ The backend must allow the portal's address for CORS (`CORS_ALLOWED_ORIGINS`). T
 | `PORT` | `3001` | Dev server port |
 | `PREVIEW_PORT` | `3002` | `npm run preview` port |
 | `VITE_API_BASE_URL` | `http://localhost:8080/api` | The GP API. The browser calls it directly, and `api:types` reads the spec from it |
-| `VITE_IDLE_LOCK_MINUTES` | `5` | Minutes without activity, across all tabs, before the portal locks ([D-001](docs/decisions/D-001-sessions-in-local-storage.md)) |
+| `VITE_IDLE_LOCK_MINUTES` | `30` | Minutes without activity, across all tabs, before the portal locks; keep it equal to the backend's `app.jwt.admin-idle-minutes` ([D-001](docs/decisions/D-001-sessions-in-local-storage.md)) |
 | `VITE_TIME_ZONE` | `Africa/Nairobi` | Time zone every date and time is shown in ([D-002](docs/decisions/D-002-nairobi-time-and-usdt-precision.md)) |
 | `VITE_APP_ENV` | `local` | Shown in the header as a badge unless it is exactly `prod`; "Unknown" when unset |
 
