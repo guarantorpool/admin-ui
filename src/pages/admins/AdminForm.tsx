@@ -5,10 +5,10 @@ import { Field } from '@/components/ui/field';
 import { FormDialog, selectClass, useForm } from '@/components/ui/form-dialog';
 import { Input } from '@/components/ui/input';
 import { fullName } from '@/lib/names';
+import { cleanPhone, isPhone, PHONE_MESSAGE } from '@/lib/phone';
 import { roleLabel } from '@/lib/roles';
 import * as store from '@/session/store';
 
-const PHONE = /^\+?(?:254|0)([17]\d{8})$/;
 const NAME = /^[\p{L} .'-]+$/u;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -31,7 +31,7 @@ export function AdminForm({ open, admin, roles, canSetRole, self, onClose }: { o
     if (!f.firstName.trim() || !f.lastName.trim()) return 'Enter the first and last names.';
     if (![f.firstName, f.middleName, f.lastName].every((n) => !n.trim() || NAME.test(n.trim()))) return 'Names can only have letters, spaces, dots, apostrophes and hyphens.';
     if (!admin && !EMAIL.test(f.email.trim())) return 'Enter their email address.';
-    if ((!admin || f.phoneNumber.trim()) && !PHONE.test(f.phoneNumber.trim())) return 'Enter a Kenyan mobile number, such as 0712345678 or +254712345678.';
+    if ((!admin || f.phoneNumber.trim()) && !isPhone(f.phoneNumber)) return PHONE_MESSAGE;
     if (canSetRole && !f.roleId) return 'Choose their role.';
     return '';
   };
@@ -40,8 +40,8 @@ export function AdminForm({ open, admin, roles, canSetRole, self, onClose }: { o
   const names = { firstName: f.firstName.trim(), middleName: f.middleName.trim(), lastName: f.lastName.trim() };
   const send = () =>
     admin
-      ? updateAdmin(admin.id!, { ...names, ...(f.phoneNumber.trim() ? { phoneNumber: f.phoneNumber.trim() } : {}), ...(canSetRole ? { roleId: f.roleId } : {}) })
-      : inviteAdmin({ ...names, email: f.email.trim(), phoneNumber: f.phoneNumber.trim(), roleId: f.roleId });
+      ? updateAdmin(admin.id!, { ...names, ...(f.phoneNumber.trim() ? { phoneNumber: cleanPhone(f.phoneNumber) } : {}), ...(canSetRole ? { roleId: f.roleId } : {}) })
+      : inviteAdmin({ ...names, email: f.email.trim(), phoneNumber: cleanPhone(f.phoneNumber), roleId: f.roleId });
 
   const saved = (a: Account) => {
     void qc.invalidateQueries({ queryKey: ['admins'] });
