@@ -10,7 +10,7 @@ import { DecisionDialog, NOTE_HINT, type Decision } from '@/components/ui/decisi
 import { Fields, Item, Items, Muted, StatusPill } from '@/components/ui/parts';
 import { TabPanel, Tabs } from '@/components/ui/tabs';
 import { formatDate, formatDateTime, formatIn, formatNumber, formatUsdt } from '@/lib/format';
-import { loanStatus, stepName, stepStatus } from '@/lib/labels';
+import { loanRecordedVia, loanStatus, stepName, stepStatus } from '@/lib/labels';
 import { can } from '@/lib/permissions';
 import { useOpenFile } from '@/lib/useOpenFile';
 import { useMemberName } from '@/pages/members/useMemberName';
@@ -86,6 +86,7 @@ export function LoanDetail({ loanId, tab, onTab }: { loanId: string; tab: string
                 { k: 'Source', v: guaranteed ? 'Guaranteed by the pool' : 'From the Lipa API, for the Trust Score only' },
                 ...(l.guaranteeId ? [{ k: 'Guarantee', v: <GuaranteeLink id={l.guaranteeId} /> }] : []),
                 { k: 'Lender', v: l.lender ?? '—' },
+                ...(guaranteed ? [{ k: 'Recorded', v: loanRecordedVia(l.recordedVia) }] : []),
                 { k: guaranteed ? "Lender's reference" : 'Lipa reference', v: mono(l.externalId) },
                 { k: 'Amount lent', v: formatIn(l.amount, l.currency, { full: true }) },
                 { k: 'Lent on', v: formatDate(l.openedAt) },
@@ -140,7 +141,7 @@ function Steps({ loan: l, actions, recorded }: { loan: Loan; actions: LoanAction
   if (!actions.length && !recorded && !verified) return <Muted>No claim steps. This loan has no default.</Muted>;
   return (
     <Items label={recorded ? 'Lender reports' : 'Claim steps'}>
-      {recorded ? <Item title="Loan recorded" sub={`${formatIn(l.amount, l.currency, { full: true })} from ${l.lender ?? '—'}, lent ${formatDate(l.openedAt)}, due ${formatDate(l.dueAt)}`} /> : null}
+      {recorded ? <Item title={l.recordedVia === 'lender_api' ? 'Loan sent by the lender' : 'Loan recorded'} sub={`${formatIn(l.amount, l.currency, { full: true })} from ${l.lender ?? '—'}, lent ${formatDate(l.openedAt)}, due ${formatDate(l.dueAt)}`} /> : null}
       {verified ? <Item title="Default verified against its documents" sub={at(l.defaultVerifiedBy, l.defaultVerifiedAt)} /> : null}
       {actions.map((a) => (
         <Item

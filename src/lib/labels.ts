@@ -274,6 +274,9 @@ export const stepStatus = (code: string | null | undefined) => pick(STEP_STATUS,
 
 export const loanSource = (code: string | null | undefined) => (code === 'guaranteed' ? 'Guaranteed' : code === 'lipa_onchain' ? 'Lipa API' : sentence(code ?? '—'));
 
+/** How a guaranteed loan reached the pool (#169): sent by the lender's own system, or entered by an admin. */
+export const loanRecordedVia = (code: string | null | undefined) => (code === 'lender_api' ? "Sent by the lender's system" : code === 'admin' ? 'Entered by an admin' : '—');
+
 // extra liquidity: a movement counts toward Liquid Funds only once a second admin approves it (3.4.3)
 export const movementStatus = stepStatus;
 
@@ -466,7 +469,7 @@ const KEY_STATUS: Record<string, Label> = {
 /** A service key: in use, or revoked by hand or by rotating it. */
 export const keyStatus = (code: string | null | undefined) => pick(KEY_STATUS, code);
 
-const SCOPE: Record<string, string> = { 'facts:write': 'Send activity records', 'facts:read': 'Read activity records' };
+const SCOPE: Record<string, string> = { 'facts:write': 'Send activity records', 'facts:read': 'Read activity records', 'loans:write': "Send a lender's new loans" };
 
 export const scopeLabel = (code: string | null | undefined) => (code ? SCOPE[code] ?? code : '—');
 

@@ -3053,6 +3053,98 @@
         }
       }
     },
+    "/api/lender/loans": {
+      "post": {
+        "tags": [
+          "Lender API"
+        ],
+        "summary": "Send a new loan made against a member's guarantee (service key with loans:write)",
+        "description": "The guarantee must be active, belong to the member named and have no loan yet. The amount is in USDT and dueAt must be after openedAt. The lender is the service key's name. The loan counts toward the member's Trust Score at once and is audited with the key as the actor. Sending the same reference again with the same details returns the recorded loan with 200, so a lost reply can be retried safely; with different details it is refused with 409, naming what differs.\n\n**Requires:** `hasAuthority('SCOPE_loans:write')`",
+        "operationId": "record_1",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LenderLoanRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Already recorded with these details",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/LenderLoanResponse"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Recorded",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/LenderLoanResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A field is missing or invalid",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/LenderLoanResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No service key, or an unknown or revoked one",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/LenderLoanResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key doesn't have loans:write",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/LenderLoanResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such guarantee, or it isn't the member's",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/LenderLoanResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The guarantee isn't active or already has a loan, or the reference is already recorded with different details",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/LenderLoanResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/kyc-key/re-encrypt": {
       "post": {
         "tags": [
@@ -3963,7 +4055,7 @@
           "Auth"
         ],
         "summary": "Admin login, step 2",
-        "description": "Returns the access and refresh tokens, and emails a login alert.",
+        "description": "Returns the access and refresh tokens, and emails a login alert. A wrong code is 401 \"The code is incorrect\"; an expired one is 401 \"This code has expired. Send a new code.\" and the login is kept for resend-otp. 410 means the login can't go on (codes used up, account locked or disabled): start again with admin-login. An admin's refresh token stops working after 30 idle minutes.",
         "operationId": "verifyOtp",
         "requestBody": {
           "content": {
@@ -4320,6 +4412,7 @@
           "Auth"
         ],
         "summary": "Send a new one-time code for the same login",
+        "description": "Works after a cooldown (429 with the seconds to wait) and also once the last code has expired. The old code stops working and the new one gets its own tries. 410 means the login can't go on (too many codes requested, account locked or disabled): start again with admin-login.",
         "operationId": "resendOtp",
         "requestBody": {
           "content": {
@@ -13878,6 +13971,13 @@
           "lender": {
             "type": "string"
           },
+          "recordedVia": {
+            "type": "string",
+            "enum": [
+              "admin",
+              "lender_api"
+            ]
+          },
           "openedAt": {
             "type": "string",
             "format": "date-time"
@@ -14138,6 +14238,88 @@
         "required": [
           "claimOwed"
         ]
+      },
+      "LenderLoanRequest": {
+        "type": "object",
+        "properties": {
+          "guaranteeNumber": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 0
+          },
+          "memberNumber": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?i)BC\\d{6,}$"
+          },
+          "reference": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 0
+          },
+          "amount": {
+            "type": "number"
+          },
+          "openedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "dueAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "amount",
+          "dueAt",
+          "guaranteeNumber",
+          "memberNumber",
+          "openedAt",
+          "reference"
+        ]
+      },
+      "LenderLoanResponse": {
+        "type": "object",
+        "properties": {
+          "loanId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "guaranteeNumber": {
+            "type": "string"
+          },
+          "memberNumber": {
+            "type": "string"
+          },
+          "lender": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "openedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "dueAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "repaid",
+              "defaulted"
+            ]
+          }
+        }
       },
       "MessageResponse": {
         "type": "object",
@@ -14551,7 +14733,7 @@
           "phoneNumber": {
             "type": "string",
             "minLength": 1,
-            "pattern": "^\\+?(?:254|0)([17]\\d{8})$"
+            "pattern": "^(?:\\+?(?:254|0)[17]\\d{8}|\\+(?!254)[1-9]\\d{6,14})$"
           },
           "inviteToken": {
             "type": "string",
@@ -14970,7 +15152,7 @@
           "phoneNumber": {
             "type": "string",
             "minLength": 1,
-            "pattern": "^\\+?(?:254|0)([17]\\d{8})$"
+            "pattern": "^(?:\\+?(?:254|0)[17]\\d{8}|\\+(?!254)[1-9]\\d{6,14})$"
           },
           "roleId": {
             "type": "string",
@@ -15217,7 +15399,7 @@
           },
           "phoneNumber": {
             "type": "string",
-            "pattern": "^\\+?(?:254|0)([17]\\d{8})$"
+            "pattern": "^(?:\\+?(?:254|0)[17]\\d{8}|\\+(?!254)[1-9]\\d{6,14})$"
           }
         }
       },
@@ -15244,7 +15426,7 @@
           },
           "phoneNumber": {
             "type": "string",
-            "pattern": "^\\+?(?:254|0)([17]\\d{8})$"
+            "pattern": "^(?:\\+?(?:254|0)[17]\\d{8}|\\+(?!254)[1-9]\\d{6,14})$"
           },
           "roleId": {
             "type": "string",

@@ -35,7 +35,7 @@ export function RecordLoanDialog({ open, onClose, onSaved }: { open: boolean; on
     <FormDialog
       open={open}
       title="Record the loan a guarantee backs"
-      description="There is no connection to lenders, so admins enter what a lender reports. One loan per active guarantee, in USDT."
+      description="For a loan the lender's system hasn't sent itself: enter it from the lender's report. One loan per active guarantee, in USDT."
       confirm="Record the loan"
       onClose={onClose}
       check={() => {

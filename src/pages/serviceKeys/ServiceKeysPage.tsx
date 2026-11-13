@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { errorMessage } from '@/api/errors';
-import { createServiceKey, listServiceKeys, revokeServiceKey, rotateServiceKey, SCOPES, type CreatedServiceKey, type ServiceKey } from '@/api/serviceKeys';
+import { createServiceKey, LENDER_SCOPE, listServiceKeys, revokeServiceKey, rotateServiceKey, SCOPES, type CreatedServiceKey, type ServiceKey } from '@/api/serviceKeys';
 import { PageHeader } from '@/components/shell/AppShell';
 import { Banner } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -242,6 +242,7 @@ function KeyRows({ rows, menuFor }: { rows: ServiceKey[]; menuFor: (k: ServiceKe
 function CreateKey({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated: (created: CreatedServiceKey) => void }) {
   const [name, setName] = React.useState('');
   const [granted, setGranted] = React.useState<string[]>([]);
+  const lender = granted.includes(LENDER_SCOPE);
   React.useEffect(() => {
     setName('');
     setGranted([]);
@@ -258,7 +259,11 @@ function CreateKey({ open, onClose, onCreated }: { open: boolean; onClose: () =>
       saved={onCreated}
       done={`${name.trim()} is created.`}
     >
-      <Field id="key-name" label="Name" hint="Say which system uses it, such as “Ledger sync”.">
+      <Field
+        id="key-name"
+        label="Name"
+        hint={lender ? 'Use the lender’s name, such as “Umoja Credit”: it is shown as the lender on every loan this key sends.' : 'Say which system uses it, such as “Ledger sync”.'}
+      >
         <Input id="key-name" value={name} maxLength={NAME_MAX} onChange={(e) => setName(e.target.value)} aria-describedby="key-name-hint" />
       </Field>
       <fieldset className="m-0 flex min-w-0 flex-col gap-1.5 border-0 p-0">
@@ -270,6 +275,7 @@ function CreateKey({ open, onClose, onCreated }: { open: boolean; onClose: () =>
           </label>
         ))}
       </fieldset>
+      {lender ? <Banner tone="warn">Give each lender its own key. A lender’s key can only send new loans against members’ active guarantees; the lender’s repayments and defaults are still entered here.</Banner> : null}
     </FormDialog>
   );
 }
