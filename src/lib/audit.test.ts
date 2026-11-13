@@ -39,6 +39,7 @@ describe('service keys and the KYC key', () => {
     expect(keyStatus('active')).toEqual({ text: 'In use', tone: 'ok' });
     expect(keyStatus('revoked').tone).toBe('bad');
     expect(scopeLabel('facts:write')).toBe('Send activity records');
+    expect(scopeLabel('loans:write')).toBe("Send a lender's new loans");
     expect(scopeLabel('other:scope')).toBe('other:scope');
   });
 

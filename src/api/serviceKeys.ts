@@ -6,7 +6,10 @@ export type ServiceKey = Schemas['ServiceKeyResponse'];
 export type CreatedServiceKey = Schemas['ServiceKeyCreatedResponse'];
 
 /** What a key may do, as the backend knows them (ServiceKey.KNOWN_SCOPES). */
-export const SCOPES = ['facts:write', 'facts:read'] as const;
+export const SCOPES = ['facts:write', 'facts:read', 'loans:write'] as const;
+
+/** A key with this scope belongs to one lender: its name is the lender on every loan it sends (#169). */
+export const LENDER_SCOPE = 'loans:write';
 
 /** Newest first. A revoked key is left out unless `includeRevoked`. */
 export const listServiceKeys = (q: { page: number; size: number; includeRevoked: boolean }) => api.get<Page<ServiceKey>>('/service-keys', { query: { ...q } });

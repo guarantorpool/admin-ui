@@ -660,6 +660,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/lender/loans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send a new loan made against a member's guarantee (service key with loans:write)
+         * @description The guarantee must be active, belong to the member named and have no loan yet. The amount is in USDT and dueAt must be after openedAt. The lender is the service key's name. The loan counts toward the member's Trust Score at once and is audited with the key as the actor. Sending the same reference again with the same details returns the recorded loan with 200, so a lost reply can be retried safely; with different details it is refused with 409, naming what differs.
+         *
+         *     **Requires:** `hasAuthority('SCOPE_loans:write')`
+         */
+        post: operations["record_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/kyc-key/re-encrypt": {
         parameters: {
             query?: never;
@@ -889,7 +911,7 @@ export interface paths {
         put?: never;
         /**
          * Admin login, step 2
-         * @description Returns the access and refresh tokens, and emails a login alert.
+         * @description Returns the access and refresh tokens, and emails a login alert. A wrong code is 401 "The code is incorrect"; an expired one is 401 "This code has expired. Send a new code." and the login is kept for resend-otp. 410 means the login can't go on (codes used up, account locked or disabled): start again with admin-login. An admin's refresh token stops working after 30 idle minutes.
          */
         post: operations["verifyOtp"];
         delete?: never;
@@ -978,7 +1000,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Send a new one-time code for the same login */
+        /**
+         * Send a new one-time code for the same login
+         * @description Works after a cooldown (429 with the seconds to wait) and also once the last code has expired. The old code stops working and the new one gets its own tries. 410 means the login can't go on (too many codes requested, account locked or disabled): start again with admin-login.
+         */
         post: operations["resendOtp"];
         delete?: never;
         options?: never;
@@ -3345,6 +3370,8 @@ export interface components {
             externalId?: string;
             guaranteeId?: string;
             lender?: string;
+            /** @enum {string} */
+            recordedVia?: "admin" | "lender_api";
             /** Format: date-time */
             openedAt?: string;
             amount?: string;
@@ -3430,6 +3457,32 @@ export interface components {
         DefaultRequest: {
             claimOwed: number;
             note?: string;
+        };
+        LenderLoanRequest: {
+            guaranteeNumber: string;
+            memberNumber: string;
+            reference: string;
+            amount: number;
+            /** Format: date-time */
+            openedAt: string;
+            /** Format: date-time */
+            dueAt: string;
+        };
+        LenderLoanResponse: {
+            /** Format: uuid */
+            loanId?: string;
+            reference?: string;
+            guaranteeNumber?: string;
+            memberNumber?: string;
+            lender?: string;
+            amount?: string;
+            currency?: string;
+            /** Format: date-time */
+            openedAt?: string;
+            /** Format: date-time */
+            dueAt?: string;
+            /** @enum {string} */
+            status?: "open" | "repaid" | "defaulted";
         };
         MessageResponse: {
             title?: string;
@@ -6852,6 +6905,84 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    record_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LenderLoanRequest"];
+            };
+        };
+        responses: {
+            /** @description Already recorded with these details */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["LenderLoanResponse"];
+                };
+            };
+            /** @description Recorded */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["LenderLoanResponse"];
+                };
+            };
+            /** @description A field is missing or invalid */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["LenderLoanResponse"];
+                };
+            };
+            /** @description No service key, or an unknown or revoked one */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["LenderLoanResponse"];
+                };
+            };
+            /** @description The key doesn't have loans:write */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["LenderLoanResponse"];
+                };
+            };
+            /** @description No such guarantee, or it isn't the member's */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["LenderLoanResponse"];
+                };
+            };
+            /** @description The guarantee isn't active or already has a loan, or the reference is already recorded with different details */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["LenderLoanResponse"];
                 };
             };
         };

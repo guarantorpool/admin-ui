@@ -52,7 +52,15 @@ export function LoanStatusCell({ l }: { l: Loan }) {
 
 const COLUMNS: Column<Loan>[] = [
   { header: 'Loan on', cell: loanName },
-  { header: 'Source', cell: (l) => loanSource(l.source) },
+  {
+    header: 'Source',
+    cell: (l) => (
+      <span className="flex flex-wrap items-center gap-1.5">
+        {loanSource(l.source)}
+        {l.recordedVia === 'lender_api' ? <Badge>From lender</Badge> : null}
+      </span>
+    )
+  },
   { header: 'Lender', cell: (l) => l.lender ?? '—' },
   { header: 'Amount', cell: (l) => formatIn(l.amount, l.currency), figure: true },
   { header: 'Due', cell: (l) => formatDate(l.dueAt) },
@@ -116,7 +124,7 @@ function Loans() {
       grid="grid-cols-[1.3fr_0.8fr_1fr_1fr_0.8fr_1.4fr]"
       minWidth={900}
       linkFor={(l) => `/loans/${l.loanId}${search}`}
-      sub={(l) => `${l.lender ?? loanSource(l.source)} · ${formatIn(l.amount, l.currency)} · due ${formatDate(l.dueAt)}`}
+      sub={(l) => `${l.lender ?? loanSource(l.source)}${l.recordedVia === 'lender_api' ? ' (sent by the lender)' : ''} · ${formatIn(l.amount, l.currency)} · due ${formatDate(l.dueAt)}`}
     />
   );
 
@@ -124,7 +132,7 @@ function Loans() {
     <>
       <PageHeader actions={canManage ? <Button onClick={() => setRecording(true)}>Record a loan</Button> : undefined} />
       <div className="flex flex-col gap-3.5">
-        <Muted>There is no connection to lenders, so admins enter what lenders report. Each report or claim step needs a second admin to approve it.</Muted>
+        <Muted>A lender's system can send its new loans with its own service key; admins enter every other loan and everything lenders report afterwards. Each report or claim step needs a second admin to approve it.</Muted>
         <div className="flex flex-wrap items-center gap-2">
           <div role="group" aria-label="Status" className="flex flex-wrap gap-2">
             {STATUS_FILTERS.map((f) => (

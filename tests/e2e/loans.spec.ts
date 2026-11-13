@@ -239,4 +239,30 @@ test.describe('Loans and claims (slice 6)', () => {
     await expect(other.getByRole('heading', { name: 'Not available to your role' })).toBeVisible();
     await other.close();
   });
+
+  test("shows a loan the lender's system sent with its own key", async ({ page }) => {
+    const { apiBase, admin } = stack();
+    const token = await apiToken(admin.email, admin.password);
+    const lender = `Umoja Credit ${Date.now().toString(36)}`;
+    const key = await post<{ key: string }>(`${apiBase}/service-keys`, { name: lender, scopes: ['loans:write'] }, token);
+    const sam = await newMember('Sam', surname());
+    const g = seedGuarantee(sam);
+    const res = await fetch(`${apiBase}/lender/loans`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-API-Key': key.key },
+      body: JSON.stringify({ guaranteeNumber: g.guaranteeId, memberNumber: sam.number, reference: reference(), amount: 2500, openedAt: new Date(Date.now() - 86_400_000).toISOString(), dueAt: new Date(Date.now() + 120 * 86_400_000).toISOString() })
+    });
+    expect(res.status).toBe(201);
+
+    const reader = await newAdmin(page, ['GUARANTEES.READ', 'MEMBERS.READ'], 'LoanRead');
+    await signIn(page, reader.email, reader.password);
+    await page.goto('/loans?source=guaranteed');
+    const row = page.getByRole('table', { name: 'Loans' }).getByRole('row').filter({ hasText: g.guaranteeId });
+    await expect(row).toContainText('From lender');
+    await expect(row).toContainText(lender);
+    await row.getByRole('link').first().click();
+    const panel = details(page);
+    await expect(panel.getByText("Sent by the lender's system")).toBeVisible();
+    await expect(panel.getByText('2,500.00 USDT')).toBeVisible();
+  });
 });
