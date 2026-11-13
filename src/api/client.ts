@@ -80,6 +80,8 @@ async function authed(method: Method, path: string, opts: RequestOptions): Promi
   }
 
   if (!res.ok) throw await toApiError(res);
+  // a change the admin made counts as activity (#34); reads don't, as the 60-second background refetches are reads
+  if (auth && method !== 'GET') store.markActivity();
   return res;
 }
 

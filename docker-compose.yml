@@ -8,7 +8,7 @@ services:
       args:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:?set VITE_API_BASE_URL in .env}
         VITE_APP_ENV: ${VITE_APP_ENV:?set VITE_APP_ENV in .env}
-        VITE_IDLE_LOCK_MINUTES: ${VITE_IDLE_LOCK_MINUTES:-5}
+        VITE_IDLE_LOCK_MINUTES: ${VITE_IDLE_LOCK_MINUTES:-30}
         VITE_TIME_ZONE: ${VITE_TIME_ZONE:-Africa/Nairobi}
     image: blockcoop-admin-ui:latest
     networks:

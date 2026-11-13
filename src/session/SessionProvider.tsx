@@ -7,8 +7,8 @@ const ACTIVITY_EVENTS = ['pointerdown', 'keydown', 'wheel', 'touchstart', 'mouse
 const CHECK_EVERY_MS = 15_000;
 
 /**
- * Keeps React in step with the session store, records activity, and locks every tab after the idle
- * time (D-001). A tab opened after that time has passed starts locked.
+ * Keeps React in step with the session store, records activity, keeps an active session alive on the backend,
+ * and locks every tab after the idle time (D-001, #34). A tab opened after that time has passed starts locked.
  */
 export function SessionProvider({ children }: { children: React.ReactNode }) {
   const state = React.useSyncExternalStore(store.subscribe, store.getState);
@@ -30,6 +30,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     if (!signedIn) return;
     const check = () => {
       if (store.isIdle()) void store.lock();
+      else void store.keepAlive();
     };
     check();
     const onActivity = () => store.markActivity();

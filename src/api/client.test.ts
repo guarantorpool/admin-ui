@@ -40,6 +40,16 @@ describe('api client', () => {
     expect(authOf(0)).toBe('Bearer access-1');
   });
 
+  it('counts a change as activity, but not a read such as a background refetch (#34)', async () => {
+    store.signedIn(profile(1));
+    vi.setSystemTime(NOW + 60_000);
+    fetchMock.mockResolvedValueOnce(reply(200, [])).mockResolvedValueOnce(reply(200, {}));
+    await api.get('/alerts');
+    expect(store.lastActivity()).toBe(NOW);
+    await api.post('/approvals/x/approve', {});
+    expect(store.lastActivity()).toBe(NOW + 60_000);
+  });
+
   it('sends sign-in calls without a token', async () => {
     fetchMock.mockResolvedValueOnce(reply(200, {}));
     await api.post('/auth/admin-login', { identifier: 'a', password: 'b' }, { auth: false });

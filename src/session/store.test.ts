@@ -178,6 +178,58 @@ describe('idle lock (D-001)', () => {
   });
 });
 
+describe('keep-alive (#34)', () => {
+  const after = store.KEEP_ALIVE_AFTER_MS;
+
+  it('refreshes when the refresh token is old enough and there was activity since it was issued', async () => {
+    store.signedIn(profile(1));
+    store.markActivity(NOW + 60_000);
+    fetchMock.mockResolvedValueOnce(reply(200, { profile: profile(2) }));
+    await store.keepAlive(NOW + after);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(String(fetchMock.mock.calls[0]![0])).toBe('http://api.test/api/auth/refresh-token');
+    expect(store.readSession()?.token).toBe('access-2');
+  });
+
+  it('does not refresh without activity since the refresh token was issued', async () => {
+    store.signedIn(profile(1));
+    await store.keepAlive(NOW + after);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('does not refresh a refresh token younger than the keep-alive age', async () => {
+    store.signedIn(profile(1));
+    store.markActivity(NOW + 60_000);
+    await store.keepAlive(NOW + after - 1000);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('does not keep an idle session alive', async () => {
+    store.signedIn(profile(1));
+    store.markActivity(NOW + 60_000);
+    await store.keepAlive(NOW + 60_000 + store.idleMs());
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('skips its refresh when another tab already kept the session alive', async () => {
+    store.signedIn(profile(1));
+    store.markActivity(NOW + 60_000);
+    const stale = store.readSession()!;
+    // another tab refreshed while this one waited for the lock
+    localStorage.setItem(store.SESSION_KEY, JSON.stringify(store.fromLogin(profile(2), NOW + after)));
+    expect((await store.refresh(stale.token, true))?.token).toBe('access-2');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('keeps the session when the backend cannot be reached', async () => {
+    store.signedIn(profile(1));
+    store.markActivity(NOW + 60_000);
+    fetchMock.mockRejectedValueOnce(new TypeError('offline'));
+    await store.keepAlive(NOW + after);
+    expect(store.getState().status).toBe('signedIn');
+  });
+});
+
 describe('refresh', () => {
   it('swaps the refresh token for new tokens', async () => {
     store.signedIn(profile(1));

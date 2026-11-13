@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { codeFor, mailCount, newAdmin, resetCodeFor, signIn, stack } from './helpers';
+import { codeFor, expireLoginCode, mailCount, newAdmin, resetCodeFor, signIn, stack } from './helpers';
 
 test.describe('sign-in (slice 1)', () => {
   test('signs in with password and code, and lands on the dashboard', async ({ page }) => {
@@ -33,6 +33,52 @@ test.describe('sign-in (slice 1)', () => {
 
     // the backend allows a resend after 60 seconds
     await expect(page.getByRole('button', { name: /Send a new code in \d+s/ })).toBeDisabled();
+  });
+
+  test('replaces an expired code with a new one that works (#34)', async ({ page }) => {
+    const user = await newAdmin(page, ['AUDIT.READ'], 'Expired');
+    // the resend button's 60-second countdown runs on this clock
+    await page.clock.install();
+    await page.goto('/sign-in');
+    await page.getByLabel('Email').fill(user.email);
+    const skip = mailCount();
+    await page.getByLabel('Password').fill(user.password);
+    await page.getByRole('button', { name: 'Continue' }).click();
+    const first = await codeFor(user.email, skip);
+
+    expireLoginCode(user.email);
+    await page.getByLabel('One-time code').fill(first);
+    await expect(page.getByRole('alert')).toContainText('This code has expired');
+
+    await page.clock.fastForward(61_000);
+    const again = mailCount();
+    await page.getByRole('button', { name: 'Send a new code' }).click();
+    await expect(page.getByText('New code sent.')).toBeVisible();
+    await page.getByLabel('One-time code').fill(await codeFor(user.email, again));
+    await expect(page).toHaveURL(/\/dashboard$/);
+  });
+
+  test('goes back to the password step, email kept, when the login cannot go on (#34)', async ({ page }) => {
+    const user = await newAdmin(page, ['AUDIT.READ'], 'Ended');
+    await page.goto('/sign-in');
+    await page.getByLabel('Email').fill(user.email);
+    const skip = mailCount();
+    await page.getByLabel('Password').fill(user.password);
+    await page.getByRole('button', { name: 'Continue' }).click();
+    const code = await codeFor(user.email, skip);
+    const wrong = code === '000000' ? '111111' : '000000';
+
+    // 5 wrong codes in a row lock the account, which ends this login
+    for (let i = 0; i < 4; i++) {
+      await page.getByLabel('One-time code').fill(wrong);
+      await expect(page.getByRole('alert')).toContainText('The code is incorrect');
+      await expect(page.getByLabel('One-time code')).toHaveValue('');
+    }
+    await page.getByLabel('One-time code').fill(wrong);
+    await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
+    await expect(page.getByRole('alert')).toContainText('Account locked');
+    await expect(page.getByLabel('Email')).toHaveValue(user.email);
+    await expect(page.getByLabel('Password')).toHaveValue('');
   });
 
   test('sends a signed-out visit to sign-in and back to the page after', async ({ page }) => {
@@ -89,6 +135,8 @@ test.describe('sign-in (slice 1)', () => {
     await page.getByRole('button', { name: 'Change the password' }).click();
     await expect(page.getByRole('alert')).toContainText('This code is invalid or has expired');
 
+    // fill() into the full code boxes only replaces the last digit, so empty them first
+    await page.getByLabel('Reset code').clear();
     await page.getByLabel('Reset code').fill(code);
     await page.getByRole('button', { name: 'Change the password' }).click();
     await expect(page.getByText('Your password was changed. Sign in with the new one.')).toBeVisible();

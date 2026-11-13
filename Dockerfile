@@ -7,7 +7,7 @@ RUN npm ci --no-audit --no-fund
 COPY . .
 ARG VITE_API_BASE_URL
 ARG VITE_APP_ENV
-ARG VITE_IDLE_LOCK_MINUTES=5
+ARG VITE_IDLE_LOCK_MINUTES=30
 ARG VITE_TIME_ZONE=Africa/Nairobi
 # the Content Security Policy lets the browser call the API's origin and nothing else outside the portal (D-003)
 RUN test -n "$VITE_API_BASE_URL" && test -n "$VITE_APP_ENV" \

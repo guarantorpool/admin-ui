@@ -184,6 +184,12 @@ export function loseKycKey(member: Member): () => void {
 
 const sql = (statement: string) => docker('exec', stack().dbContainer, 'psql', '-U', 'postgres', '-d', 'blockcoop', '-v', 'ON_ERROR_STOP=1', '-At', '-c', statement);
 
+/** Expires the admin's pending login code, as if its 5 minutes had passed, and lets a new one be sent now. */
+export function expireLoginCode(email: string) {
+  sql(`UPDATE otp_challenges SET expires_at = now() - interval '1 second', last_sent_at = now() - interval '2 minutes'
+    WHERE purpose = 'LOGIN' AND account_id = (SELECT id FROM accounts WHERE email = '${email}')`);
+}
+
 const randomOf = (chars: string, n: number) => Array.from({ length: n }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
 export const randomHash = () => `0x${randomOf('0123456789abcdef', 64)}`;
 

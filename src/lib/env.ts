@@ -17,7 +17,7 @@ export function envBadge(value: string | undefined): string | null {
 
 export const env = {
   apiBaseUrl: (raw.VITE_API_BASE_URL || 'http://localhost:8080/api').replace(/\/+$/, ''),
-  idleLockMinutes: minutes(raw.VITE_IDLE_LOCK_MINUTES, 5),
+  idleLockMinutes: minutes(raw.VITE_IDLE_LOCK_MINUTES, 30),
   timeZone: raw.VITE_TIME_ZONE || 'Africa/Nairobi',
   badge: envBadge(raw.VITE_APP_ENV)
 };
