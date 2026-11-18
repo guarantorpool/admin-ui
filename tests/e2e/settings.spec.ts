@@ -61,10 +61,10 @@ test.describe('Pool settings (slice 8)', () => {
     await expect(row(page, 'operating_fee_rate')).toContainText('Two admins');
     await groupLink(page, 'Pricing inputs').click();
     await expect(row(page, 'recovery_rate_calculated')).toContainText('0 (off)');
-    // the five that apply at once, and only those
+    // the eight that apply at once (three of them for connection suggestions, BlockCoop D-042), and only those
     await groupLink(page, 'Applies at once').click();
     const atOnce = group(page, 'Applies at once');
-    await expect(atOnce.getByRole('link')).toHaveCount(5);
+    await expect(atOnce.getByRole('link')).toHaveCount(8);
     await expect(atOnce.getByText('Two admins')).toHaveCount(0);
 
     await row(page, 'invite_token_ttl_hours').click();
