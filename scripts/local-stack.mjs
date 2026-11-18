@@ -10,13 +10,17 @@
 // The chain is a stand-in on this machine too (startChain): it knows only the Safes registered with it, so a pool
 // wallet can be proposed and approved, and every other read is refused as an unreachable chain would refuse it.
 //
+// Lipa na BLOCKS is a stand-in as well (BlockCoop #168): the run makes its own LNB signing key, the chain stand-in
+// serves its public half as LNB's JWKS, and the private half is handed to the tests, which sign a member's pass
+// with it as LNB would.
+//
 // Settings for this script only, not for the portal's .env:
 //   BLOCKCOOP_DIR     the backend repo (default ../BlockCoop); its jar is built with ./mvnw package
 //   STACK_API_PORT    the backend's port (default 8080, which VITE_API_BASE_URL points at)
 //   STACK_ADMIN_EMAIL the first admin, created at startup (default admin-a@test.local)
 
 import { spawn, execFileSync } from 'node:child_process';
-import { randomBytes } from 'node:crypto';
+import { generateKeyPairSync, randomBytes } from 'node:crypto';
 import { createServer } from 'node:http';
 import { createWriteStream, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -25,6 +29,10 @@ import { fileURLToPath } from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const PORTAL_ORIGINS = 'http://localhost:3001,http://localhost:3002';
+// the stand-in LNB: who signs passes, and the origin its page runs on
+const LNB_ISSUER = 'https://lnb.e2e.test';
+const LNB_ORIGIN = 'https://lnb-app.e2e.test';
+const LNB_KID = 'e2e';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 export const docker = (...args) => execFileSync('docker', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
@@ -92,7 +100,7 @@ const word = (hex) => hex.replace(/^0x/, '').padStart(64, '0');
  * the holdings registered with `POST /balances` ({ token, holder, raw }, raw as a hex word). Any other call gets a
  * JSON-RPC error, so the backend's other chain reads fail as they would with no chain at all.
  */
-export async function startChain() {
+export async function startChain({ jwks } = {}) {
   const safes = new Map();
   const receipts = new Map();
   const blockTimes = new Map();
@@ -126,6 +134,10 @@ export async function startChain() {
       res.setHeader('content-type', 'application/json');
       try {
         const json = JSON.parse(body || '{}');
+        if (req.url === '/lnb/jwks.json' && jwks) {
+          res.end(JSON.stringify(jwks));
+          return;
+        }
         if (req.url === '/safes') {
           safes.set(json.address.toLowerCase(), { owners: json.owners.map((o) => o.toLowerCase()), threshold: json.threshold });
           res.end('{}');
@@ -214,7 +226,9 @@ export async function startStack({ quiet = false } = {}) {
       return true;
     }, 60_000);
 
-    chain = await startChain();
+    const lnbKey = generateKeyPairSync('rsa', { modulusLength: 2048 });
+    const jwk = lnbKey.publicKey.export({ format: 'jwk' });
+    chain = await startChain({ jwks: { keys: [{ kty: 'RSA', kid: LNB_KID, use: 'sig', alg: 'RS256', n: jwk.n, e: jwk.e }] } });
     say(`Starting the backend from ${jar} on port ${apiPort}…`);
     const log = createWriteStream(logPath);
     backend = spawn('java', ['-jar', jar], {
@@ -242,11 +256,15 @@ export async function startStack({ quiet = false } = {}) {
         POOL_TRANSFERS_CRON: '-',
         FACTOR_REFRESH_ENABLED: 'false',
         GUARANTEE_JOBS_ENABLED: 'false',
-        // the chain stand-in: it answers for registered Safes only, so a member's wallet sign-in, which reads the
-        // chain in the background (locked BLOCKS, Lipa activity), is refused, nothing leaves the machine and
-        // locked BLOCKS stay 0
+        // the chain stand-in: it answers for registered Safes only, so the reads a new member's wallet starts in the
+        // background (locked BLOCKS, Lipa activity) are refused, nothing leaves the machine and locked BLOCKS stay 0
         BSC_RPC_URLS: chain.url,
         ALCHEMY_BSC_URL: '',
+        // members sign in through the stand-in LNB only
+        LNB_ISSUER,
+        LNB_JWKS_URL: `${chain.url}/lnb/jwks.json`,
+        LNB_KEY_IDS: LNB_KID,
+        LNB_FRONTEND_ORIGINS: LNB_ORIGIN,
         // test runs sign in more often than a person would
         SPRING_APPLICATION_JSON: JSON.stringify({ 'app.rate-limit.enabled': false })
       }
@@ -261,7 +279,8 @@ export async function startStack({ quiet = false } = {}) {
       exited
     ]);
     say('Ready.');
-    return { apiBase: `http://localhost:${apiPort}/api`, apiPort, admin, logPath, dir, dbContainer: name, chainUrl: chain.url, stop };
+    const lnb = { issuer: LNB_ISSUER, origin: LNB_ORIGIN, kid: LNB_KID, key: lnbKey.privateKey.export({ format: 'pem', type: 'pkcs8' }) };
+    return { apiBase: `http://localhost:${apiPort}/api`, apiPort, admin, logPath, dir, dbContainer: name, chainUrl: chain.url, lnb, stop };
   } catch (e) {
     const err = new Error(`${e.message}${backend ? `\n${tail(logPath)}` : ''}`);
     await stop();
