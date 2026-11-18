@@ -14,6 +14,160 @@
     }
   ],
   "paths": {
+    "/api/members/{memberId}/connection-settings": {
+      "get": {
+        "tags": [
+          "Members"
+        ],
+        "summary": "Whether you are open to new connections (D-042)",
+        "description": "Off until you turn it on. Only members who turn it on are suggested to others.\n\n**Requires:** `hasAuthority('ACCOUNT_MEMBER') and #memberId == principal.id`",
+        "operationId": "connectionSettings",
+        "parameters": [
+          {
+            "name": "memberId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionSettingsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in, or the token or key is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Members"
+        ],
+        "summary": "Turn \"open to new connections\" on or off (D-042)",
+        "description": "On: you can be suggested to your connections' connections, while you have signed in within suggestion_active_days (90). Turning it off hides you from every list at once.\n\n**Requires:** `hasAuthority('ACCOUNT_MEMBER') and #memberId == principal.id`",
+        "operationId": "changeConnectionSettings",
+        "parameters": [
+          {
+            "name": "memberId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectionSettingsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionSettingsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in, or the token or key is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/members/{memberId}/asset-balances": {
       "get": {
         "tags": [
@@ -1462,6 +1616,88 @@
         }
       }
     },
+    "/api/members/{memberId}/suggestions/{suggestedMemberId}/request": {
+      "post": {
+        "tags": [
+          "Members"
+        ],
+        "summary": "Ask a suggested member to connect (D-042)",
+        "description": "Always a Connection request; either of you can propose an upgrade once it is accepted. It counts towards connection_requests_per_day (20 in any 24 hours), like a request by identifier.\n\n**Requires:** `hasAuthority('ACCOUNT_MEMBER') and #memberId == principal.id`",
+        "operationId": "requestSuggested",
+        "parameters": [
+          {
+            "name": "memberId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "suggestedMemberId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelationshipResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in, or the token or key is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/members/{memberId}/relationships": {
       "get": {
         "tags": [
@@ -1592,7 +1828,7 @@
           "Members"
         ],
         "summary": "Ask another member to connect (FR-1.1, FR-1.2)",
-        "description": "Name them by identifier: their exact phone number or member number, searched and rate-limited like /members/lookup. Until they accept, the link counts for you at the pending weight (0.1); once accepted it counts for both at the type's weight, and a rejected link counts for nobody (D-002, D-015). warnings flags a Trust or Mutual Trust claim that looks early (FR-1.9); it never blocks.\n\n**Requires:** `hasAuthority('ACCOUNT_MEMBER') and #memberId == principal.id`",
+        "description": "Name them by identifier: their exact phone number or member number, searched and rate-limited like /members/lookup. Until they accept, the link counts for you at the pending weight (0.1); once accepted it counts for both at the type's weight, and a rejected link counts for nobody (D-002, D-015). warnings flags a Trust or Mutual Trust claim that looks early (FR-1.9); it never blocks. At most connection_requests_per_day (20) requests in any 24 hours, or 429 (D-042).\n\n**Requires:** `hasAuthority('ACCOUNT_MEMBER') and #memberId == principal.id`",
         "operationId": "requestRelationship",
         "parameters": [
           {
@@ -2125,6 +2361,91 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/AddressProofResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in, or the token or key is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/members/activate": {
+      "post": {
+        "tags": [
+          "Lipa na BLOCKS sign-in"
+        ],
+        "summary": "Activate a new member (server to server)",
+        "description": "With an Idempotency-Key header. The ticket, its handoffId and the details LNB signed in with, and the current terms accepted. 201 with the member's accountId (member number); an identical retry with the same key gets 200 and the same answer. 401 TICKET_INVALID: unknown, used or expired ticket, or another handoff. 409: ACTIVATION_CONFLICT (details differ from the pass, or the wallet, email or phone number is already taken), TERMS_CONFLICT, IDEMPOTENCY_CONFLICT (the key was used with other details).",
+        "operationId": "activate",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActivationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivationResponse"
                 }
               }
             }
@@ -3689,366 +4010,6 @@
         }
       }
     },
-    "/api/auth/wallet/verify": {
-      "post": {
-        "tags": [
-          "Wallet sign-in"
-        ],
-        "summary": "Sign-in, step 2: send the signed message",
-        "description": "A known wallet gets the access and refresh tokens and an alert email; an unknown wallet gets a registration ticket. A reused or expired nonce, wrong domain, chain or signature gets 401.",
-        "operationId": "verify_1",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/WalletSignInRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/WalletSignInResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not logged in, or the token or key is invalid",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Logged in, but not allowed",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/auth/wallet/register": {
-      "post": {
-        "tags": [
-          "Wallet sign-in"
-        ],
-        "summary": "Member sign-up with the registration ticket",
-        "description": "Creates the member with the wallet from the ticket and signs them in. inviteToken is optional; an invalid one refuses the sign-up.",
-        "operationId": "register",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/WalletRegisterRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "description": "Created",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/LoginResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not logged in, or the token or key is invalid",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Logged in, but not allowed",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/auth/wallet/recovery": {
-      "post": {
-        "tags": [
-          "Wallet sign-in"
-        ],
-        "summary": "Lost wallet: email a link to move the account to a new wallet",
-        "description": "Always answers the same, whether or not the address belongs to a member.",
-        "operationId": "requestRecovery",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/EmailRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/MessageResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not logged in, or the token or key is invalid",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Logged in, but not allowed",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/auth/wallet/recovery/confirm": {
-      "post": {
-        "tags": [
-          "Wallet sign-in"
-        ],
-        "summary": "Lost wallet: the emailed token plus a message signed by the new wallet",
-        "description": "Get the message's nonce from /auth/wallet/nonce for the new wallet. Logs the account out everywhere.",
-        "operationId": "recover",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/WalletRecoveryRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/MessageResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not logged in, or the token or key is invalid",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Logged in, but not allowed",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/auth/wallet/nonce": {
-      "post": {
-        "tags": [
-          "Wallet sign-in"
-        ],
-        "summary": "Sign-in, step 1: a nonce for the wallet",
-        "description": "Put the nonce, chainId and one of the domains in the ERC-4361 message. Works once and expires.",
-        "operationId": "nonce",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/WalletNonceRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/WalletNonceResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not logged in, or the token or key is invalid",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Logged in, but not allowed",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/auth/verify-otp": {
       "post": {
         "tags": [
@@ -4555,16 +4516,16 @@
           "Auth"
         ],
         "summary": "End one session",
+        "description": "An admin sends their refresh token. A member sends {} with the __Host-gp_session cookie and X-GP-CSRF (#168): the GP session ends, the cookie is cleared and the answer is {\"status\": \"signed_out\"}.",
         "operationId": "logout",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/RefreshTokenRequest"
+                "$ref": "#/components/schemas/LogoutRequest"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -4572,7 +4533,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/MessageResponse"
+                  "type": "object"
                 }
               }
             }
@@ -4685,16 +4646,16 @@
     "/api/auth/lipa": {
       "post": {
         "tags": [
-          "Wallet sign-in"
+          "Lipa na BLOCKS sign-in"
         ],
-        "summary": "Sign in with a GP pass from the Lipa API",
-        "description": "Answers as /auth/wallet/verify: a known wallet gets the access and refresh tokens, an unknown one a registration ticket for /auth/wallet/register. A pass whose email belongs to a member with another wallet gets 409 {\"code\": \"WALLET_CHANGED\"}: use wallet recovery. A pass that is expired, reused or not ES256 from the Lipa API gets 401; ask for a new one. An alert email goes out at most once every 24 hours.",
+        "summary": "LNB vouches for a member (server to server)",
+        "description": "Body: LNB's RS256 pass and its handoffId, which must match the pass. An active member gets registered: true and a one-time handoff code (valid up to 60 s) bound to the pass's browser origin, state and S256 challenge; a new wallet gets registered: false and an activation ticket (valid 10 minutes). Times are Unix milliseconds. 401 PASS_INVALID: invalid, expired or reused pass. 403 ACCESS_DENIED: the member is suspended or closed.",
         "operationId": "signIn",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/GpPassRequest"
+                "$ref": "#/components/schemas/LipaPassRequest"
               }
             }
           },
@@ -4706,7 +4667,79 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/WalletSignInResponse"
+                  "$ref": "#/components/schemas/LipaPassResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in, or the token or key is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/handoff/exchange": {
+      "post": {
+        "tags": [
+          "Lipa na BLOCKS sign-in"
+        ],
+        "summary": "The browser exchanges a handoff code for a GP session",
+        "description": "Sent from the origin the pass named, with the code, the state and the PKCE verifier. Sets the __Host-gp_session cookie and returns the CSRF token to send as X-GP-CSRF on every state-changing request. The session lasts a fixed time. 401 HANDOFF_INVALID: unknown, used or expired code, or a wrong origin, state or verifier (a wrong verifier leaves the code usable). 403 ACCESS_DENIED: the member is suspended or closed.",
+        "operationId": "exchange",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HandoffExchangeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/GpSessionResponse"
                 }
               }
             }
@@ -9738,6 +9771,82 @@
         }
       }
     },
+    "/api/members/{memberId}/suggestions": {
+      "get": {
+        "tags": [
+          "Members"
+        ],
+        "summary": "Members you might know (D-042)",
+        "description": "Members open to new connections and known by at least 2 of your connections, best first. Worked out nightly, and checked again on every read. Shows how many of your connections know each one, never which.\n\n**Requires:** `hasAuthority('ACCOUNT_MEMBER') and #memberId == principal.id`",
+        "operationId": "suggestions",
+        "parameters": [
+          {
+            "name": "memberId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SuggestionResponse"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in, or the token or key is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/members/{memberId}/relationship-value": {
       "get": {
         "tags": [
@@ -11691,6 +11800,68 @@
         }
       }
     },
+    "/api/auth/session": {
+      "get": {
+        "tags": [
+          "Lipa na BLOCKS sign-in"
+        ],
+        "summary": "The member's GP session, from the cookie",
+        "description": "The same shape as the exchange. 401 SESSION_INVALID: no session, or it has ended. 403 ACCESS_DENIED: the member is suspended or closed.",
+        "operationId": "session",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/GpSessionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in, or the token or key is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/audit-logs": {
       "get": {
         "tags": [
@@ -12442,6 +12613,81 @@
         }
       }
     },
+    "/api/members/{memberId}/suggestions/{suggestedMemberId}": {
+      "delete": {
+        "tags": [
+          "Members"
+        ],
+        "summary": "Dismiss a suggestion (D-042)",
+        "description": "That member is never suggested to you again.\n\n**Requires:** `hasAuthority('ACCOUNT_MEMBER') and #memberId == principal.id`",
+        "operationId": "dismissSuggestion",
+        "parameters": [
+          {
+            "name": "memberId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "suggestedMemberId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in, or the token or key is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/members/{memberId}/invites/{inviteId}": {
       "delete": {
         "tags": [
@@ -12531,6 +12777,29 @@
           },
           "code": {
             "example": 403
+          }
+        }
+      },
+      "ConnectionSettingsRequest": {
+        "type": "object",
+        "properties": {
+          "openToConnections": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "openToConnections"
+        ]
+      },
+      "ConnectionSettingsResponse": {
+        "type": "object",
+        "properties": {
+          "openToConnections": {
+            "type": "boolean"
+          },
+          "changedAt": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },
@@ -13527,23 +13796,6 @@
           }
         }
       },
-      "RelationshipRequest": {
-        "type": "object",
-        "properties": {
-          "identifier": {
-            "type": "string",
-            "minLength": 1
-          },
-          "relationshipType": {
-            "type": "string",
-            "minLength": 1
-          }
-        },
-        "required": [
-          "identifier",
-          "relationshipType"
-        ]
-      },
       "MemberLookupResponse": {
         "type": "object",
         "properties": {
@@ -13667,6 +13919,23 @@
             "type": "string"
           }
         }
+      },
+      "RelationshipRequest": {
+        "type": "object",
+        "properties": {
+          "identifier": {
+            "type": "string",
+            "minLength": 1
+          },
+          "relationshipType": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "identifier",
+          "relationshipType"
+        ]
       },
       "LockedBlocksResponse": {
         "type": "object",
@@ -13802,6 +14071,100 @@
           "issueDate",
           "uploadId"
         ]
+      },
+      "ActivationRequest": {
+        "type": "object",
+        "properties": {
+          "registrationTicket": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 0
+          },
+          "handoffId": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 0
+          },
+          "firstName": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 0
+          },
+          "middleName": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 0
+          },
+          "lastName": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 0
+          },
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "minLength": 0
+          },
+          "phoneNumber": {
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 0
+          },
+          "acceptTerms": {
+            "type": "boolean"
+          },
+          "termsVersion": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "acceptTerms",
+          "email",
+          "firstName",
+          "handoffId",
+          "lastName",
+          "registrationTicket",
+          "termsVersion"
+        ]
+      },
+      "ActivationResponse": {
+        "type": "object",
+        "properties": {
+          "registered": {
+            "type": "boolean"
+          },
+          "handoffId": {
+            "type": "string"
+          },
+          "subject": {
+            "$ref": "#/components/schemas/Subject"
+          },
+          "profile": {
+            "$ref": "#/components/schemas/LipaProfile"
+          }
+        }
+      },
+      "LipaProfile": {
+        "type": "object",
+        "properties": {
+          "accountId": {
+            "type": "string"
+          }
+        }
+      },
+      "Subject": {
+        "type": "object",
+        "properties": {
+          "primaryWallet": {
+            "type": "string"
+          },
+          "chainId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
       },
       "RecordLoanRequest": {
         "type": "object",
@@ -14601,24 +14964,37 @@
           }
         }
       },
-      "WalletSignInRequest": {
+      "VerifyOtpRequest": {
         "type": "object",
         "properties": {
-          "message": {
+          "challengeId": {
             "type": "string",
-            "maxLength": 4000,
-            "minLength": 0
+            "format": "uuid"
           },
-          "signature": {
+          "code": {
             "type": "string",
-            "maxLength": 200,
-            "minLength": 0
+            "minLength": 1,
+            "pattern": "^\\d{6}$"
           }
         },
         "required": [
-          "message",
-          "signature"
+          "challengeId",
+          "code"
         ]
+      },
+      "LoginResponse": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "profile": {
+            "$ref": "#/components/schemas/Profile"
+          }
+        }
       },
       "Profile": {
         "type": "object",
@@ -14673,189 +15049,6 @@
             "format": "int64"
           }
         }
-      },
-      "WalletSignInResponse": {
-        "type": "object",
-        "properties": {
-          "title": {
-            "type": "string"
-          },
-          "message": {
-            "type": "string"
-          },
-          "registered": {
-            "type": "boolean"
-          },
-          "profile": {
-            "$ref": "#/components/schemas/Profile"
-          },
-          "registrationTicket": {
-            "type": "string"
-          },
-          "ticketExpiry": {
-            "type": "integer",
-            "format": "int64"
-          }
-        }
-      },
-      "WalletRegisterRequest": {
-        "type": "object",
-        "properties": {
-          "registrationTicket": {
-            "type": "string",
-            "maxLength": 200,
-            "minLength": 0
-          },
-          "firstName": {
-            "type": "string",
-            "maxLength": 100,
-            "minLength": 0,
-            "pattern": "^[\\p{L} .'-]+$"
-          },
-          "middleName": {
-            "type": "string",
-            "maxLength": 100,
-            "minLength": 0,
-            "pattern": "^[\\p{L} .'-]*$"
-          },
-          "lastName": {
-            "type": "string",
-            "maxLength": 100,
-            "minLength": 0,
-            "pattern": "^[\\p{L} .'-]+$"
-          },
-          "email": {
-            "type": "string",
-            "maxLength": 254,
-            "minLength": 0,
-            "pattern": "^[a-zA-Z0-9_+&*-]+(?:\\.[a-zA-Z0-9_+&*-]+)*@(?:[a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,7}$"
-          },
-          "phoneNumber": {
-            "type": "string",
-            "minLength": 1,
-            "pattern": "^(?:\\+?(?:254|0)[17]\\d{8}|\\+(?!254)[1-9]\\d{6,14})$"
-          },
-          "inviteToken": {
-            "type": "string",
-            "maxLength": 200,
-            "minLength": 0
-          }
-        },
-        "required": [
-          "email",
-          "firstName",
-          "lastName",
-          "phoneNumber",
-          "registrationTicket"
-        ]
-      },
-      "LoginResponse": {
-        "type": "object",
-        "properties": {
-          "title": {
-            "type": "string"
-          },
-          "message": {
-            "type": "string"
-          },
-          "profile": {
-            "$ref": "#/components/schemas/Profile"
-          }
-        }
-      },
-      "EmailRequest": {
-        "type": "object",
-        "properties": {
-          "email": {
-            "type": "string",
-            "minLength": 1,
-            "pattern": "^[a-zA-Z0-9_+&*-]+(?:\\.[a-zA-Z0-9_+&*-]+)*@(?:[a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,7}$"
-          }
-        },
-        "required": [
-          "email"
-        ]
-      },
-      "WalletRecoveryRequest": {
-        "type": "object",
-        "properties": {
-          "token": {
-            "type": "string",
-            "maxLength": 200,
-            "minLength": 0
-          },
-          "message": {
-            "type": "string",
-            "maxLength": 4000,
-            "minLength": 0
-          },
-          "signature": {
-            "type": "string",
-            "maxLength": 200,
-            "minLength": 0
-          }
-        },
-        "required": [
-          "message",
-          "signature",
-          "token"
-        ]
-      },
-      "WalletNonceRequest": {
-        "type": "object",
-        "properties": {
-          "address": {
-            "type": "string",
-            "minLength": 1,
-            "pattern": "^0x[0-9a-fA-F]{40}$"
-          }
-        },
-        "required": [
-          "address"
-        ]
-      },
-      "WalletNonceResponse": {
-        "type": "object",
-        "properties": {
-          "nonce": {
-            "type": "string"
-          },
-          "address": {
-            "type": "string"
-          },
-          "chainId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "domains": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "expiresAt": {
-            "type": "string",
-            "format": "date-time"
-          }
-        }
-      },
-      "VerifyOtpRequest": {
-        "type": "object",
-        "properties": {
-          "challengeId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "code": {
-            "type": "string",
-            "minLength": 1,
-            "pattern": "^\\d{6}$"
-          }
-        },
-        "required": [
-          "challengeId",
-          "code"
-        ]
       },
       "TokenRequest": {
         "type": "object",
@@ -14914,6 +15107,19 @@
           "newPassword"
         ]
       },
+      "EmailRequest": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[a-zA-Z0-9_+&*-]+(?:\\.[a-zA-Z0-9_+&*-]+)*@(?:[a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,7}$"
+          }
+        },
+        "required": [
+          "email"
+        ]
+      },
       "ResendOtpRequest": {
         "type": "object",
         "properties": {
@@ -14961,18 +15167,130 @@
           "refreshToken"
         ]
       },
-      "GpPassRequest": {
+      "LogoutRequest": {
+        "type": "object",
+        "properties": {
+          "refreshToken": {
+            "type": "string",
+            "maxLength": 512,
+            "minLength": 0
+          }
+        }
+      },
+      "LipaPassRequest": {
         "type": "object",
         "properties": {
           "pass": {
             "type": "string",
-            "maxLength": 4096,
+            "maxLength": 8192,
+            "minLength": 0
+          },
+          "handoffId": {
+            "type": "string",
+            "maxLength": 64,
             "minLength": 0
           }
         },
         "required": [
+          "handoffId",
           "pass"
         ]
+      },
+      "Handoff": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "state": {
+            "type": "string"
+          }
+        }
+      },
+      "LipaPassResponse": {
+        "type": "object",
+        "properties": {
+          "registered": {
+            "type": "boolean"
+          },
+          "handoffId": {
+            "type": "string"
+          },
+          "subject": {
+            "$ref": "#/components/schemas/Subject"
+          },
+          "profile": {
+            "$ref": "#/components/schemas/LipaProfile"
+          },
+          "handoff": {
+            "$ref": "#/components/schemas/Handoff"
+          },
+          "registrationTicket": {
+            "type": "string"
+          },
+          "ticketExpiry": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "HandoffExchangeRequest": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 0
+          },
+          "state": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 0
+          },
+          "codeVerifier": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "code",
+          "codeVerifier",
+          "state"
+        ]
+      },
+      "Customer": {
+        "type": "object",
+        "properties": {
+          "accountId": {
+            "type": "string"
+          }
+        }
+      },
+      "GpSessionResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "customer": {
+            "$ref": "#/components/schemas/Customer"
+          },
+          "subject": {
+            "$ref": "#/components/schemas/Subject"
+          },
+          "csrfToken": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
       },
       "ResetCodeResponse": {
         "type": "object",
@@ -15260,7 +15578,7 @@
           }
         }
       },
-      "Conversion": {
+      "GuaranteeConversion": {
         "type": "object",
         "properties": {
           "usdtPerBlocks": {
@@ -15357,7 +15675,7 @@
             "$ref": "#/components/schemas/BlocksPrice"
           },
           "conversion": {
-            "$ref": "#/components/schemas/Conversion"
+            "$ref": "#/components/schemas/GuaranteeConversion"
           }
         }
       },
@@ -16391,6 +16709,21 @@
           }
         }
       },
+      "SuggestionResponse": {
+        "type": "object",
+        "properties": {
+          "member": {
+            "$ref": "#/components/schemas/MemberLookupResponse"
+          },
+          "mutualConnections": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      },
       "PageResponseRelationshipResponse": {
         "type": "object",
         "properties": {
@@ -16927,6 +17260,34 @@
           }
         }
       },
+      "PaymentConversion": {
+        "type": "object",
+        "properties": {
+          "kesPerUsd": {
+            "type": "string"
+          },
+          "usdtPerUnit": {
+            "type": "string"
+          },
+          "pricePair": {
+            "type": "string"
+          },
+          "priceBlock": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "rateSource": {
+            "type": "string"
+          },
+          "rateUpdatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "buffer": {
+            "type": "string"
+          }
+        }
+      },
       "PaymentResponse": {
         "type": "object",
         "properties": {
@@ -16998,7 +17359,7 @@
             "type": "string"
           },
           "conversion": {
-            "$ref": "#/components/schemas/Conversion"
+            "$ref": "#/components/schemas/PaymentConversion"
           },
           "operatingFeeRule": {
             "$ref": "#/components/schemas/OperatingFeeRule"

@@ -4,6 +4,34 @@
  */
 
 export interface paths {
+    "/api/members/{memberId}/connection-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Whether you are open to new connections (D-042)
+         * @description Off until you turn it on. Only members who turn it on are suggested to others.
+         *
+         *     **Requires:** `hasAuthority('ACCOUNT_MEMBER') and #memberId == principal.id`
+         */
+        get: operations["connectionSettings"];
+        /**
+         * Turn "open to new connections" on or off (D-042)
+         * @description On: you can be suggested to your connections' connections, while you have signed in within suggestion_active_days (90). Turning it off hides you from every list at once.
+         *
+         *     **Requires:** `hasAuthority('ACCOUNT_MEMBER') and #memberId == principal.id`
+         */
+        put: operations["changeConnectionSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/members/{memberId}/asset-balances": {
         parameters: {
             query?: never;
@@ -310,6 +338,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/members/{memberId}/suggestions/{suggestedMemberId}/request": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ask a suggested member to connect (D-042)
+         * @description Always a Connection request; either of you can propose an upgrade once it is accepted. It counts towards connection_requests_per_day (20 in any 24 hours), like a request by identifier.
+         *
+         *     **Requires:** `hasAuthority('ACCOUNT_MEMBER') and #memberId == principal.id`
+         */
+        post: operations["requestSuggested"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/members/{memberId}/relationships": {
         parameters: {
             query?: never;
@@ -325,7 +375,7 @@ export interface paths {
         put?: never;
         /**
          * Ask another member to connect (FR-1.1, FR-1.2)
-         * @description Name them by identifier: their exact phone number or member number, searched and rate-limited like /members/lookup. Until they accept, the link counts for you at the pending weight (0.1); once accepted it counts for both at the type's weight, and a rejected link counts for nobody (D-002, D-015). warnings flags a Trust or Mutual Trust claim that looks early (FR-1.9); it never blocks.
+         * @description Name them by identifier: their exact phone number or member number, searched and rate-limited like /members/lookup. Until they accept, the link counts for you at the pending weight (0.1); once accepted it counts for both at the type's weight, and a rejected link counts for nobody (D-002, D-015). warnings flags a Trust or Mutual Trust claim that looks early (FR-1.9); it never blocks. At most connection_requests_per_day (20) requests in any 24 hours, or 429 (D-042).
          *
          *     **Requires:** `hasAuthority('ACCOUNT_MEMBER') and #memberId == principal.id`
          */
@@ -450,6 +500,26 @@ export interface paths {
          *     **Requires:** `hasAuthority('ACCOUNT_MEMBER')`
          */
         post: operations["submitAddressDocument"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/members/activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Activate a new member (server to server)
+         * @description With an Idempotency-Key header. The ticket, its handoffId and the details LNB signed in with, and the current terms accepted. 201 with the member's accountId (member number); an identical retry with the same key gets 200 and the same answer. 401 TICKET_INVALID: unknown, used or expired ticket, or another handoff. 409: ACTIVATION_CONFLICT (details differ from the pass, or the wallet, email or phone number is already taken), TERMS_CONFLICT, IDEMPOTENCY_CONFLICT (the key was used with other details).
+         */
+        post: operations["activate"];
         delete?: never;
         options?: never;
         head?: never;
@@ -800,106 +870,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/auth/wallet/verify": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Sign-in, step 2: send the signed message
-         * @description A known wallet gets the access and refresh tokens and an alert email; an unknown wallet gets a registration ticket. A reused or expired nonce, wrong domain, chain or signature gets 401.
-         */
-        post: operations["verify_1"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/auth/wallet/register": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Member sign-up with the registration ticket
-         * @description Creates the member with the wallet from the ticket and signs them in. inviteToken is optional; an invalid one refuses the sign-up.
-         */
-        post: operations["register"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/auth/wallet/recovery": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Lost wallet: email a link to move the account to a new wallet
-         * @description Always answers the same, whether or not the address belongs to a member.
-         */
-        post: operations["requestRecovery"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/auth/wallet/recovery/confirm": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Lost wallet: the emailed token plus a message signed by the new wallet
-         * @description Get the message's nonce from /auth/wallet/nonce for the new wallet. Logs the account out everywhere.
-         */
-        post: operations["recover"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/auth/wallet/nonce": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Sign-in, step 1: a nonce for the wallet
-         * @description Put the nonce, chainId and one of the domains in the ERC-4361 message. Works once and expires.
-         */
-        post: operations["nonce"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/auth/verify-otp": {
         parameters: {
             query?: never;
@@ -1037,7 +1007,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** End one session */
+        /**
+         * End one session
+         * @description An admin sends their refresh token. A member sends {} with the __Host-gp_session cookie and X-GP-CSRF (#168): the GP session ends, the cookie is cleared and the answer is {"status": "signed_out"}.
+         */
         post: operations["logout"];
         delete?: never;
         options?: never;
@@ -1075,10 +1048,30 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Sign in with a GP pass from the Lipa API
-         * @description Answers as /auth/wallet/verify: a known wallet gets the access and refresh tokens, an unknown one a registration ticket for /auth/wallet/register. A pass whose email belongs to a member with another wallet gets 409 {"code": "WALLET_CHANGED"}: use wallet recovery. A pass that is expired, reused or not ES256 from the Lipa API gets 401; ask for a new one. An alert email goes out at most once every 24 hours.
+         * LNB vouches for a member (server to server)
+         * @description Body: LNB's RS256 pass and its handoffId, which must match the pass. An active member gets registered: true and a one-time handoff code (valid up to 60 s) bound to the pass's browser origin, state and S256 challenge; a new wallet gets registered: false and an activation ticket (valid 10 minutes). Times are Unix milliseconds. 401 PASS_INVALID: invalid, expired or reused pass. 403 ACCESS_DENIED: the member is suspended or closed.
          */
         post: operations["signIn"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/handoff/exchange": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * The browser exchanges a handoff code for a GP session
+         * @description Sent from the origin the pass named, with the code, the state and the PKCE verifier. Sets the __Host-gp_session cookie and returns the CSRF token to send as X-GP-CSRF on every state-changing request. The session lasts a fixed time. 401 HANDOFF_INVALID: unknown, used or expired code, or a wrong origin, state or verifier (a wrong verifier leaves the code usable). 403 ACCESS_DENIED: the member is suspended or closed.
+         */
+        post: operations["exchange"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2235,6 +2228,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/members/{memberId}/suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Members you might know (D-042)
+         * @description Members open to new connections and known by at least 2 of your connections, best first. Worked out nightly, and checked again on every read. Shows how many of your connections know each one, never which.
+         *
+         *     **Requires:** `hasAuthority('ACCOUNT_MEMBER') and #memberId == principal.id`
+         */
+        get: operations["suggestions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/members/{memberId}/relationship-value": {
         parameters: {
             query?: never;
@@ -2709,6 +2724,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The member's GP session, from the cookie
+         * @description The same shape as the exchange. 401 SESSION_INVALID: no session, or it has ended. 403 ACCESS_DENIED: the member is suspended or closed.
+         */
+        get: operations["session"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/audit-logs": {
         parameters: {
             query?: never;
@@ -2857,6 +2892,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/members/{memberId}/suggestions/{suggestedMemberId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Dismiss a suggestion (D-042)
+         * @description That member is never suggested to you again.
+         *
+         *     **Requires:** `hasAuthority('ACCOUNT_MEMBER') and #memberId == principal.id`
+         */
+        delete: operations["dismissSuggestion"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/members/{memberId}/invites/{inviteId}": {
         parameters: {
             query?: never;
@@ -2888,6 +2945,14 @@ export interface components {
             message?: unknown;
             /** @example 403 */
             code?: unknown;
+        };
+        ConnectionSettingsRequest: {
+            openToConnections: boolean;
+        };
+        ConnectionSettingsResponse: {
+            openToConnections?: boolean;
+            /** Format: date-time */
+            changedAt?: string;
         };
         AssetBalancesRequest: {
             kesDeposits: number;
@@ -3227,10 +3292,6 @@ export interface components {
             /** Format: uuid */
             changeSetId?: string;
         };
-        RelationshipRequest: {
-            identifier: string;
-            relationshipType: string;
-        };
         MemberLookupResponse: {
             /** Format: uuid */
             memberId?: string;
@@ -3271,6 +3332,10 @@ export interface components {
         Warning: {
             code?: string;
             message?: string;
+        };
+        RelationshipRequest: {
+            identifier: string;
+            relationshipType: string;
         };
         LockedBlocksResponse: {
             lockedBlocks?: string;
@@ -3316,6 +3381,31 @@ export interface components {
             documentType: string;
             /** Format: date */
             issueDate: string;
+        };
+        ActivationRequest: {
+            registrationTicket: string;
+            handoffId: string;
+            firstName: string;
+            middleName?: string;
+            lastName: string;
+            email: string;
+            phoneNumber?: string;
+            acceptTerms: boolean;
+            termsVersion: string;
+        };
+        ActivationResponse: {
+            registered?: boolean;
+            handoffId?: string;
+            subject?: components["schemas"]["Subject"];
+            profile?: components["schemas"]["LipaProfile"];
+        };
+        LipaProfile: {
+            accountId?: string;
+        };
+        Subject: {
+            primaryWallet?: string;
+            /** Format: int64 */
+            chainId?: number;
         };
         RecordLoanRequest: {
             guaranteeId: string;
@@ -3574,9 +3664,15 @@ export interface components {
             /** Format: int32 */
             duplicates?: number;
         };
-        WalletSignInRequest: {
-            message: string;
-            signature: string;
+        VerifyOtpRequest: {
+            /** Format: uuid */
+            challengeId: string;
+            code: string;
+        };
+        LoginResponse: {
+            title?: string;
+            message?: string;
+            profile?: components["schemas"]["Profile"];
         };
         Profile: {
             /** Format: uuid */
@@ -3597,54 +3693,6 @@ export interface components {
             /** Format: int64 */
             refreshTokenExpiry?: number;
         };
-        WalletSignInResponse: {
-            title?: string;
-            message?: string;
-            registered?: boolean;
-            profile?: components["schemas"]["Profile"];
-            registrationTicket?: string;
-            /** Format: int64 */
-            ticketExpiry?: number;
-        };
-        WalletRegisterRequest: {
-            registrationTicket: string;
-            firstName: string;
-            middleName?: string;
-            lastName: string;
-            email: string;
-            phoneNumber: string;
-            inviteToken?: string;
-        };
-        LoginResponse: {
-            title?: string;
-            message?: string;
-            profile?: components["schemas"]["Profile"];
-        };
-        EmailRequest: {
-            email: string;
-        };
-        WalletRecoveryRequest: {
-            token: string;
-            message: string;
-            signature: string;
-        };
-        WalletNonceRequest: {
-            address: string;
-        };
-        WalletNonceResponse: {
-            nonce?: string;
-            address?: string;
-            /** Format: int64 */
-            chainId?: number;
-            domains?: string[];
-            /** Format: date-time */
-            expiresAt?: string;
-        };
-        VerifyOtpRequest: {
-            /** Format: uuid */
-            challengeId: string;
-            code: string;
-        };
         TokenRequest: {
             token: string;
         };
@@ -3656,6 +3704,9 @@ export interface components {
             email: string;
             code: string;
             newPassword: string;
+        };
+        EmailRequest: {
+            email: string;
         };
         ResendOtpRequest: {
             /** Format: uuid */
@@ -3674,8 +3725,44 @@ export interface components {
         RefreshTokenRequest: {
             refreshToken: string;
         };
-        GpPassRequest: {
+        LogoutRequest: {
+            refreshToken?: string;
+        };
+        LipaPassRequest: {
             pass: string;
+            handoffId: string;
+        };
+        Handoff: {
+            code?: string;
+            /** Format: int64 */
+            expiresAt?: number;
+            state?: string;
+        };
+        LipaPassResponse: {
+            registered?: boolean;
+            handoffId?: string;
+            subject?: components["schemas"]["Subject"];
+            profile?: components["schemas"]["LipaProfile"];
+            handoff?: components["schemas"]["Handoff"];
+            registrationTicket?: string;
+            /** Format: int64 */
+            ticketExpiry?: number;
+        };
+        HandoffExchangeRequest: {
+            code: string;
+            state: string;
+            codeVerifier: string;
+        };
+        Customer: {
+            accountId?: string;
+        };
+        GpSessionResponse: {
+            status?: string;
+            customer?: components["schemas"]["Customer"];
+            subject?: components["schemas"]["Subject"];
+            csrfToken?: string;
+            /** Format: int64 */
+            expiresAt?: number;
         };
         ResetCodeResponse: {
             title?: string;
@@ -3755,7 +3842,7 @@ export interface components {
             quoteUsdtPerBlocks?: string;
             activationUsdtPerBlocks?: string;
         };
-        Conversion: {
+        GuaranteeConversion: {
             usdtPerBlocks?: string;
             source?: string;
         };
@@ -3792,7 +3879,7 @@ export interface components {
             closeReason?: string;
             pendingClose?: components["schemas"]["PendingClose"];
             blocksPrice?: components["schemas"]["BlocksPrice"];
-            conversion?: components["schemas"]["Conversion"];
+            conversion?: components["schemas"]["GuaranteeConversion"];
         };
         PendingClose: {
             reason?: string;
@@ -4155,6 +4242,12 @@ export interface components {
             /** Format: date-time */
             calculatedAt?: string;
         };
+        SuggestionResponse: {
+            member?: components["schemas"]["MemberLookupResponse"];
+            /** Format: int32 */
+            mutualConnections?: number;
+            reason?: string;
+        };
         PageResponseRelationshipResponse: {
             results?: components["schemas"]["RelationshipResponse"][];
             /** Format: int32 */
@@ -4367,6 +4460,17 @@ export interface components {
             minUsd?: string;
             maxUsd?: string;
         };
+        PaymentConversion: {
+            kesPerUsd?: string;
+            usdtPerUnit?: string;
+            pricePair?: string;
+            /** Format: int64 */
+            priceBlock?: number;
+            rateSource?: string;
+            /** Format: date-time */
+            rateUpdatedAt?: string;
+            buffer?: string;
+        };
         PaymentResponse: {
             /** Format: uuid */
             paymentId?: string;
@@ -4389,7 +4493,7 @@ export interface components {
             amountReceived?: string;
             amountRefunded?: string;
             amountOwed?: string;
-            conversion?: components["schemas"]["Conversion"];
+            conversion?: components["schemas"]["PaymentConversion"];
             operatingFeeRule?: components["schemas"]["OperatingFeeRule"];
             providerReference?: string;
             /** Format: date-time */
@@ -4660,6 +4764,126 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    connectionSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                memberId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ConnectionSettingsResponse"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not logged in, or the token or key is invalid */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Logged in, but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    changeConnectionSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                memberId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConnectionSettingsRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ConnectionSettingsResponse"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not logged in, or the token or key is invalid */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Logged in, but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     assetBalances: {
         parameters: {
             query?: never;
@@ -5753,6 +5977,65 @@ export interface operations {
             };
         };
     };
+    requestSuggested: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                memberId: string;
+                suggestedMemberId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RelationshipResponse"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not logged in, or the token or key is invalid */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Logged in, but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     listRelationships: {
         parameters: {
             query?: {
@@ -6248,6 +6531,68 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["AddressProofResponse"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not logged in, or the token or key is invalid */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Logged in, but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    activate: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActivationRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ActivationResponse"];
                 };
             };
             /** @description Invalid request */
@@ -7405,306 +7750,6 @@ export interface operations {
             };
         };
     };
-    verify_1: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["WalletSignInRequest"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["WalletSignInResponse"];
-                };
-            };
-            /** @description Invalid request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Not logged in, or the token or key is invalid */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Logged in, but not allowed */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    register: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["WalletRegisterRequest"];
-            };
-        };
-        responses: {
-            /** @description Created */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["LoginResponse"];
-                };
-            };
-            /** @description Invalid request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Not logged in, or the token or key is invalid */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Logged in, but not allowed */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    requestRecovery: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["EmailRequest"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["MessageResponse"];
-                };
-            };
-            /** @description Invalid request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Not logged in, or the token or key is invalid */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Logged in, but not allowed */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    recover: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["WalletRecoveryRequest"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["MessageResponse"];
-                };
-            };
-            /** @description Invalid request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Not logged in, or the token or key is invalid */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Logged in, but not allowed */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    nonce: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["WalletNonceRequest"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["WalletNonceResponse"];
-                };
-            };
-            /** @description Invalid request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Not logged in, or the token or key is invalid */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Logged in, but not allowed */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
     verifyOtp: {
         parameters: {
             query?: never;
@@ -8132,9 +8177,9 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody: {
+        requestBody?: {
             content: {
-                "application/json": components["schemas"]["RefreshTokenRequest"];
+                "application/json": components["schemas"]["LogoutRequest"];
             };
         };
         responses: {
@@ -8144,7 +8189,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["MessageResponse"];
+                    "*/*": Record<string, never>;
                 };
             };
             /** @description Invalid request */
@@ -8250,7 +8295,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["GpPassRequest"];
+                "application/json": components["schemas"]["LipaPassRequest"];
             };
         };
         responses: {
@@ -8260,7 +8305,67 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["WalletSignInResponse"];
+                    "*/*": components["schemas"]["LipaPassResponse"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not logged in, or the token or key is invalid */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Logged in, but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    exchange: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HandoffExchangeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["GpSessionResponse"];
                 };
             };
             /** @description Invalid request */
@@ -12006,6 +12111,64 @@ export interface operations {
             };
         };
     };
+    suggestions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                memberId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SuggestionResponse"][];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not logged in, or the token or key is invalid */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Logged in, but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     relationshipValue: {
         parameters: {
             query?: never;
@@ -13310,6 +13473,62 @@ export interface operations {
             };
         };
     };
+    session: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["GpSessionResponse"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not logged in, or the token or key is invalid */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Logged in, but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     getAuditLogs: {
         parameters: {
             query?: {
@@ -13684,6 +13903,63 @@ export interface operations {
             header?: never;
             path: {
                 ownerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not logged in, or the token or key is invalid */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Logged in, but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    dismissSuggestion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                memberId: string;
+                suggestedMemberId: string;
             };
             cookie?: never;
         };

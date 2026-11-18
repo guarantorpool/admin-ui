@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, type Page } from '@playwright/test';
 import { Wallet } from 'ethers';
-import { randomUUID } from 'node:crypto';
+import { createHash, createSign, randomBytes, randomUUID } from 'node:crypto';
 import { docker, linkIn, loginCode, readMails, resetCode, waitForMail, type Mail } from '../../scripts/local-stack.mjs';
 
 interface StackState {
@@ -10,6 +10,8 @@ interface StackState {
   logPath: string;
   dbContainer: string;
   chainUrl: string;
+  // the stand-in Lipa na BLOCKS: its signing key, and the origin its page runs on (scripts/local-stack.mjs)
+  lnb: { issuer: string; origin: string; kid: string; key: string };
 }
 
 export function stack(): StackState {
@@ -66,10 +68,14 @@ export async function apiToken(email: string, password: string): Promise<string>
   return res.profile.token;
 }
 
-export async function call<T>(method: string, url: string, body?: unknown, token?: string): Promise<T> {
+/**
+ * Calls the API as an admin (a bearer token) or as a member: a member's token is their GP session (see newMember),
+ * sent the way LNB's page sends it, as the session cookie with its CSRF token and LNB's origin.
+ */
+export async function call<T>(method: string, url: string, body?: unknown, token?: string, extra: Record<string, string> = {}): Promise<T> {
   const res = await fetch(url, {
     method,
-    headers: { ...(body === undefined ? {} : { 'Content-Type': 'application/json' }), ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    headers: { ...(body === undefined ? {} : { 'Content-Type': 'application/json' }), ...(token ? authHeaders(token) : {}), ...extra },
     body: body === undefined ? undefined : JSON.stringify(body)
   });
   if (!res.ok) throw new Error(`${method} ${url} answered ${res.status}: ${await res.text()}`);
@@ -90,51 +96,99 @@ export interface Member {
   phone: string;
 }
 
+const SESSION = 'gp-session:';
+
+function authHeaders(token: string): Record<string, string> {
+  if (!token.startsWith(SESSION)) return { Authorization: `Bearer ${token}` };
+  const [cookie, csrf] = token.slice(SESSION.length).split(':');
+  return { Cookie: `__Host-gp_session=${cookie}`, 'X-GP-CSRF': csrf, Origin: stack().lnb.origin };
+}
+
+const b64url = (b: Buffer | string) => Buffer.from(b).toString('base64url');
+
+/** One browser's sign-in attempt: its PKCE verifier and state, and LNB's handoff ID. */
+function browser() {
+  return { verifier: b64url(randomBytes(32)), state: b64url(randomBytes(32)), handoffId: randomUUID() };
+}
+
+/** The pass LNB signs (RS256) for this wallet and browser, valid for 60 seconds, as GP-Auth-IN-Brief v2 has it. */
+function lnbPass(who: { wallet: string; email: string; firstName: string; lastName: string; phone: string }, b: ReturnType<typeof browser>) {
+  const { lnb } = stack();
+  const now = Math.floor(Date.now() / 1000);
+  const claims = {
+    iss: lnb.issuer,
+    aud: 'guarantor-pool',
+    sub: who.wallet,
+    chainId: 56,
+    email: who.email,
+    email_verified: true,
+    given_name: who.firstName,
+    family_name: who.lastName,
+    phone_number: who.phone,
+    phone_number_verified: true,
+    fundingWallets: [],
+    walletsVersion: 1,
+    handoffId: b.handoffId,
+    browser: { origin: lnb.origin, codeChallenge: b64url(createHash('sha256').update(b.verifier).digest()), codeChallengeMethod: 'S256', state: b.state },
+    iat: now,
+    exp: now + 60,
+    jti: randomUUID()
+  };
+  const input = `${b64url(JSON.stringify({ alg: 'RS256', typ: 'JWT', kid: lnb.kid }))}.${b64url(JSON.stringify(claims))}`;
+  return `${input}.${createSign('RSA-SHA256').update(input).sign(lnb.key, 'base64url')}`;
+}
+
 /**
- * Signs a new member up the way the member app does: a throwaway wallet signs the ERC-4361 message for a
- * nonce (BlockCoop D-016), and the registration ticket that returns makes the account.
+ * Signs a new member up the way Lipa na BLOCKS does (BlockCoop #168): LNB vouches for a new wallet with a signed
+ * pass, activates it with the ticket that returns, then opens the Guarantor Pool with a second pass, whose handoff
+ * code the browser exchanges for a GP session. LNB only sends a verified email, so there is no link to follow.
  */
 export async function newMember(firstName: string, lastName: string): Promise<Member> {
-  const { apiBase } = stack();
-  const wallet = Wallet.createRandom();
-  const nonce = await post<{ nonce: string; chainId: number; domains: string[] }>(`${apiBase}/auth/wallet/nonce`, { address: wallet.address });
-  const domain = nonce.domains[0];
-  const message = [
-    `${domain} wants you to sign in with your Ethereum account:`,
-    wallet.address,
-    '',
-    'Sign in to BlockCoop',
-    '',
-    `URI: https://${domain}`,
-    'Version: 1',
-    `Chain ID: ${nonce.chainId}`,
-    `Nonce: ${nonce.nonce}`,
-    `Issued At: ${new Date().toISOString().replace(/\.\d+Z$/, 'Z')}`
-  ].join('\n');
-  const signature = await wallet.signMessage(message);
-  const signIn = await post<{ registrationTicket: string }>(`${apiBase}/auth/wallet/verify`, { message, signature });
+  const { apiBase, lnb } = stack();
   seq += 1;
-  const email = `member-${Date.now().toString(36)}${seq}@test.local`;
-  const phone = randomPhone();
-  const skip = mailCount();
-  const res = await post<{ profile: { accountId: string; memberNumber: string; token: string } }>(`${apiBase}/auth/wallet/register`, {
-    registrationTicket: signIn.registrationTicket,
+  const who = {
+    // LNB sends the wallet in lower case
+    wallet: Wallet.createRandom().address.toLowerCase(),
+    email: `member-${Date.now().toString(36)}${seq}@test.local`,
     firstName,
     lastName,
-    email,
-    phoneNumber: phone
-  });
-  // connecting needs a confirmed email: follow the link from the verification email
-  const link = await linkFor(email, /verify your email/i, 'verify-email', skip);
-  await post(`${apiBase}/auth/verify-email`, { token: new URL(link).searchParams.get('token') });
-  return {
-    id: res.profile.accountId,
-    number: res.profile.memberNumber,
-    token: res.profile.token,
-    name: `${firstName} ${lastName}`,
-    email,
     // as the backend stores it
-    phone: `+254${phone.slice(1)}`
+    phone: `+254${randomPhone().slice(1)}`
+  };
+  const first = browser();
+  const pass = await post<{ registered: boolean; registrationTicket: string }>(`${apiBase}/auth/lipa`, { pass: lnbPass(who, first), handoffId: first.handoffId });
+  const res = await call<{ profile: { accountId: string } }>('POST', `${apiBase}/members/activate`, {
+    registrationTicket: pass.registrationTicket,
+    handoffId: first.handoffId,
+    firstName,
+    middleName: null,
+    lastName,
+    email: who.email,
+    phoneNumber: who.phone,
+    acceptTerms: true,
+    termsVersion: 'gp-v1'
+  }, undefined, { 'Idempotency-Key': randomUUID() });
+  const number = res.profile.accountId;
+  const id = sql(`SELECT id FROM members WHERE member_number = '${number}'`).trim();
+
+  const second = browser();
+  const signIn = await post<{ handoff: { code: string } }>(`${apiBase}/auth/lipa`, { pass: lnbPass(who, second), handoffId: second.handoffId });
+  const exchanged = await fetch(`${apiBase}/auth/handoff/exchange`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Origin: lnb.origin },
+    body: JSON.stringify({ code: signIn.handoff.code, state: second.state, codeVerifier: second.verifier })
+  });
+  if (!exchanged.ok) throw new Error(`the handoff exchange answered ${exchanged.status}: ${await exchanged.text()}`);
+  const cookie = exchanged.headers.getSetCookie().find((c) => c.startsWith('__Host-gp_session='));
+  if (!cookie) throw new Error('the handoff exchange set no session cookie');
+  const { csrfToken } = (await exchanged.json()) as { csrfToken: string };
+  return {
+    id,
+    number,
+    token: `${SESSION}${cookie.slice('__Host-gp_session='.length, cookie.indexOf(';'))}:${csrfToken}`,
+    name: `${firstName} ${lastName}`,
+    email: who.email,
+    phone: who.phone
   };
 }
 
