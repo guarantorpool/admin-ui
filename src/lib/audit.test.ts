@@ -8,6 +8,8 @@ describe('audit log labels', () => {
     expect(auditAction('LOGIN')).toBe('Signed in');
     expect(auditAction('SERVICE_KEY_ROTATED')).toBe('Service key rotated');
     expect(auditAction('LOAN_WRITE_OFF_APPROVED')).toBe('Loan write off approved');
+    expect(auditAction('SUGGESTION_DISMISSED')).toBe('Suggestion dismissed');
+    expect(auditAction('CONNECTION_SETTINGS_CHANGED')).toBe('"Open to new connections" changed');
     expect(auditAction('SOMETHING_NEW')).toBe('Something new');
     expect(auditAction(null)).toBe('—');
   });

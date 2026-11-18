@@ -20,7 +20,7 @@ import { ChangeHistory, ChangeItems, useWaiting, WaitingChanges } from './Settin
 import { ChangeDialog, ChangeSetDialog } from './SettingForms';
 
 // Screen 14. Every pool setting in its group, with its value and how it changes: most need a second admin, and
-// five apply at once. One can be changed on its own, or several proposed as one change set that applies together;
+// a few apply at once. One can be changed on its own, or several proposed as one change set that applies together;
 // the four pillar weights must total 1, so they always change as a set. Then what's waiting, and the history.
 
 const VIEWS = ['current', 'waiting', 'history'] as const;
@@ -158,7 +158,7 @@ function Current({ settings, loading }: { settings: Parameter[]; loading: boolea
   };
   return (
     <>
-      <Muted>Most settings take two admins: one proposes a change and a different one approves it. The five under "Applies at once" change straight away when changed on their own. Open a setting to change it or see its history.</Muted>
+      <Muted>Most settings take two admins: one proposes a change and a different one approves it. Those under "Applies at once" change straight away when changed on their own. Open a setting to change it or see its history.</Muted>
       <div className="grid items-start gap-3.5 lg:grid-cols-[15rem_minmax(0,1fr)]">
         {/* the groups; a column beside the one shown on wide screens, a row across the top on narrow ones */}
         <nav aria-label="Setting groups" className="flex min-w-0 gap-1 overflow-x-auto rounded-card border border-line bg-surface p-1.5 lg:flex-col lg:overflow-visible">
