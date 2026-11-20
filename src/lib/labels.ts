@@ -469,7 +469,7 @@ const KEY_STATUS: Record<string, Label> = {
 /** A service key: in use, or revoked by hand or by rotating it. */
 export const keyStatus = (code: string | null | undefined) => pick(KEY_STATUS, code);
 
-const SCOPE: Record<string, string> = { 'facts:write': 'Send activity records', 'facts:read': 'Read activity records', 'loans:write': "Send a lender's new loans" };
+const SCOPE: Record<string, string> = { 'facts:write': 'Send activity records', 'facts:read': 'Read activity records', 'loans:write': "Send a lender's new loans", 'quotes:read': 'Read quotes' };
 
 export const scopeLabel = (code: string | null | undefined) => (code ? SCOPE[code] ?? code : '—');
 

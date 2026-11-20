@@ -6,7 +6,8 @@ export type ServiceKey = Schemas['ServiceKeyResponse'];
 export type CreatedServiceKey = Schemas['ServiceKeyCreatedResponse'];
 
 /** What a key may do, as the backend knows them (ServiceKey.KNOWN_SCOPES). */
-export const SCOPES = ['facts:write', 'facts:read', 'loans:write'] as const;
+/** quotes:read is Lipa's backend, reading a quote's subject before payment (backend#185). */
+export const SCOPES = ['facts:write', 'facts:read', 'loans:write', 'quotes:read'] as const;
 
 /** A key with this scope belongs to one lender: its name is the lender on every loan it sends (#169). */
 export const LENDER_SCOPE = 'loans:write';
