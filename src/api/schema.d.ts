@@ -811,7 +811,7 @@ export interface paths {
         put?: never;
         /**
          * Price a guarantee for yourself (FR-4.1 to FR-4.7)
-         * @description Every amount is USDT (#138). SM = 2 − TS / 100; PD = BDR × SM; LGD = 1 − RR; EL = GA × PD × LGD; CON = GA ÷ NAB (Net Available Backing, in USDT); BM = max(book_ratio_target, 2 + CON − LR); BL = EL × (BM − 1); TR = T ÷ 12; P = (EL + BL) × TR. Checks: PR = P ÷ GA ÷ TR, a yearly rate the same for every tenure; COV = P ÷ (EL × TR), flagged for review below 1.0, never blocked. GSR = GA ÷ your own backing in USDT is shown for information only, "—" when you have none, and not used in pricing. BDR, RR and LR are the static settings until each one's toggle is on, then their limited calculated values (#92). Rejected above your Available Headroom or when the pool has no capacity. Valid for quote_validity_seconds, holding the amount against your headroom and replacing your open quote; no guarantee is created (#140). invoice is what Lipa collects, fixed for the life of the quote: operatingFee = P × operating_fee_rate, kept between operating_fee_min_usd and operating_fee_max_usd, in USDT (#111). It is not pool money.
+         * @description Every amount is USDT (#138). SM = 2 − TS / 100; PD = BDR × SM; LGD = 1 − RR; EL = GA × PD × LGD; CON = GA ÷ NAB (Net Available Backing, in USDT); BM = max(book_ratio_target, 2 + CON − LR); BL = EL × (BM − 1); TR = T ÷ 12; P = (EL + BL) × TR. Checks: PR = P ÷ GA ÷ TR, a yearly rate the same for every tenure; COV = P ÷ (EL × TR), flagged for review below 1.0, never blocked. GSR = GA ÷ your own backing in USDT is shown for information only, "—" when you have none, and not used in pricing. BDR, RR and LR are the static settings until each one's toggle is on, then their limited calculated values (#92). Rejected above your Available Headroom or when the pool has no capacity. Valid for quote_validity_seconds, holding the amount against your headroom and replacing your open quote; no guarantee is created (#140). invoice is what Lipa collects, fixed for the life of the quote: operatingFee = P × operating_fee_rate, kept between operating_fee_min_usd and operating_fee_max_usd, in USDT (#111). It is not pool money. subject is the member's primary wallet, lower case, and chainId: what Lipa matches against its pass's sub and chainId before taking payment. Left out when the member has no wallet.
          *
          *     **Requires:** `hasAuthority('ACCOUNT_MEMBER')`
          */
@@ -2579,7 +2579,7 @@ export interface paths {
         };
         /**
          * Quotes (#140)
-         * @description A member sees only their own. An admin with GUARANTEES.READ sees everyone's and can filter by memberId, status (quoted, paid, replaced or expired) and flagged=true for quotes whose COV = P ÷ (EL × TR) is below 1.0 (FR-4.6). search matches part of the quote ID (GPQ-…), ignoring case. A replaced quote names the quote that replaced it in replacedBy.
+         * @description A member sees only their own. An admin with GUARANTEES.READ sees everyone's and can filter by memberId, status (quoted, paid, replaced or expired) and flagged=true for quotes whose COV = P ÷ (EL × TR) is below 1.0 (FR-4.6). search matches part of the quote ID (GPQ-…), ignoring case. A replaced quote names the quote that replaced it in replacedBy. subject is the member's primary wallet, lower case, and chainId: what Lipa matches against its pass's sub and chainId before taking payment. Left out when the member has no wallet.
          *
          *     **Requires:** `hasAuthority('ACCOUNT_MEMBER') or hasAuthority('GUARANTEES.READ')`
          */
@@ -2601,9 +2601,9 @@ export interface paths {
         };
         /**
          * One quote, its invoice and its latest payment through Lipa (#140)
-         * @description replacedBy is the quote that replaced it, once it was replaced; replaces lists the quotes it replaced, oldest first, empty for none.
+         * @description replacedBy is the quote that replaced it, once it was replaced; replaces lists the quotes it replaced, oldest first, empty for none. subject is the member's primary wallet, lower case, and chainId: what Lipa matches against its pass's sub and chainId before taking payment. Left out when the member has no wallet. A service key with quotes:read reads any member's quote, as the member sees it, without the admin-only fields: Lipa's backend uses it to check subject against the pass before taking payment (#185). A key without it gets 403.
          *
-         *     **Requires:** `hasAuthority('ACCOUNT_MEMBER') or hasAuthority('GUARANTEES.READ')`
+         *     **Requires:** `hasAuthority('ACCOUNT_MEMBER') or hasAuthority('GUARANTEES.READ') or hasAuthority('SCOPE_quotes:read')`
          */
         get: operations["viewQuote"];
         put?: never;
@@ -3604,6 +3604,7 @@ export interface components {
         QuoteResponse: {
             quoteId?: string;
             memberId?: string;
+            subject?: components["schemas"]["Subject"];
             /** @enum {string} */
             status?: "quoted" | "accepted" | "paid" | "replaced" | "expired";
             guaranteeAmount?: string;
