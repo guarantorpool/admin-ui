@@ -564,7 +564,12 @@ function Requests({ params: p, manage }: { params: Params; manage: boolean }) {
   ) : !rows.length ? (
     <p className="m-0 px-4 py-5 text-muted">{status === 'PENDING' ? 'No requests are waiting.' : 'No requests match.'}</p>
   ) : (
-    <MenuRows label="Requests" rows={rows} rowKey={(r) => r.requestId!} columns={columns} grid="grid-cols-[1.2fr_1fr_1fr_0.9fr_1.2fr_0.7fr]" minWidth={980} menuFor={menuFor} sub={(r) => `${listLabel(r)} · ${fullName(r.member)} · ${formatDateTime(r.requestedAt)}`} />
+    <MenuRows label="Requests" rows={rows} rowKey={(r) => r.requestId!} columns={columns} grid="grid-cols-[1.2fr_1fr_1fr_0.9fr_1.2fr_0.7fr]" minWidth={980} menuFor={menuFor} sub={(r) => (
+        <>
+          {`${listLabel(r)} · ${fullName(r.member)} · ${formatDateTime(r.requestedAt)}`}
+          {r.status !== 'PENDING' ? <span className="mt-0.5 block text-ink">{outcome(r)}</span> : null}
+        </>
+      )} />
   );
 
   return (
@@ -672,6 +677,8 @@ function ApproveExisting({ request, onClose }: { request: ListRequest | null; on
     enabled: !!request?.list
   });
   const entries = found.data?.results ?? [];
+  // only an entry still among the results counts, so a search that hides it leaves nothing chosen
+  const picked = chosen && entries.some((e) => e.id === chosen.id) ? chosen : null;
   return (
     <FormDialog
       open={!!request}
@@ -680,10 +687,10 @@ function ApproveExisting({ request, onClose }: { request: ListRequest | null; on
       rows={request ? requestRows(request) : []}
       confirm="Approve"
       onClose={onClose}
-      check={() => (!chosen ? 'Choose the entry it is.' : '')}
-      send={() => approveRequest(request!.requestId!, { entryId: chosen!.id })}
+      check={() => (!picked ? 'Choose the entry it is.' : '')}
+      send={() => approveRequest(request!.requestId!, { entryId: picked!.id })}
       saved={() => void qc.invalidateQueries({ queryKey: ['lists'] })}
-      done={`The request is approved as ${chosen?.name ?? 'that entry'}.`}
+      done={`The request is approved as ${picked?.name ?? 'that entry'}.`}
     >
       <Field id="merge-search" label="Find the entry">
         <Input id="merge-search" type="search" value={text} onChange={(e) => setText(e.target.value)} placeholder="Part of its name" />
@@ -699,7 +706,7 @@ function ApproveExisting({ request, onClose }: { request: ListRequest | null; on
         ) : (
           entries.map((e) => (
             <label key={e.id} className="flex items-center gap-2">
-              <input type="radio" name="merge-entry" className="size-4 accent-primary" checked={chosen?.id === e.id} onChange={() => setChosen(e)} />
+              <input type="radio" name="merge-entry" className="size-4 accent-primary" checked={picked?.id === e.id} onChange={() => setChosen(e)} />
               {e.name}
               {e.type ? <span className="text-muted">· {entryType(e.type)}</span> : null}
             </label>

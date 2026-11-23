@@ -118,6 +118,13 @@ test.describe('suggestion lists (BlockCoop D-043)', () => {
     dialog = page.getByRole('dialog', { name: 'Approve as an entry already on the list' });
     await dialog.getByLabel('Find the entry').fill(`Umoja Sacco Society ${t}`);
     await dialog.getByRole('radio', { name: new RegExp(sacco.name) }).check();
+    // a search that hides the chosen entry leaves nothing chosen
+    await dialog.getByLabel('Find the entry').fill(`Nothing like it ${t}`);
+    await expect(dialog.getByText('Nothing on the list matches.', { exact: false })).toBeVisible();
+    await dialog.getByRole('button', { name: 'Approve' }).click();
+    await expect(dialog.getByRole('alert')).toHaveText('Choose the entry it is.');
+    await dialog.getByLabel('Find the entry').fill(`Umoja Sacco Society ${t}`);
+    await dialog.getByRole('radio', { name: new RegExp(sacco.name) }).check();
     await dialog.getByRole('button', { name: 'Approve' }).click();
     await expect(dialog).toBeHidden();
 
@@ -137,6 +144,24 @@ test.describe('suggestion lists (BlockCoop D-043)', () => {
     const mine = await call<{ status: string; note?: string }[]>('GET', `${stack().apiBase}/members/${member.id}/list-requests`, undefined, member.token);
     expect(mine.map((r) => r.status).sort()).toEqual(['APPROVED', 'APPROVED', 'REJECTED']);
     expect(mine.find((r) => r.status === 'REJECTED')?.note).toBe('We could not find this group.');
+  });
+
+  test('on a phone, a reviewed request shows its outcome @phone', async ({ page }) => {
+    const t = tag();
+    const member = await newMember('Achieng', `Phone${t}`);
+    await shareBackground(member);
+    await ask(member, 'communities', `Kite flying ${t}`, 'SOCIAL_GROUP');
+    const admin = await newAdmin(page, KEEP, 'PhoneLists');
+    const token = await apiToken(admin.email, admin.password);
+    const pending = await call<{ results: { requestId: string; name: string }[] }>('GET', `${stack().apiBase}/list-requests?status=PENDING&page=1&size=100`, undefined, token);
+    const mine = pending.results.find((r) => r.name === `Kite flying ${t}`)!;
+    await post(`${stack().apiBase}/list-requests/${mine.requestId}/reject`, { note: 'Already offered as Kites.' }, token);
+    await signIn(page, admin.email, admin.password);
+    await page.goto('/lists');
+    await page.getByRole('group', { name: 'Status' }).getByRole('button', { name: 'All' }).click();
+    const row = page.getByRole('list', { name: 'Requests' }).getByRole('listitem').filter({ hasText: `Kite flying ${t}` });
+    await expect(row).toContainText('Already offered as Kites.');
+    await expect(row).toContainText('Rejected');
   });
 
   test('an admin who can only read sees the lists and requests, without changing them', async ({ page }) => {
