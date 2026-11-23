@@ -14,6 +14,160 @@
     }
   ],
   "paths": {
+    "/api/members/{memberId}/location": {
+      "get": {
+        "tags": [
+          "Members"
+        ],
+        "summary": "Your location for suggestions (D-043)",
+        "description": "Shown only to you and to admins who read member details, never on a profile. usedForSuggestions is false until your KYC is verified.\n\n**Requires:** `hasAuthority('MEMBERS.READ') or (hasAuthority('ACCOUNT_MEMBER') and #memberId == principal.id)`",
+        "operationId": "location",
+        "parameters": [
+          {
+            "name": "memberId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in, or the token or key is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Members"
+        ],
+        "summary": "Set your location, or untick the location box (D-043)",
+        "description": "Ticked: county, sub-county and optionally a town, from the lists; members in the same sub-county who also ticked it, both with KYC verified, can be suggested to each other. Unticked: the location is cleared and stops being used at once.\n\n**Requires:** `hasAuthority('ACCOUNT_MEMBER') and #memberId == principal.id`",
+        "operationId": "changeLocation",
+        "parameters": [
+          {
+            "name": "memberId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in, or the token or key is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/members/{memberId}/connection-settings": {
       "get": {
         "tags": [
@@ -91,7 +245,7 @@
           "Members"
         ],
         "summary": "Turn \"open to new connections\" on or off (D-042)",
-        "description": "On: you can be suggested to your connections' connections, while you have signed in within suggestion_active_days (90). Turning it off hides you from every list at once.\n\n**Requires:** `hasAuthority('ACCOUNT_MEMBER') and #memberId == principal.id`",
+        "description": "On: you can be suggested to your connections' connections, to members who sent you BLOCKS, and, if you tick those boxes, to members who share your location or background, while you have signed in within suggestion_active_days (90). Turning it off hides you from every list at once.\n\n**Requires:** `hasAuthority('ACCOUNT_MEMBER') and #memberId == principal.id`",
         "operationId": "changeConnectionSettings",
         "parameters": [
           {
@@ -121,6 +275,160 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ConnectionSettingsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in, or the token or key is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/members/{memberId}/background": {
+      "get": {
+        "tags": [
+          "Members"
+        ],
+        "summary": "Your background for suggestions (D-043)",
+        "description": "Profession, industry, interests, communities, workplaces and schools. Shown only to you and to admins who read member details, never on a profile. A pending pick waits for an admin.\n\n**Requires:** `hasAuthority('MEMBERS.READ') or (hasAuthority('ACCOUNT_MEMBER') and #memberId == principal.id)`",
+        "operationId": "background",
+        "parameters": [
+          {
+            "name": "memberId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackgroundResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in, or the token or key is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Members"
+        ],
+        "summary": "Set your background, or untick the background box (D-043)",
+        "description": "Replaces what was there. Every field is optional and picked from the lists: up to 5 interests, 10 communities, 5 organisations and 5 schools, pending requests included. A pending request left out is withdrawn. Unticked: everything is cleared and stops being used at once.\n\n**Requires:** `hasAuthority('ACCOUNT_MEMBER') and #memberId == principal.id`",
+        "operationId": "changeBackground",
+        "parameters": [
+          {
+            "name": "memberId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BackgroundRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackgroundResponse"
                 }
               }
             }
@@ -1978,6 +2286,163 @@
         }
       }
     },
+    "/api/members/{memberId}/list-requests": {
+      "get": {
+        "tags": [
+          "Members"
+        ],
+        "summary": "Your requests for missing entries (D-043)",
+        "description": "Newest first, with any note.\n\n**Requires:** `hasAuthority('ACCOUNT_MEMBER') and #memberId == principal.id`",
+        "operationId": "listRequests",
+        "parameters": [
+          {
+            "name": "memberId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ListRequestResponse"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in, or the token or key is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Members"
+        ],
+        "summary": "Ask for a missing community, organisation or school (D-043)",
+        "description": "Needs the background box ticked. It's added to your background as a pending pick, and counts once an admin approves it; it's removed if rejected. At most list_requests_pending_max (5) waiting at once. 409 if the name is already on the list.\n\n**Requires:** `hasAuthority('ACCOUNT_MEMBER') and #memberId == principal.id`",
+        "operationId": "requestListEntry",
+        "parameters": [
+          {
+            "name": "memberId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ListRequestCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListRequestResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in, or the token or key is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/members/{memberId}/invites": {
       "get": {
         "tags": [
@@ -2095,6 +2560,79 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/InviteResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in, or the token or key is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/members/{memberId}/connection-settings/payments-notice": {
+      "post": {
+        "tags": [
+          "Members"
+        ],
+        "summary": "The payments notice has been shown (D-043)",
+        "description": "For a member who turned on \"open to new connections\" before payments could suggest them to the sender: the member app shows that once, while paymentsNotice is true, then calls this.\n\n**Requires:** `hasAuthority('ACCOUNT_MEMBER') and #memberId == principal.id`",
+        "operationId": "paymentsNoticeShown",
+        "parameters": [
+          {
+            "name": "memberId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionSettingsResponse"
                 }
               }
             }
@@ -3327,6 +3865,458 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/LoanDetailResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in, or the token or key is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/lists/{list}": {
+      "get": {
+        "tags": [
+          "Pick-lists"
+        ],
+        "summary": "A pick-list, by name (D-043)",
+        "description": "list is counties, sub-counties, towns, industries, professions, interests, communities, organisations or schools. parentId narrows sub-counties to a county and towns to a sub-county; search matches part of the name. Retired entries only for admins with LISTS.READ who ask.\n\n**Requires:** `hasAuthority('ACCOUNT_MEMBER') or hasAuthority('LISTS.READ')`",
+        "operationId": "entries",
+        "parameters": [
+          {
+            "name": "list",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "parentId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "includeRetired",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageResponseListEntryResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in, or the token or key is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Pick-lists"
+        ],
+        "summary": "Add an entry to a list (D-043)",
+        "description": "Counties and sub-counties are fixed. type is required for communities (SACCO, CHAMA, CHURCH, ASSOCIATION, PROFESSIONAL_BODY, INVESTMENT_GROUP, SOCIAL_GROUP, BUSINESS_NETWORK), organisations (EMPLOYER, BUSINESS) and schools (SECONDARY, COLLEGE, UNIVERSITY); a town needs its sub-county as parentId. 409 if the name is already on the list, ignoring case.\n\n**Requires:** `hasAuthority('LISTS.MANAGE')`",
+        "operationId": "add",
+        "parameters": [
+          {
+            "name": "list",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ListEntryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListEntryResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in, or the token or key is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/lists/{list}/bulk": {
+      "post": {
+        "tags": [
+          "Pick-lists"
+        ],
+        "summary": "Add many entries at once (D-043)",
+        "description": "Up to 5000, such as a public list of schools or SACCOs. Names already on the list are skipped; any invalid entry refuses the lot.\n\n**Requires:** `hasAuthority('LISTS.MANAGE')`",
+        "operationId": "addAll",
+        "parameters": [
+          {
+            "name": "list",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ListBulkRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListBulkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in, or the token or key is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/list-requests/{requestId}/reject": {
+      "post": {
+        "tags": [
+          "Pick-lists"
+        ],
+        "summary": "Reject a request (D-043)",
+        "description": "The member's pending pick is removed.\n\n**Requires:** `hasAuthority('LISTS.MANAGE')`",
+        "operationId": "reject",
+        "parameters": [
+          {
+            "name": "requestId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ListRequestRejectionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListRequestResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in, or the token or key is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/list-requests/{requestId}/approve": {
+      "post": {
+        "tags": [
+          "Pick-lists"
+        ],
+        "summary": "Approve a request (D-043)",
+        "description": "With entryId, as an entry already on the list, to merge a duplicate; otherwise as a new entry, with name and type corrected if given. The member's pending pick then counts.\n\n**Requires:** `hasAuthority('LISTS.MANAGE')`",
+        "operationId": "approve",
+        "parameters": [
+          {
+            "name": "requestId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ListRequestApprovalRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListRequestResponse"
                 }
               }
             }
@@ -7274,6 +8264,97 @@
         }
       }
     },
+    "/api/lists/{list}/{entryId}": {
+      "patch": {
+        "tags": [
+          "Pick-lists"
+        ],
+        "summary": "Rename, retype, retire or bring back an entry (D-043)",
+        "description": "Entries are never deleted. A retired entry isn't offered and no longer suggests anyone; members who picked it keep it.\n\n**Requires:** `hasAuthority('LISTS.MANAGE')`",
+        "operationId": "change_1",
+        "parameters": [
+          {
+            "name": "list",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "entryId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ListEntryChangeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListEntryResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in, or the token or key is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/guarantees/{guaranteeId}/close": {
       "patch": {
         "tags": [
@@ -9776,8 +10857,8 @@
         "tags": [
           "Members"
         ],
-        "summary": "Members you might know (D-042)",
-        "description": "Members open to new connections and known by at least 2 of your connections, best first. Worked out nightly, and checked again on every read. Shows how many of your connections know each one, never which.\n\n**Requires:** `hasAuthority('ACCOUNT_MEMBER') and #memberId == principal.id`",
+        "summary": "Members you might know (D-042, D-043)",
+        "description": "Members open to new connections, best first: those known by at least 2 of your connections, then those you sent BLOCKS to, or who share your sub-county or background, with 5 places kept for them. Worked out nightly, and checked again on every read. One reason each, the strongest; a count of mutual connections, never which.\n\n**Requires:** `hasAuthority('ACCOUNT_MEMBER') and #memberId == principal.id`",
         "operationId": "suggestions",
         "parameters": [
           {
@@ -10606,6 +11687,101 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/LoanDetailResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in, or the token or key is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Logged in, but not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/list-requests": {
+      "get": {
+        "tags": [
+          "Pick-lists"
+        ],
+        "summary": "Members' requests for missing entries (D-043)",
+        "description": "Newest first. status narrows them: PENDING, APPROVED, REJECTED or WITHDRAWN.\n\n**Requires:** `hasAuthority('LISTS.READ')`",
+        "operationId": "requests",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageResponseListRequestResponse"
                 }
               }
             }
@@ -12780,6 +13956,72 @@
           }
         }
       },
+      "LocationRequest": {
+        "type": "object",
+        "properties": {
+          "shared": {
+            "type": "boolean"
+          },
+          "countyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "subCountyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "townId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "shared"
+        ]
+      },
+      "ListEntryResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "parentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "retiredAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "LocationResponse": {
+        "type": "object",
+        "properties": {
+          "shared": {
+            "type": "boolean"
+          },
+          "county": {
+            "$ref": "#/components/schemas/ListEntryResponse"
+          },
+          "subCounty": {
+            "$ref": "#/components/schemas/ListEntryResponse"
+          },
+          "town": {
+            "$ref": "#/components/schemas/ListEntryResponse"
+          },
+          "usedForSuggestions": {
+            "type": "boolean"
+          }
+        }
+      },
       "ConnectionSettingsRequest": {
         "type": "object",
         "properties": {
@@ -12800,6 +14042,142 @@
           "changedAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "paymentsNotice": {
+            "type": "boolean"
+          }
+        }
+      },
+      "BackgroundPickRequest": {
+        "type": "object",
+        "properties": {
+          "entryId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "requestId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "current": {
+            "type": "boolean"
+          },
+          "finishingYear": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 2100,
+            "minimum": 1950
+          }
+        }
+      },
+      "BackgroundRequest": {
+        "type": "object",
+        "properties": {
+          "shared": {
+            "type": "boolean"
+          },
+          "professionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "industryId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "interestIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "communities": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BackgroundPickRequest"
+            }
+          },
+          "organisations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BackgroundPickRequest"
+            }
+          },
+          "schools": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BackgroundPickRequest"
+            }
+          }
+        },
+        "required": [
+          "shared"
+        ]
+      },
+      "BackgroundPick": {
+        "type": "object",
+        "properties": {
+          "entryId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "requestId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "pending": {
+            "type": "boolean"
+          },
+          "current": {
+            "type": "boolean"
+          },
+          "finishingYear": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "BackgroundResponse": {
+        "type": "object",
+        "properties": {
+          "shared": {
+            "type": "boolean"
+          },
+          "profession": {
+            "$ref": "#/components/schemas/ListEntryResponse"
+          },
+          "industry": {
+            "$ref": "#/components/schemas/ListEntryResponse"
+          },
+          "interests": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ListEntryResponse"
+            }
+          },
+          "communities": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BackgroundPick"
+            }
+          },
+          "organisations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BackgroundPick"
+            }
+          },
+          "schools": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BackgroundPick"
+            }
           }
         }
       },
@@ -13949,6 +15327,74 @@
           }
         }
       },
+      "ListRequestCreateRequest": {
+        "type": "object",
+        "properties": {
+          "list": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 150,
+            "minLength": 0
+          },
+          "type": {
+            "type": "string"
+          },
+          "current": {
+            "type": "boolean"
+          },
+          "finishingYear": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 2100,
+            "minimum": 1950
+          }
+        },
+        "required": [
+          "list",
+          "name"
+        ]
+      },
+      "ListRequestResponse": {
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "list": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "entry": {
+            "$ref": "#/components/schemas/ListEntryResponse"
+          },
+          "note": {
+            "type": "string"
+          },
+          "requestedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reviewedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "member": {
+            "$ref": "#/components/schemas/MemberLookupResponse"
+          }
+        }
+      },
       "InviteResponse": {
         "type": "object",
         "properties": {
@@ -14601,6 +16047,82 @@
         "required": [
           "claimOwed"
         ]
+      },
+      "ListEntryRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 150,
+            "minLength": 0
+          },
+          "type": {
+            "type": "string"
+          },
+          "parentId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "ListBulkRequest": {
+        "type": "object",
+        "properties": {
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ListEntryRequest"
+            },
+            "maxItems": 5000,
+            "minItems": 0
+          }
+        },
+        "required": [
+          "entries"
+        ]
+      },
+      "ListBulkResponse": {
+        "type": "object",
+        "properties": {
+          "added": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "skipped": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "ListRequestRejectionRequest": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 0
+          }
+        }
+      },
+      "ListRequestApprovalRequest": {
+        "type": "object",
+        "properties": {
+          "entryId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 150,
+            "minLength": 1
+          },
+          "type": {
+            "type": "string"
+          }
+        }
       },
       "LenderLoanRequest": {
         "type": "object",
@@ -15569,6 +17091,22 @@
         "required": [
           "status"
         ]
+      },
+      "ListEntryChangeRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 150,
+            "minLength": 1
+          },
+          "type": {
+            "type": "string"
+          },
+          "retired": {
+            "type": "boolean"
+          }
+        }
       },
       "BlocksPrice": {
         "type": "object",
@@ -16722,6 +18260,9 @@
             "type": "integer",
             "format": "int32"
           },
+          "signal": {
+            "type": "string"
+          },
           "reason": {
             "type": "string"
           }
@@ -17089,6 +18630,60 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/LoanRecordResponse"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalResults": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "PageResponseListEntryResponse": {
+        "type": "object",
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ListEntryResponse"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalResults": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "PageResponseListRequestResponse": {
+        "type": "object",
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ListRequestResponse"
             }
           },
           "page": {

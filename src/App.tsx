@@ -4,6 +4,7 @@ import { AppShell } from '@/components/shell/AppShell';
 import { allScreens, homePath, safeNext } from '@/components/shell/nav';
 import { Account } from '@/pages/Account';
 import { ActivityPage } from '@/pages/activity/ActivityPage';
+import { ListsPage } from '@/pages/lists/ListsPage';
 import { AdminsPage } from '@/pages/admins/AdminsPage';
 import { AuditPage } from '@/pages/audit/AuditPage';
 import { AlertsPage } from '@/pages/alerts/AlertsPage';
@@ -106,6 +107,7 @@ export function App() {
           <Route path="/members" element={<MembersPage />} />
           <Route path="/members/:memberId" element={<MembersPage />} />
           <Route path="/activity" element={<ActivityPage />} />
+          <Route path="/lists" element={<ListsPage />} />
           <Route path="/kyc" element={<KycPage />} />
           <Route path="/kyc/address" element={<KycPage />} />
           <Route path="/kyc/address/:memberId" element={<KycPage />} />

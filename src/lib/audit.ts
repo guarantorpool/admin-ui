@@ -8,7 +8,8 @@ export const ACTION_GROUPS: { label: string; actions: string[] }[] = [
   { label: 'Admins and roles', actions: ['ADMIN_CREATED', 'ADMIN_UPDATED', 'ADMIN_ROLE_CHANGED', 'ADMIN_DISABLED', 'ADMIN_ENABLED', 'ADMIN_DELETED', 'ROLE_CREATED', 'ROLE_UPDATED', 'ROLE_DELETED'] },
   { label: 'Service keys', actions: ['SERVICE_KEY_CREATED', 'SERVICE_KEY_ROTATED', 'SERVICE_KEY_REVOKED', 'SERVICE_KEY_USED'] },
   { label: 'Members', actions: ['MEMBER_REGISTERED', 'MEMBER_DISABLED', 'MEMBER_ENABLED', 'INVITE_CREATED', 'INVITE_REVOKED', 'WALLET_REPLACED', 'MEMBER_ASSET_BALANCES_ENTERED', 'MEMBER_ASSET_BALANCES_SET', 'MEMBER_ASSET_BALANCES_REJECTED', 'LOCKED_BLOCKS_REFRESHED'] },
-  { label: 'Connections', actions: ['RELATIONSHIP_REQUESTED', 'RELATIONSHIP_CREATED', 'RELATIONSHIP_REMOVED', 'CONNECTION_SETTINGS_CHANGED', 'SUGGESTION_DISMISSED'] },
+  { label: 'Connections', actions: ['RELATIONSHIP_REQUESTED', 'RELATIONSHIP_CREATED', 'RELATIONSHIP_REMOVED', 'CONNECTION_SETTINGS_CHANGED', 'SUGGESTION_DISMISSED', 'LOCATION_CHANGED', 'BACKGROUND_CHANGED'] },
+  { label: 'Suggestion lists', actions: ['LIST_REQUEST_CREATED', 'LIST_ENTRY_ADDED', 'LIST_ENTRIES_ADDED', 'LIST_ENTRY_CHANGED', 'LIST_REQUEST_APPROVED', 'LIST_REQUEST_REJECTED'] },
   { label: 'KYC and address', actions: ['KYC_SUBMITTED', 'MEMBER_KYC_UPDATED', 'KYC_DETAILS_VIEWED', 'ADDRESS_PIN_SAVED', 'ADDRESS_DOCUMENT_SUBMITTED', 'ADDRESS_DOCUMENT_REVIEWED', 'ADDRESS_PROOF_VIEWED', 'PRIVATE_FILE_OPENED', 'UPLOAD_CREATED', 'UPLOAD_DELETED'] },
   { label: 'KYC encryption key', actions: ['KYC_REENCRYPTED', 'KYC_KEY_LOSS_RESET', 'KYC_KEY_LOSS_RESET_RUN'] },
   // a loan action is LOAN_{its type}_{ENTERED, APPROVED or REJECTED} (LoanRecordService)
@@ -31,6 +32,14 @@ const ACTION: Record<string, string> = {
   RELATIONSHIP_REMOVED: 'Connection removed',
   CONNECTION_SETTINGS_CHANGED: '"Open to new connections" changed',
   SUGGESTION_DISMISSED: 'Suggestion dismissed',
+  LOCATION_CHANGED: 'Location for suggestions changed',
+  BACKGROUND_CHANGED: 'Background for suggestions changed',
+  LIST_REQUEST_CREATED: 'List entry requested',
+  LIST_ENTRY_ADDED: 'List entry added',
+  LIST_ENTRIES_ADDED: 'List entries added in bulk',
+  LIST_ENTRY_CHANGED: 'List entry changed',
+  LIST_REQUEST_APPROVED: 'Request for a list entry approved',
+  LIST_REQUEST_REJECTED: 'Request for a list entry rejected',
   PARAMETER_CHANGED: 'Pool setting changed',
   PARAMETER_CHANGE_PROPOSED: 'Pool setting change proposed',
   PARAMETER_CHANGE_APPROVED: 'Pool setting change approved',
@@ -72,7 +81,10 @@ const RECORD: Record<string, string> = {
   pool_parameter: 'Pool setting',
   parameter_change: 'Pool setting change',
   parameter_change_set: 'Pool setting change set',
-  ledger_import: 'Activity import'
+  ledger_import: 'Activity import',
+  list: 'Suggestion list',
+  list_entry: 'List entry',
+  list_request: 'Request for a list entry'
 };
 
 export const RECORD_TYPES = Object.keys(RECORD);
@@ -96,6 +108,8 @@ export function recordPath(type: string | null | undefined, id: string | null | 
       return `/refunds/${e}`;
     case 'pool_wallet':
       return `/pool/wallets/${e}`;
+    case 'list':
+      return `/lists?view=entries&list=${e}`;
     default:
       return null;
   }
