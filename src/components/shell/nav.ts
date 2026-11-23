@@ -31,7 +31,8 @@ export const NAV: NavEntry[] = [
   group('members', 'Members', [
     { path: '/members', label: 'All members', about: 'Find a member and see everything about them.', access: 'MEMBERS.READ' },
     { path: '/kyc', label: 'KYC and address review', about: "Check members' identity and address documents.", access: ['MEMBERS.READ', 'MEMBERS.KYC'] },
-    { path: '/activity', label: 'Activity', about: 'Bring in activity records from a file, and search them.', access: 'LEDGER.READ' }
+    { path: '/activity', label: 'Activity', about: 'Bring in activity records from a file, and search them.', access: 'LEDGER.READ' },
+    { path: '/lists', label: 'Suggestion lists', about: "The lists members pick their location and background from, and members' requests for missing entries.", access: 'LISTS.READ' }
   ]),
   group('guarantees', 'Guarantees', [
     { path: '/guarantees', label: 'Guarantees and quotes', about: 'Every guarantee and quote, with its pricing and payments.', access: 'GUARANTEES.READ' },

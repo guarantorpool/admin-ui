@@ -16,7 +16,8 @@ const MODULE: Record<string, string> = {
   GUARANTEES: 'Guarantees',
   ALERTS: 'Alerts',
   REFUNDS: 'Refunds',
-  WALLETS: 'Pool wallets'
+  WALLETS: 'Pool wallets',
+  LISTS: 'Suggestion lists'
 };
 
 const ACTION: Record<string, string> = {

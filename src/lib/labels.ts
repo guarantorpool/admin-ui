@@ -490,3 +490,32 @@ const APPROVAL_KIND: Record<string, string> = {
 
 export const APPROVAL_KINDS = Object.keys(APPROVAL_KIND);
 export const approvalKind = (code: string | null | undefined) => (code ? APPROVAL_KIND[code] ?? sentence(code) : '—');
+
+// a community, organisation or school's type (BlockCoop D-043)
+const ENTRY_TYPE: Record<string, string> = {
+  SACCO: 'SACCO',
+  CHAMA: 'Chama',
+  CHURCH: 'Church',
+  ASSOCIATION: 'Association',
+  PROFESSIONAL_BODY: 'Professional body',
+  INVESTMENT_GROUP: 'Investment group',
+  SOCIAL_GROUP: 'Social group',
+  BUSINESS_NETWORK: 'Business network',
+  EMPLOYER: 'Employer',
+  BUSINESS: 'Own business',
+  SECONDARY: 'Secondary school',
+  COLLEGE: 'College',
+  UNIVERSITY: 'University'
+};
+
+export const entryType = (code: string | null | undefined) => (code ? ENTRY_TYPE[code] ?? sentence(code) : '—');
+
+// a member's request for a missing community, organisation or school
+const LIST_REQUEST_STATUS: Record<string, Label> = {
+  PENDING: { text: 'Waiting', tone: 'warn' },
+  APPROVED: { text: 'Approved', tone: 'ok' },
+  REJECTED: { text: 'Rejected', tone: 'bad' },
+  WITHDRAWN: { text: 'Withdrawn', tone: 'neutral' }
+};
+
+export const listRequestStatus = (code: string | null | undefined) => pick(LIST_REQUEST_STATUS, code);

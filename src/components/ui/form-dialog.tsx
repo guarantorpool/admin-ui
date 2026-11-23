@@ -29,7 +29,8 @@ export function FormDialog<T>({ open, title, description, rows, confirm, danger,
   check: () => string;
   send: () => Promise<T>;
   saved: (result: T) => void;
-  done: string;
+  /** the message once saved, which may say what the backend did */
+  done: string | ((result: T) => string);
   children: React.ReactNode;
 }) {
   const [error, setError] = React.useState('');
@@ -38,7 +39,7 @@ export function FormDialog<T>({ open, title, description, rows, confirm, danger,
     mutationFn: send,
     onSuccess: (result) => {
       saved(result);
-      toast.success(done);
+      toast.success(typeof done === 'function' ? done(result) : done);
       onClose();
     },
     onError: (err) => setError(errorMessage(err))
