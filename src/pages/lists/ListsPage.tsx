@@ -143,7 +143,7 @@ function Lists() {
         </Muted>
         <Tabs label="Suggestion lists" idPrefix="lists" tabs={tabs} value={p.view} onChange={(v) => p.update({ view: v === 'requests' ? undefined : v, status: undefined, q: undefined, parent: undefined, show: undefined, size: undefined })} />
         <div role="tabpanel" id={`lists-panel-${p.view}`} aria-labelledby={`lists-tab-${p.view}`} className="flex flex-col gap-3.5">
-          {p.view === 'requests' ? <Requests params={p} manage={manage} /> : <Entries params={p} manage={manage} />}
+          {p.view === 'requests' ? <Requests params={p} manage={manage} /> : <Entries key={p.list.path} params={p} manage={manage} />}
         </div>
       </div>
       {canAdd ? (
@@ -168,9 +168,12 @@ function Entries({ params: p, manage }: { params: Params; manage: boolean }) {
   const list = p.list;
   const places = usePlaces(!!list.parent);
 
+  // the search is applied to the URL as it is when the typing stops, so a filter changed meanwhile is kept
+  const update = React.useRef(p.update);
+  update.current = p.update;
   React.useEffect(() => {
     if (text.trim() === p.q) return;
-    const t = setTimeout(() => p.update({ q: text.trim() }), 300);
+    const t = setTimeout(() => update.current({ q: text.trim() }), 300);
     return () => clearTimeout(t);
   }, [text]);
   React.useEffect(() => setText(p.q), [p.q]);

@@ -82,7 +82,20 @@ test.describe('suggestion lists (BlockCoop D-043)', () => {
     await expect(entryRow(page, 'Counties', 'Nairobi')).toBeVisible();
     await expect(entries(page, 'Counties').getByRole('button', { name: /^Options/ })).toHaveCount(0);
 
-    await page.getByRole('group', { name: 'List' }).getByRole('button', { name: 'Sub-counties' }).click();
+    // a list chosen while a search is still being typed stays chosen, without the search
+    await page.getByLabel('Search counties').fill('');
+    await expect(page).not.toHaveURL(/q=/);
+    // typed and clicked in one go, well within the wait before a search is applied
+    await page.evaluate(() => {
+      const input = document.querySelector<HTMLInputElement>('input[aria-label="Search counties"]')!;
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, 'mom');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      Array.from(document.querySelectorAll<HTMLButtonElement>('[role="group"][aria-label="List"] button')).find((b) => b.textContent === 'Sub-counties')!.click();
+    });
+    await page.waitForTimeout(600);
+    await expect(page).toHaveURL(/list=sub-counties/);
+    expect(new URL(page.url()).searchParams.get('q')).toBeNull();
+    await expect(page.getByLabel('Search sub-counties')).toHaveValue('');
     await page.getByLabel('County', { exact: true }).selectOption({ label: 'Mombasa' });
     const rows = entries(page, 'Sub-counties').getByRole('row');
     await expect(rows.first()).toBeVisible();
